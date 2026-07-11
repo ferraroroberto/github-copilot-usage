@@ -82,7 +82,7 @@ Note: this is the **user** billing endpoint, so it works for individually-paid p
 
 ## Optional: system tray (Windows)
 
-`tray.bat` runs the server under a tray icon (Open dashboard / Restart / Quit) instead of a console window — handy for keeping it always on. First use installs two small extras (pystray, pillow). Put a shortcut in `shell:startup` to launch on login. `tray.bat --restart` restarts it; detection is scoped to this repo's `.venv`, so no other Python process is ever touched.
+`tray.bat` runs the server under a tray icon (Open dashboard / Restart / Quit) instead of a console window — handy for keeping it always on. It works directly on a fresh clone (it creates the venv and installs everything itself, including two small tray extras: pystray, pillow), so it is a full alternative to `start.bat`. Re-running it is a no-op while the tray lives; `tray.bat --restart` restarts it. Detection is scoped to this repo's `.venv`, so no other Python process is ever touched. Put a shortcut in `shell:startup` to launch on login.
 
 ## API
 

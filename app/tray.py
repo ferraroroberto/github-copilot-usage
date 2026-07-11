@@ -11,9 +11,19 @@ Requires the extras in ``requirements-tray.txt`` (pystray + pillow) —
 
 from __future__ import annotations
 
+import io
+import os
 import sys
 import threading
 import webbrowser
+
+# Under pythonw.exe there is no console: sys.stdout/stderr are None, and
+# anything that touches them (uvicorn's logging setup calls
+# sys.stdout.isatty(), pystray/library error prints) crashes the process.
+# Bind them to a null sink before any such import or call.
+for _name in ("stdout", "stderr"):
+    if getattr(sys, _name) is None:
+        setattr(sys, _name, io.TextIOWrapper(open(os.devnull, "wb"), encoding="utf-8"))
 
 try:
     import pystray

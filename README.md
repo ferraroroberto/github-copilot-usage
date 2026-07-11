@@ -22,7 +22,7 @@ That's it — the first run creates a virtual environment, installs three depend
 ## What you get
 
 - **Premium requests (credits), tokens in/out, request counts** for Today / Week / Month / **billing Cycle** / All, with vs-previous-period deltas.
-- **Billing-cycle burn-down** — set your plan's monthly allowance (Business 300, Enterprise 1000, Pro 300, Pro+ 1500) and see % used, a "where you should be today" pace marker, and a linear projection to cycle end.
+- **Billing-cycle burn-down** — set your monthly credit allowance and see % used, a "where you should be today" pace marker, and a linear projection to cycle end. Get the right number from VS Code's own Copilot menu: it shows **"Credits X / Y used"** — enter Y (plan defaults are Business 300 / Enterprise 1000 / Pro 300 / Pro+ 1500, but org-provisioned pools can be much larger, e.g. 23,400).
 - **Credits per model over time** (stacked daily/weekly/monthly chart) and tokens in/out trends.
 - **Where your prompt tokens go** — VS Code records a per-request composition breakdown (System Instructions / Tool Definitions / Messages / attachments…). The dashboard aggregates it, weighted by prompt size. If "Tool Definitions" dominates, disabling unused tools and MCP servers shrinks *every single request* you make.
 - **Session explorer** — every chat session, sortable by cost or recency; click one for the per-request drill-down: your prompt, mode (agent/ask/edit), resolved model, tokens in/out, **exact credits billed** (not an estimate — this is the number GitHub charges), and elapsed time.
@@ -61,7 +61,7 @@ The **Data sources** card at the bottom of the dashboard shows exactly what was 
 | Key | Default | Meaning |
 |---|---|---|
 | `port` | `8377` | dashboard port (loopback only), also `COPILOT_USAGE_PORT` env |
-| `monthly_credits` | `300` | your plan's monthly premium-request allowance |
+| `monthly_credits` | `300` | your monthly credit allowance (the "/ Y" total in VS Code's Copilot menu) |
 | `cycle_reset_day` | `1` | day of month your billing cycle resets |
 | `extra_roots` | `[]` | additional editor storage paths to scan |
 | `include_copilot_cli` | `true` | also parse Copilot CLI sessions |
@@ -77,6 +77,8 @@ cp .env.example .env     # and paste the token into GITHUB_COPILOT_BILLING_PAT
 ```
 
 No PAT → the card simply explains it's not configured. The token is only ever sent to `api.github.com`.
+
+Note: this is the **user** billing endpoint, so it works for individually-paid plans (Pro / Pro+). On a **Business / Enterprise seat the organization pays**, and this endpoint typically has no data for you — there, the local session stats plus the quota bar in VS Code's Copilot menu are your sources of truth.
 
 ## Optional: system tray (Windows)
 

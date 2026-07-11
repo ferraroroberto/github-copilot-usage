@@ -28,8 +28,10 @@ ENV_PATH: Path = PROJECT_ROOT / ".env"
 DEFAULTS: Dict[str, Any] = {
     # HTTP port for the dashboard (loopback only).
     "port": 8377,
-    # Your plan's monthly premium-request / AI-credit allowance.
-    # Copilot Business = 300, Enterprise = 1000, Pro = 300, Pro+ = 1500.
+    # Your monthly credit allowance. Copy the total from VS Code's Copilot
+    # menu ("Credits X / Y used" -> Y): plan defaults are Business 300,
+    # Enterprise 1000, Pro 300, Pro+ 1500, but org-provisioned credit pools
+    # can be much larger (e.g. 23400).
     "monthly_credits": 300,
     # Day of month your billing cycle resets (GitHub resets on the 1st UTC).
     "cycle_reset_day": 1,

@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Copilot Usage</title>
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d1117">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    // Pre-paint theme stamp: localStorage override, else OS preference.
+    (function () {
+      var t = localStorage.getItem('copilot-usage.theme');
+      if (t !== 'light' && t !== 'dark') {
+        t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="topbar-title">
+      <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+      <h1>Copilot Usage</h1>
+    </div>
+    <div class="topbar-actions">
+      <span id="freshness" class="freshness"></span>
+      <button id="theme-toggle" class="icon-btn" type="button" aria-label="Toggle theme">
+        <svg class="glyph-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+        <svg class="glyph-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      </button>
+      <button id="settings-btn" class="icon-btn" type="button" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <nav class="seg" id="period-seg" aria-label="Period">
+    <button data-period="today" class="active" type="button">Today</button>
+    <button data-period="week" type="button">Week</button>
+    <button data-period="month" type="button">Month</button>
+    <button data-period="cycle" type="button">Cycle</button>
+    <button data-period="all" type="button">All</button>
+  </nav>
+
+  <!-- Stat tiles -->
+  <section class="tiles">
+    <div class="tile tile-hero">
+      <div class="tile-label">Premium requests (credits)</div>
+      <div class="tile-value" id="t-credits">—</div>
+      <div class="tile-sub"><span id="t-usd"></span><span class="delta" id="d-credits" hidden></span></div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Requests</div>
+      <div class="tile-value" id="t-requests">—</div>
+      <div class="tile-sub"><span id="t-avg"></span><span class="delta" id="d-requests" hidden></span></div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Tokens in</div>
+      <div class="tile-value" id="t-in">—</div>
+      <div class="tile-sub" id="t-in-sub"></div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Tokens out</div>
+      <div class="tile-value" id="t-out">—</div>
+      <div class="tile-sub" id="t-out-sub"></div>
+    </div>
+  </section>
+
+  <!-- Budget burn-down -->
+  <section class="card" id="budget-card">
+    <div class="card-head">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22a10 10 0 1 1 10-10"/><path d="M12 6v6l4 2"/></svg>
+      <h2>Billing cycle</h2>
+      <span class="card-meta" id="budget-range"></span>
+    </div>
+    <div class="budget-meter" role="meter" aria-label="Credits used this cycle">
+      <div class="budget-fill" id="budget-fill"></div>
+      <div class="budget-marker" id="budget-today-marker" title="Where you should be today at a linear burn"></div>
+    </div>
+    <div class="budget-legend">
+      <span id="budget-used">—</span>
+      <span id="budget-projection" class="muted"></span>
+    </div>
+    <p class="footnote" id="budget-note"></p>
+  </section>
+
+  <!-- Charts -->
+  <section class="card" id="charts-card">
+    <div class="card-head">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 13l3-3 4 4 5-6"/></svg>
+      <h2>Trends</h2>
+    </div>
+    <h3 class="chart-title">Credits per model</h3>
+    <div class="chart-wrap"><canvas id="chart-credits"></canvas></div>
+    <h3 class="chart-title">Tokens in / out</h3>
+    <div class="chart-wrap"><canvas id="chart-tokens"></canvas></div>
+  </section>
+
+  <!-- Prompt composition -->
+  <section class="card" id="mix-card" hidden>
+    <div class="card-head">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="10" rx="1"/></svg>
+      <h2>Where your prompt tokens go</h2>
+    </div>
+    <div id="mix-bars"></div>
+    <p class="footnote">Composition of what is actually sent to the model, weighted by prompt size — from VS Code's own per-request breakdown. High "Tool Definitions"? Disable unused tools/MCP servers to shrink every request.</p>
+  </section>
+
+  <!-- Breakdown tables -->
+  <section class="card">
+    <div class="card-head">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+      <h2>By model</h2>
+    </div>
+    <div class="table-wrap">
+      <table id="model-table">
+        <thead><tr><th>Model</th><th class="num">Req</th><th class="num">Credits</th><th class="num">Share</th><th class="num">In / Out</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="empty" id="model-empty" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <p>No Copilot usage in this period.</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+      <h2>By project</h2>
+      <span class="card-meta" id="mode-chips"></span>
+    </div>
+    <div class="table-wrap">
+      <table id="project-table">
+        <thead><tr><th>Project</th><th class="num">Req</th><th class="num">Credits</th><th class="num">In / Out</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="empty" id="project-empty" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <p>No Copilot usage in this period.</p>
+    </div>
+  </section>
+
+  <!-- Sessions -->
+  <section class="card">
+    <div class="card-head">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></svg>
+      <h2>Sessions</h2>
+      <span class="badge" id="sessions-count">0</span>
+      <div class="seg seg-mini" id="sessions-sort">
+        <button data-sort="credits" class="active" type="button">Cost</button>
+        <button data-sort="recent" type="button">Recent</button>
+      </div>
+    </div>
+    <ul class="session-list" id="session-list"></ul>
+    <div class="empty" id="sessions-empty" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <p>No sessions in this period.</p>
+    </div>
+    <button class="btn-surface" id="sessions-more" type="button" hidden>Show all</button>
+  </section>
+
+  <!-- Official billing (optional PAT) -->
+  <section class="card" id="billing-card">
+    <div class="card-head">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+      <h2>Official GitHub billing</h2>
+      <span class="card-meta" id="billing-asof"></span>
+    </div>
+    <div class="table-wrap" id="billing-wrap">
+      <table id="billing-table">
+        <thead><tr><th>Date</th><th>Model</th><th class="num">Credits</th><th class="num">USD</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="footnote" id="billing-note"></p>
+  </section>
+
+  <!-- Data sources -->
+  <section class="card">
+    <div class="card-head">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+      <h2>Data sources</h2>
+    </div>
+    <ul class="source-list" id="source-list"></ul>
+    <p class="footnote">Every VS Code build on this machine is discovered automatically. Using a company-branded editor stored somewhere unusual? Add its path under Settings → extra roots.</p>
+  </section>
+
+  <footer class="page-foot">
+    <a class="btn-surface" id="export-link" href="/api/export.csv?period=all" download>Export CSV</a>
+    <span class="muted" id="version-tag"></span>
+  </footer>
+</div>
+
+<!-- Session detail modal -->
+<dialog id="session-dialog">
+  <div class="dialog-head">
+    <h2 id="sd-title">Session</h2>
+    <button class="dialog-close" id="sd-close" type="button" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </div>
+  <div class="dialog-meta" id="sd-meta"></div>
+  <div id="sd-mix"></div>
+  <div class="table-wrap">
+    <table id="sd-table">
+      <thead><tr><th>Time</th><th>Prompt</th><th>Mode</th><th>Model</th><th class="num">In</th><th class="num">Out</th><th class="num">Credits</th><th class="num">Took</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</dialog>
+
+<!-- Settings modal -->
+<dialog id="settings-dialog">
+  <div class="dialog-head">
+    <h2>Settings</h2>
+    <button class="dialog-close" id="settings-close" type="button" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </div>
+  <div class="setting-row">
+    <label for="set-allowance">Monthly premium requests<br><small class="muted">Business 300 · Enterprise 1000 · Pro 300 · Pro+ 1500</small></label>
+    <input id="set-allowance" type="number" min="0" step="1">
+  </div>
+  <div class="setting-row">
+    <label for="set-reset">Cycle reset day</label>
+    <input id="set-reset" type="number" min="1" max="28" step="1">
+  </div>
+  <div class="setting-row">
+    <label for="set-cli">Include Copilot CLI sessions</label>
+    <button id="set-cli" class="switch" type="button" role="switch" aria-checked="true"><span class="switch-thumb"></span></button>
+  </div>
+  <div class="setting-row setting-col">
+    <label for="set-roots">Extra storage roots (one path per line)</label>
+    <textarea id="set-roots" rows="3" placeholder="C:\Users\me\AppData\Roaming\MyCompanyEditor"></textarea>
+  </div>
+  <p class="footnote" id="set-pat-note"></p>
+  <button class="btn-primary" id="settings-save" type="button">Save</button>
+</dialog>
+
+<script src="vendor/chart.umd.min.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

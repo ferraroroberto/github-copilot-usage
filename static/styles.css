@@ -18,6 +18,14 @@
   --attention: #9a6700;
   --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-pill: 9999px;
   --gutter: 12px;
+  /* typography scale — design.md `typography` roles (theme-independent) */
+  --font-heading-xl: 2rem;
+  --font-heading-lg: 1.5rem;
+  --font-body: 1rem;
+  --font-label: 0.92rem;
+  --font-caption: 0.78rem;
+  /* shared inline-control height — design.md `components.control.height` */
+  --control-h: 36px;
 }
 
 [data-theme="dark"] {
@@ -41,7 +49,7 @@ body {
   background: var(--canvas);
   color: var(--fg);
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  font-size: 1rem;
+  font-size: var(--font-body);
   line-height: 1.5;
   touch-action: manipulation;
 }
@@ -60,17 +68,24 @@ body {
 /* ---- top bar ---- */
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .topbar-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.topbar-title h1 { font-size: 1.5rem; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; margin: 0; }
+.topbar-title h1 { font-size: var(--font-heading-lg); font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; margin: 0; }
 .logo { width: 24px; height: 24px; color: var(--accent); flex: none; }
 .topbar-actions { display: flex; align-items: center; gap: 8px; }
-.freshness { font-size: 0.78rem; font-weight: 600; color: var(--fg-muted); }
+.freshness { font-size: var(--font-caption); font-weight: 600; color: var(--fg-muted); }
 
 .icon-btn {
-  width: 36px; height: 36px; padding: 0;
+  position: relative;
+  width: 36px; height: var(--control-h); padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--canvas-subtle); color: var(--fg-muted);
   border: 1px solid var(--border); border-radius: var(--r-md);
   cursor: pointer;
+}
+/* invisible hit-area expansion — lift the compact 36/34px controls to the
+ * design.md 44px effective touch floor (Touch targets) without changing the
+ * visual. 36+2×5=46, 34+2×5=44 — both >= 44. */
+.icon-btn::before, .dialog-close::before {
+  content: ""; position: absolute; inset: -5px;
 }
 .icon-btn svg { width: 18px; height: 18px; }
 .icon-btn:hover { color: var(--fg); }
@@ -88,12 +103,12 @@ body {
 }
 .seg button {
   border: 0; background: transparent; color: var(--fg-muted);
-  font: inherit; font-size: 0.92rem; font-weight: 600;
+  font: inherit; font-size: var(--font-label); font-weight: 600;
   padding: 6px 14px; border-radius: var(--r-sm); cursor: pointer;
 }
 .seg button.active { background: var(--card); color: var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
 .seg-mini { margin-left: auto; padding: 2px; }
-.seg-mini button { padding: 3px 10px; font-size: 0.78rem; }
+.seg-mini button { padding: 3px 10px; font-size: var(--font-caption); }
 
 /* ---- stat tiles ---- */
 .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); }
@@ -103,9 +118,9 @@ body {
   padding: 16px; min-width: 0;
 }
 .tile-hero { border-color: var(--accent-border-soft); background: linear-gradient(180deg, var(--accent-soft), transparent 70%), var(--card); }
-.tile-label { font-size: 0.78rem; font-weight: 600; color: var(--fg-muted); }
+.tile-label { font-size: var(--font-caption); font-weight: 600; color: var(--fg-muted); }
 .tile-value { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin-top: 2px; font-variant-numeric: tabular-nums; }
-.tile-sub { font-size: 0.78rem; font-weight: 600; color: var(--fg-muted); min-height: 1.2em; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.tile-sub { font-size: var(--font-caption); font-weight: 600; color: var(--fg-muted); min-height: 1.2em; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .delta { font-size: 0.72rem; font-weight: 700; border-radius: var(--r-pill); padding: 1px 8px; background: var(--canvas-subtle); border: 1px solid var(--border-muted); }
 .delta.up { color: var(--danger); }     /* more spend = red */
 .delta.down { color: var(--success); }  /* less spend = green */
@@ -116,15 +131,15 @@ body {
   padding: 16px; min-width: 0;
 }
 .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-.card-head h2 { font-size: 1rem; font-weight: 700; margin: 0; }
+.card-head h2 { font-size: var(--font-body); font-weight: 700; margin: 0; }
 .card-icon { width: 18px; height: 18px; color: var(--fg-muted); flex: none; }
-.card-meta { margin-left: auto; font-size: 0.78rem; font-weight: 600; color: var(--fg-muted); }
+.card-meta { margin-left: auto; font-size: var(--font-caption); font-weight: 600; color: var(--fg-muted); }
 .badge {
   font-size: 0.72rem; font-weight: 700; color: var(--fg-muted);
   background: var(--canvas-subtle); border: 1px solid var(--border-muted);
   border-radius: var(--r-pill); padding: 1px 8px;
 }
-.footnote { font-size: 0.78rem; color: var(--fg-muted); margin: 10px 0 0; }
+.footnote { font-size: var(--font-caption); color: var(--fg-muted); margin: 10px 0 0; }
 .muted { color: var(--fg-muted); }
 
 /* inline Lucide status glyphs (replace emoji in JS-rendered copy) */
@@ -182,15 +197,15 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 }
 .session-list li + li { border-top: 1px solid var(--border-muted); }
 .session-list li:hover .sess-title { color: var(--accent); }
-.sess-title { font-weight: 600; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sess-credits { font-weight: 700; font-size: 0.92rem; text-align: right; font-variant-numeric: tabular-nums; }
-.sess-meta { grid-column: 1 / -1; font-size: 0.78rem; color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sess-title { font-weight: 600; font-size: var(--font-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sess-credits { font-weight: 700; font-size: var(--font-label); text-align: right; font-variant-numeric: tabular-nums; }
+.sess-meta { grid-column: 1 / -1; font-size: var(--font-caption); color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btn-surface {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  height: 36px; padding: 0 14px; margin-top: 10px;
+  height: var(--control-h); padding: 0 14px; margin-top: 10px;
   background: var(--canvas-subtle); color: var(--fg-muted);
   border: 1px solid var(--border); border-radius: var(--r-md);
-  font: inherit; font-size: 0.92rem; font-weight: 600; cursor: pointer; text-decoration: none;
+  font: inherit; font-size: var(--font-label); font-weight: 600; cursor: pointer; text-decoration: none;
 }
 .btn-surface:hover { color: var(--fg); }
 
@@ -199,16 +214,16 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .source-list li { display: flex; gap: 10px; align-items: baseline; padding: 10px 0; flex-wrap: wrap; }
 .source-list li + li { border-top: 1px solid var(--border-muted); }
 .source-ide { font-weight: 700; }
-.source-path { color: var(--fg-muted); font-size: 0.78rem; word-break: break-all; flex: 1 1 100%; }
+.source-path { color: var(--fg-muted); font-size: var(--font-caption); word-break: break-all; flex: 1 1 100%; }
 
 /* ---- empty state ---- */
 .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 16px; color: var(--fg-muted); text-align: center; }
 .empty svg { width: 24px; height: 24px; }
-.empty p { margin: 0; font-size: 0.92rem; }
+.empty p { margin: 0; font-size: var(--font-label); }
 
 /* ---- footer ---- */
 .page-foot { display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 24px; }
-.page-foot .muted { font-size: 0.78rem; font-weight: 600; }
+.page-foot .muted { font-size: var(--font-caption); font-weight: 600; }
 
 /* ---- dialogs ---- */
 dialog {
@@ -222,22 +237,23 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
 .dialog-head h2 { font-size: 1.25rem; font-weight: 700; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dialog-close {
+  position: relative;
   width: 34px; height: 34px; flex: none; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; color: var(--fg-muted);
   border: 0; border-radius: var(--r-md); cursor: pointer;
 }
 .dialog-close svg { width: 18px; height: 18px; }
-.dialog-meta { font-size: 0.78rem; color: var(--fg-muted); margin-bottom: 10px; }
+.dialog-meta { font-size: var(--font-caption); color: var(--fg-muted); margin-bottom: 10px; }
 
 /* ---- settings ---- */
 .setting-row {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 12px 0; border-top: 1px solid var(--border-muted);
 }
-.setting-row label { font-size: 0.92rem; font-weight: 600; }
+.setting-row label { font-size: var(--font-label); font-weight: 600; }
 .setting-row input[type="number"] {
-  height: 36px; width: 110px; padding: 0 10px;
+  height: var(--control-h); width: 110px; padding: 0 10px;
   background: var(--canvas-subtle); color: var(--fg);
   border: 1px solid var(--border); border-radius: var(--r-md); font: inherit;
 }
@@ -251,7 +267,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
   width: 100%; height: 48px; margin-top: 12px;
   background: var(--accent); color: var(--accent-fg);
   border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
-  border-radius: var(--r-md); font: inherit; font-size: 0.92rem; font-weight: 700; cursor: pointer;
+  border-radius: var(--r-md); font: inherit; font-size: var(--font-label); font-weight: 700; cursor: pointer;
 }
 .switch {
   width: 44px; height: 26px; flex: none; padding: 0; position: relative;

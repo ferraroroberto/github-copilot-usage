@@ -30,6 +30,7 @@ That's it — the first run creates a virtual environment, installs three depend
 - **CSV export** of every request for your own spreadsheets.
 - **Official GitHub billing card** (optional): add a PAT and see the account-wide per-day per-model credit spend straight from GitHub's billing API — covers usage from *all* your devices, not just this machine.
 - **Light + dark theme**, colorblind-validated chart palette, no CDN dependencies (Chart.js is vendored — works behind corporate proxies).
+- **Installable as a PWA** — add it to your home screen/dock from the browser for an app-like icon and window; the icon set is generated locally by `scripts/gen_icons.py`, no external branding service involved.
 
 ## Where the data comes from
 

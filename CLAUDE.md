@@ -46,3 +46,12 @@ For changes with a runtime surface, additionally hit `/api/summary?period=all` o
   - /    (single-page dashboard; session-detail and settings dialogs)
 
 Chart palettes are CVD-validated (fixed assignment order, model keeps its color, 8th+ series folds into gray "Other"); if you touch chart colors, re-validate for both themes before shipping.
+
+### Design-system conformance exceptions
+
+`/design-sync` (fleet-config `design_lint.py`) emits two findings against this app that are **accepted exceptions**, not drift to fix — recorded here so the next auditor doesn't re-triage them:
+
+- **nav-contract WARN** — accepted. This is a genuine single-view dashboard: the only `<nav>` is the period segmented control (`static/index.html`, `class="seg"`), not primary navigation, and there are no multiple sections to move between. The fleet floating bottom-tab pill (and its `body:has(dialog[open])` hide / `100dvh` anchor / standalone fixed-inset `.app` scroller signals) applies only to multi-view apps; do **not** adopt it here. If this app ever grows a second top-level view, adopt `_vendored/nav/` verbatim plus the fixed-inset `.app` shell — never re-author it.
+- **row-height-scale WARN (`.btn-surface`, 36px)** — accepted. `.btn-surface` (Show all / Export CSV) is a `button-surface` control sitting at the spec `components.control.height` (36px), not a repeating list row, so the 44/52/60px row scale does not apply to it.
+
+The light palette matches `design.md` exactly; the dark palette matches `design.dark.md` (which is itself GitHub's dark palette this app deliberately mirrors — see `static/styles.css:1-2`).

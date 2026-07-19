@@ -480,7 +480,7 @@ async function openSession(sid) {
   tbody.innerHTML = (detail.requests_detail || []).map((r) => `
     <tr${r.error ? ' style="opacity:0.6"' : ''}>
       <td class="num">${fmtTime(r.ts)}</td>
-      <td class="td-trunc" title="${esc(r.message)}">${esc(r.message) || '<span class="muted">—</span>'}${r.error ? ' ⚠️' : ''}</td>
+      <td class="td-trunc" title="${esc(r.message)}">${esc(r.message) || '<span class="muted">—</span>'}${r.error ? ' <svg class="inline-glyph glyph-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="errored"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>' : ''}</td>
       <td>${esc(r.mode)}</td>
       <td class="td-trunc" title="${esc(r.model)}">${esc(r.model)}</td>
       <td class="num">${fmtTok(r.prompt_tokens)}</td>
@@ -557,8 +557,10 @@ $('settings-btn').addEventListener('click', async () => {
     $('set-reset').value = cfg.cycle_reset_day;
     $('set-roots').value = (cfg.extra_roots || []).join('\n');
     $('set-cli').setAttribute('aria-checked', String(!!cfg.include_copilot_cli));
-    $('set-pat-note').textContent = cfg.billing_pat_configured
-      ? 'GitHub billing PAT: configured ✓'
+    // Static copy only (no user data) — innerHTML is safe here and lets the
+    // "configured" state carry an inline Lucide check instead of an emoji glyph.
+    $('set-pat-note').innerHTML = cfg.billing_pat_configured
+      ? 'GitHub billing PAT: configured <svg class="inline-glyph glyph-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="configured"><path d="M20 6 9 17l-5-5"/></svg>'
       : 'GitHub billing PAT: not set — add GITHUB_COPILOT_BILLING_PAT to .env for the official billing card.';
   } catch { /* open anyway with stale values */ }
   $('settings-dialog').showModal();

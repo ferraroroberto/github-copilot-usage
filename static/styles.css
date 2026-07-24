@@ -119,7 +119,10 @@ body {
 }
 .tile-hero { border-color: var(--accent-border-soft); background: linear-gradient(180deg, var(--accent-soft), transparent 70%), var(--card); }
 .tile-label { font-size: var(--font-caption); font-weight: 600; color: var(--fg-muted); }
-.tile-value { font-size: var(--font-heading-xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin-top: 2px; font-variant-numeric: tabular-nums; }
+/* overflow-wrap: a grouped 6-7 digit value ("123,456") has no break
+ * opportunity, so at the tightest tile widths (320px 2-up, the 640px 4-up
+ * boundary) it would spill past the card edge. Wrapping keeps it readable. */
+.tile-value { font-size: var(--font-heading-xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin-top: 2px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .tile-sub { font-size: var(--font-caption); font-weight: 600; color: var(--fg-muted); min-height: 1.2em; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .delta { font-size: var(--font-caption); font-weight: 700; border-radius: var(--r-pill); padding: 1px 8px; background: var(--canvas-subtle); border: 1px solid var(--border-muted); }
 .delta.up { color: var(--danger); }     /* more spend = red */

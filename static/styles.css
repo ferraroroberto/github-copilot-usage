@@ -119,9 +119,12 @@ body {
 }
 .tile-hero { border-color: var(--accent-border-soft); background: linear-gradient(180deg, var(--accent-soft), transparent 70%), var(--card); }
 .tile-label { font-size: var(--font-caption); font-weight: 600; color: var(--fg-muted); }
-.tile-value { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin-top: 2px; font-variant-numeric: tabular-nums; }
+/* overflow-wrap: a grouped 6-7 digit value ("123,456") has no break
+ * opportunity, so at the tightest tile widths (320px 2-up, the 640px 4-up
+ * boundary) it would spill past the card edge. Wrapping keeps it readable. */
+.tile-value { font-size: var(--font-heading-xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin-top: 2px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .tile-sub { font-size: var(--font-caption); font-weight: 600; color: var(--fg-muted); min-height: 1.2em; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
-.delta { font-size: 0.72rem; font-weight: 700; border-radius: var(--r-pill); padding: 1px 8px; background: var(--canvas-subtle); border: 1px solid var(--border-muted); }
+.delta { font-size: var(--font-caption); font-weight: 700; border-radius: var(--r-pill); padding: 1px 8px; background: var(--canvas-subtle); border: 1px solid var(--border-muted); }
 .delta.up { color: var(--danger); }     /* more spend = red */
 .delta.down { color: var(--success); }  /* less spend = green */
 
@@ -135,7 +138,7 @@ body {
 .card-icon { width: 18px; height: 18px; color: var(--fg-muted); flex: none; }
 .card-meta { margin-left: auto; font-size: var(--font-caption); font-weight: 600; color: var(--fg-muted); }
 .badge {
-  font-size: 0.72rem; font-weight: 700; color: var(--fg-muted);
+  font-size: var(--font-caption); font-weight: 700; color: var(--fg-muted);
   background: var(--canvas-subtle); border: 1px solid var(--border-muted);
   border-radius: var(--r-pill); padding: 1px 8px;
 }
@@ -161,26 +164,26 @@ body {
 .budget-fill.warn { background: var(--attention); }
 .budget-fill.over { background: var(--danger); }
 .budget-marker { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--fg-muted); opacity: 0.7; }
-.budget-legend { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 0.85rem; font-weight: 600; flex-wrap: wrap; }
+.budget-legend { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: var(--font-label); font-weight: 600; flex-wrap: wrap; }
 
 /* ---- charts ---- */
-.chart-title { font-size: 0.85rem; font-weight: 700; color: var(--fg-muted); margin: 14px 0 6px; }
+.chart-title { font-size: var(--font-label); font-weight: 700; color: var(--fg-muted); margin: 14px 0 6px; }
 .chart-title:first-of-type { margin-top: 4px; }
 .chart-wrap { position: relative; height: 220px; }
 
 /* ---- prompt mix ---- */
 .mix-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 8px 0; }
 .mix-row + .mix-row { border-top: 1px solid var(--border-muted); }
-.mix-top { display: flex; justify-content: space-between; gap: 8px; font-size: 0.85rem; font-weight: 600; }
+.mix-top { display: flex; justify-content: space-between; gap: 8px; font-size: var(--font-label); font-weight: 600; }
 .mix-top .pct { font-variant-numeric: tabular-nums; }
 .mix-track { height: 8px; border-radius: var(--r-pill); background: var(--canvas-subtle); border: 1px solid var(--border-muted); overflow: hidden; }
 .mix-fill { height: 100%; background: var(--accent); border-radius: var(--r-pill); }
 
 /* ---- tables ---- */
 .table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+table { width: 100%; border-collapse: collapse; font-size: var(--font-label); }
 th {
-  text-align: left; font-size: 0.72rem; font-weight: 700; color: var(--fg-muted);
+  text-align: left; font-size: var(--font-caption); font-weight: 700; color: var(--fg-muted);
   padding: 6px 8px 6px 0; border-bottom: 1px solid var(--border-muted); white-space: nowrap;
 }
 td { padding: 8px 8px 8px 0; border-bottom: 1px solid var(--border-muted); vertical-align: top; }
@@ -210,7 +213,7 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .btn-surface:hover { color: var(--fg); }
 
 /* ---- sources ---- */
-.source-list { list-style: none; margin: 0; padding: 0; font-size: 0.85rem; }
+.source-list { list-style: none; margin: 0; padding: 0; font-size: var(--font-label); }
 .source-list li { display: flex; gap: 10px; align-items: baseline; padding: 10px 0; flex-wrap: wrap; }
 .source-list li + li { border-top: 1px solid var(--border-muted); }
 .source-ide { font-weight: 700; }
@@ -235,7 +238,7 @@ dialog {
 }
 dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
-.dialog-head h2 { font-size: 1.25rem; font-weight: 700; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dialog-head h2 { font-size: var(--font-heading-lg); font-weight: 700; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dialog-close {
   position: relative;
   width: 34px; height: 34px; flex: none; padding: 0;
@@ -261,7 +264,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .setting-col textarea {
   background: var(--canvas-subtle); color: var(--fg);
   border: 1px solid var(--border); border-radius: var(--r-md);
-  font: inherit; font-size: 0.85rem; padding: 8px 10px; resize: vertical;
+  font: inherit; font-size: var(--font-label); padding: 8px 10px; resize: vertical;
 }
 .btn-primary {
   width: 100%; height: 48px; margin-top: 12px;
@@ -276,7 +279,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .switch[aria-checked="true"] { background: var(--success); }
 .switch-thumb {
   position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
-  background: #ffffff; border-radius: 50%; transition: left 0.15s ease;
+  background: var(--accent-fg); border-radius: 50%; transition: left 0.15s ease;
 }
 .switch[aria-checked="true"] .switch-thumb { left: 21px; }
 

@@ -6,3 +6,5 @@ __pycache__/
 config.json
 .pytest_cache/
 *.log
+# Launcher scratch (ephemeral images/logs written by the tray launcher)
+.launcher-tmp/

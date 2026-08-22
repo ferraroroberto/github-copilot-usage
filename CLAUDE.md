@@ -1,9 +1,5 @@
 # Project Instructions
 
-Canonical instructions for AI coding agents working in this repository. Claude Code reads this file directly as project memory. Other agents (Cursor, Codex, etc.) reach it via the one-line `AGENTS.md` pointer.
-
-## This repository
-
 Standalone, public, local-only dashboard for GitHub Copilot usage: a FastAPI JSON API + vanilla-JS SPA on `127.0.0.1:8377`, parsing the session logs Copilot itself writes (VS Code chat sessions, optional Copilot CLI, optional GitHub billing API). See `README.md` for setup, layout, data sources, and honest limitations.
 
 **Standalone by design.** This repo is shared publicly and with colleagues on locked-down corporate machines. Hard rules that follow from that:

@@ -1,12 +1,12 @@
 # Project Instructions
 
-Canonical instructions for AI coding agents working in this repository. Claude Code reads this file directly as project memory. Other agents (Cursor, Codex, etc.) reach it via the one-line `AGENTS.md` pointer.
+Claude Code reads this file directly as project memory; other agents reach it via the one-line `AGENTS.md` pointer.
 
 ## This repository
 
 Standalone, public, local-only dashboard for GitHub Copilot usage: a FastAPI JSON API + vanilla-JS SPA on `127.0.0.1:8377`, parsing the session logs Copilot itself writes (VS Code chat sessions, optional Copilot CLI, optional GitHub billing API). See `README.md` for setup, layout, data sources, and honest limitations.
 
-**Standalone by design.** This repo is shared publicly and with colleagues on locked-down corporate machines. Hard rules that follow from that:
+**Standalone by design.** This repo is shared publicly and with colleagues on locked-down corporate machines:
 
 - No references to any private infrastructure, other local repos, or machine-specific paths.
 - No CDNs or external assets — vendor what the frontend needs (`static/vendor/`).
@@ -49,16 +49,16 @@ Chart palettes are CVD-validated (fixed assignment order, model keeps its color,
 
 ### Design-system conformance exceptions
 
-`/design-sync` (fleet-config `design_lint.py`) emits two findings against this app that are **accepted exceptions**, not drift to fix — recorded here so the next auditor doesn't re-triage them:
+`/design-sync` (fleet-config `design_lint.py`) emits two findings against this app that are **accepted exceptions**, not drift to fix:
 
-- **nav-contract WARN** — accepted. This is a genuine single-view dashboard: the only `<nav>` is the period segmented control (`static/index.html`, `class="seg"`), not primary navigation, and there are no multiple sections to move between. The fleet floating bottom-tab pill (and its `body:has(dialog[open])` hide / `100dvh` anchor / standalone fixed-inset `.app` scroller signals) applies only to multi-view apps; do **not** adopt it here. If this app ever grows a second top-level view, adopt `_vendored/nav/` verbatim plus the fixed-inset `.app` shell — never re-author it.
-- **hit-target WARN (`.model-dot`, 10×10px)** — accepted. `.model-dot` is a decorative colour swatch (`<span>` inside the models table, `static/app.js`), not a pointer target — nothing is bound to it, so the 44px effective floor (design.md Touch targets, which governs *pointer* targets) does not apply. The lint flags it only because the substring "del" in "model" trips its interactive-selector heuristic. The two genuinely-interactive compact controls (`.icon-btn`, `.dialog-close`) carry the invisible `::before` hit-area expansion.
-- **Re-audit log** — on each date below `/design-sync` re-surfaced both WARNs verbatim against unchanged CSS/markup, and both were reconfirmed as accepted exceptions per the reasoning above; no code change was warranted. Append a line here (don't rewrite the entry) whenever a re-audit lands, so the next auditor sees they were checked, not missed.
-  - 2026-07-31 — `ferraroroberto/github-copilot-usage#8`
-  - 2026-08-07 — `ferraroroberto/github-copilot-usage#10`; `static/` byte-unchanged since the #8 reconfirmation (`git log 5cf94ec..HEAD -- static/` empty), so the finding is a re-emission, not new drift.
-  - 2026-08-16 — `ferraroroberto/github-copilot-usage#12`; `static/` byte-unchanged since the #10 reconfirmation (`git log 4490bdf..HEAD -- static/` empty), so the finding is a re-emission, not new drift.
-  - 2026-08-20 — `ferraroroberto/github-copilot-usage#14`; `static/` byte-unchanged since the #12 reconfirmation (`git log ea6eedf..HEAD -- static/` empty), so the finding is a re-emission, not new drift. This run the lint self-triaged the `.model-dot` hit-target WARN (still emitted, explicitly not filed as a finding), leaving nav-contract as the only open checkbox — reconfirmed accepted for the same reason: still a single-view dashboard, still no second top-level section to navigate to.
-  - 2026-08-27 — `ferraroroberto/github-copilot-usage#17`; `static/` byte-unchanged since the #14 reconfirmation (`git log f91ec19..HEAD -- static/` empty), so the finding is a re-emission, not new drift. Still a single-view dashboard with no bottom tab bar — nav-contract reconfirmed accepted for the same reason.
+- **nav-contract WARN** — accepted. Genuine single-view dashboard: the only `<nav>` is the period segmented control (`static/index.html`, `class="seg"`), not primary navigation, and there are no multiple sections to move between. The fleet floating bottom-tab pill applies only to multi-view apps; do **not** adopt it here. If this app ever grows a second top-level view, adopt `_vendored/nav/` verbatim plus the fixed-inset `.app` shell — never re-author it.
+- **hit-target WARN (`.model-dot`, 10×10px)** — accepted. `.model-dot` is a decorative colour swatch (`<span>` inside the models table, `static/app.js`), not a pointer target, so the 44px effective floor (design.md Touch targets, which governs *pointer* targets) doesn't apply. The lint flags it only because the substring "del" in "model" trips its interactive-selector heuristic. The two genuinely-interactive compact controls (`.icon-btn`, `.dialog-close`) carry the invisible `::before` hit-area expansion.
+- **Re-audit log** — append a line whenever a re-audit lands (don't rewrite the entry), so the next auditor sees they were checked, not missed. `static/` was byte-unchanged at every check below, so each is a re-emission, not new drift:
+  - 2026-07-31 — `ferraroroberto/github-copilot-usage#8` (both WARNs filed).
+  - 2026-08-07 — `ferraroroberto/github-copilot-usage#10` (both reconfirmed).
+  - 2026-08-16 — `ferraroroberto/github-copilot-usage#12` (both reconfirmed).
+  - 2026-08-20 — `ferraroroberto/github-copilot-usage#14` (lint self-triaged `.model-dot` out of filed findings — still emitted, just not filed; nav-contract left as the only open checkbox, reconfirmed accepted for the same reason as above).
+  - 2026-08-27 — `ferraroroberto/github-copilot-usage#17` (nav-contract only, reconfirmed accepted — still single-view, still no bottom tab bar).
 
 **App icons — self-contained, no `brand_gen`.** The installable-PWA icon family (`icon-180/192/512`, distinct `icon-512-maskable`, multi-size `favicon.ico`) + `static/manifest.webmanifest` are generated by `scripts/gen_icons.py`, a standalone Pillow-only script that reproduces this app's own `static/favicon.svg` brand geometry (GitHub-blue tile, white column-chart bars). It deliberately does **not** import project-scaffolding's shared `brand_gen` generator, because this repo ships publicly and may not reference other local repos / private infra. The generated assets are committed; regenerate after a brand change with `.venv\Scripts\python.exe scripts\gen_icons.py`. (`design_lint`'s app-icon-family check keys on the `brand_gen` contract name + a `render_set()` call in `scripts/`, both satisfied by this local implementation of the same contract.)
 

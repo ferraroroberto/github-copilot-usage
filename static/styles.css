@@ -63,6 +63,26 @@ body {
   gap: var(--gutter);
 }
 
+/* ---- installed-PWA app shell ----
+ * This app has no bottom-tab nav — single-view dashboard, no `_vendored/nav/`
+ * to adopt (see CLAUDE.md's design-system conformance exceptions) — but the
+ * shell mechanics from design.md's nav contract still apply: anchor `.app`
+ * to the viewport, not the window, so a momentum scroll can never drag
+ * installed-PWA browser chrome, and make `.app` itself the only scroller
+ * (design.md nav contract, home-automation#303). */
+@media (display-mode: standalone) {
+  .app {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 100vh;
+    height: 100lvh;
+    overflow-y: auto;
+    padding-bottom: calc(var(--gutter) + env(safe-area-inset-bottom));
+  }
+  /* Never let the app shell scroll behind an open dialog. */
+  body:has(dialog[open]) .app { overflow: hidden; }
+}
+
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- top bar ---- */

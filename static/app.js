@@ -48,6 +48,30 @@ $('theme-toggle').addEventListener('click', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Text size — the zoom-lock escape (the pre-paint stamp lives in index.html)
+// ---------------------------------------------------------------------------
+
+const TEXT_SIZES = ['small', 'default', 'large'];
+
+function paintTextSize() {
+  const size = document.documentElement.dataset.textsize || 'default';
+  document.querySelectorAll('#set-textsize [data-textsize]').forEach((btn) => {
+    const on = btn.dataset.textsize === size;
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-pressed', String(on));
+  });
+}
+
+$('set-textsize').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-textsize]');
+  if (!btn || !TEXT_SIZES.includes(btn.dataset.textsize)) return;
+  document.documentElement.dataset.textsize = btn.dataset.textsize;
+  try { localStorage.setItem('copilot-usage.textsize', btn.dataset.textsize); } catch { /* applies for this view only */ }
+  paintTextSize();
+});
+paintTextSize();
+
+// ---------------------------------------------------------------------------
 // Formatting
 // ---------------------------------------------------------------------------
 
@@ -426,7 +450,7 @@ function renderSessions() {
       <span class="sess-credits">${fmtCredits(s.credits)} cr</span>
       <span class="sess-meta">
         ${esc(s.project)} · ${esc(s.ide)} · ${fmtDay(s.last_ts)} ${fmtTime(s.first_ts)}–${fmtTime(s.last_ts)}
-        · ${fmtNum(s.requests)} req · ${fmtTok(s.prompt_tokens)}↑ ${fmtTok(s.completion_tokens)}↓
+        · ${fmtNum(s.requests)} req · ${fmtTok(s.prompt_tokens)}<svg class="inline-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="in"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg> ${fmtTok(s.completion_tokens)}<svg class="inline-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="out"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
         · ${esc((s.models || []).join(', '))}
       </span>
     </li>`).join('');

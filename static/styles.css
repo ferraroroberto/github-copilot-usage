@@ -22,8 +22,8 @@
   --font-heading-xl: 2rem;
   --font-heading-lg: 1.5rem;
   --font-body: 1rem;
-  --font-label: 0.92rem;
-  --font-caption: 0.78rem;
+  --font-label: 0.875rem;
+  --font-caption: 0.75rem;
   /* shared inline-control height — design.md `components.control.height` */
   --control-h: 36px;
 }
@@ -43,8 +43,16 @@
 }
 
 * { box-sizing: border-box; }
+/* Form controls inherit the page font and color (the UA default is Arial/buttontext). */
+button, input, select, textarea { font: inherit; color: inherit; }
 [hidden] { display: none !important; }
 html, body { margin: 0; padding: 0; }
+/* Text size (Settings): the pre-paint stamp in index.html sets html[data-textsize];
+ * the root font-size takes the step so every rem-based type role scales with it.
+ * Geometry (control heights, hit targets, icons) stays in px on purpose. */
+html[data-textsize="small"] { font-size: 93.75%; }
+html[data-textsize="default"] { font-size: 100%; }
+html[data-textsize="large"] { font-size: 112.5%; }
 body {
   background: var(--canvas);
   color: var(--fg);
@@ -274,7 +282,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 12px 0; border-top: 1px solid var(--border-muted);
 }
-.setting-row label { font-size: var(--font-label); font-weight: 600; }
+.setting-row label, .setting-label { font-size: var(--font-label); font-weight: 600; }
 .setting-row input[type="number"] {
   height: var(--control-h); width: 110px; padding: 0 10px;
   background: var(--canvas-subtle); color: var(--fg);

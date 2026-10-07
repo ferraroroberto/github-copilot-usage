@@ -12,13 +12,20 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
   <script>
-    // Pre-paint theme stamp: localStorage override, else OS preference.
+    // Pre-paint stamps: theme (localStorage override, else OS preference) and
+    // text size (small | default | large). Storage can throw (blocked site data).
     (function () {
-      var t = localStorage.getItem('copilot-usage.theme');
+      var t = null;
+      var z = null;
+      try {
+        t = localStorage.getItem('copilot-usage.theme');
+        z = localStorage.getItem('copilot-usage.textsize');
+      } catch (e) {}
       if (t !== 'light' && t !== 'dark') {
         t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       }
       document.documentElement.setAttribute('data-theme', t);
+      document.documentElement.dataset.textsize = z === 'small' || z === 'large' ? z : 'default';
     })();
   </script>
 </head>
@@ -225,6 +232,14 @@
     <button class="dialog-close" id="settings-close" type="button" aria-label="Close">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
     </button>
+  </div>
+  <div class="setting-row">
+    <span class="setting-label" id="set-textsize-label">Text size</span>
+    <div class="seg" id="set-textsize" role="group" aria-labelledby="set-textsize-label">
+      <button type="button" data-textsize="small">Small</button>
+      <button type="button" data-textsize="default">Default</button>
+      <button type="button" data-textsize="large">Large</button>
+    </div>
   </div>
   <div class="setting-row">
     <label for="set-allowance">Monthly credit allowance<br><small class="muted">Copy the total from VS Code's Copilot menu — "Credits X / Y used" → enter Y.<br>Plan defaults: Business 300 · Enterprise 1000 · Pro 300 · Pro+ 1500; org credit pools can be much larger (e.g. 23400).</small></label>

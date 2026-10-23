@@ -15,7 +15,7 @@ import webbrowser
 
 import uvicorn
 
-from app import config
+from src import config
 
 
 def main() -> None:

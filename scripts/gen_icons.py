@@ -8,7 +8,7 @@ one brand master -> the canonical raster set ``icon-180/192/512``, a distinct
 machines, so it may not reference any other local repo or private infra
 (see CLAUDE.md "Standalone by design").
 
-The brand master is this app's own ``static/favicon.svg`` — a GitHub-blue
+The brand master is this app's own ``app/webapp/static/favicon.svg`` — a GitHub-blue
 rounded tile behind a three-bar column-chart glyph (the same Lucide
 ``chart-column`` mark used for the in-app ``.logo``). Its geometry is
 reproduced here with Pillow drawing primitives, so no SVG renderer is needed;
@@ -27,9 +27,9 @@ from typing import List, Tuple
 
 from PIL import Image, ImageDraw
 
-STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+STATIC_DIR = Path(__file__).resolve().parent.parent / "app" / "webapp" / "static"
 
-# --- brand master geometry (static/favicon.svg, a 64-unit design grid) ---
+# --- brand master geometry (app/webapp/static/favicon.svg, a 64-unit design grid) ---
 BRAND_BLUE = (9, 105, 218)      # #0969da — the GitHub-blue accent tile
 BAR_WHITE = (255, 255, 255)
 _STROKE = 6.0                    # bar stroke width in grid units

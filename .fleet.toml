@@ -1,0 +1,25 @@
+# .fleet.toml -- this repo's card on the fleet architecture map. Keep it current:
+# update it in the same PR as any material change (layer, port, role, one-line
+# description, exposed services).
+layer       = "working-web"
+icon        = "📊"
+port        = ":8377"
+description = "Local-only GitHub Copilot usage dashboard: credits, models and sessions from Copilot's own logs."
+shape       = "webapp-tray"
+# `static/` moved under app/webapp/, so the front end needs no extra root folder.
+extra_roots = []
+
+# [vendored] -- components copied byte-for-byte from project-scaffolding, with the
+# scaffold commit each came from. Re-vendor from there, never edit the copy.
+[vendored]
+structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "84d2b12ab416551762e4a615e4a706df91cea69f", dest = "scripts/structure_ratchet.py" }
+
+# [structure_ratchet] -- baseline-and-ratchet layout stage. scripts/verify-before-ship.ps1
+# runs scripts/structure_ratchet.py, which fails when a new file passes 1,000 lines, a
+# new function 100 lines or a flat directory 40 modules, when a baselined offender grows
+# past its size in .structure-ratchet-baseline.json, when src/ imports app/, and when the
+# root folders do not match `shape` plus `extra_roots`. Offenders are baselined at today's
+# size, never excluded. Exit 3 (git unusable, an unparseable file) fails the gate.
+[structure_ratchet]
+enabled  = true
+baseline = ".structure-ratchet-baseline.json"

@@ -6,8 +6,8 @@ from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
-from app import aggregate
-from app.vscode_parser import RequestRecord
+from src import aggregate
+from src.vscode_parser import RequestRecord
 
 
 def _rec(**kw) -> RequestRecord:

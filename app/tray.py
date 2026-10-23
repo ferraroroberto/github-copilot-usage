@@ -34,7 +34,7 @@ except ImportError:
 
 import uvicorn
 
-from app import config
+from src import config
 
 
 def _make_icon_image() -> "Image.Image":

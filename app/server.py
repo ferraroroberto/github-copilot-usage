@@ -16,13 +16,13 @@ from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import aggregate, billing, config
+from src import aggregate, billing, config
 from app.version import VERSION
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 _log = logging.getLogger(__name__)
 
-STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+STATIC_DIR = Path(__file__).resolve().parent / "webapp" / "static"
 
 app = FastAPI(title="github-copilot-usage", version=VERSION, docs_url="/api/docs")
 

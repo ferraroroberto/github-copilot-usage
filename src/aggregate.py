@@ -21,8 +21,8 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-from app import cli_parser, config, discovery, vscode_parser
-from app.vscode_parser import RequestRecord
+from src import cli_parser, config, discovery, vscode_parser
+from src.vscode_parser import RequestRecord
 
 _log = logging.getLogger(__name__)
 

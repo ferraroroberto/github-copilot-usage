@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app.vscode_parser import (
+from src.vscode_parser import (
     decode_file_uri,
     parse_session_file,
     replay_session,

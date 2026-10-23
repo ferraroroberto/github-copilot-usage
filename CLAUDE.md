@@ -7,7 +7,7 @@ Standalone, public, local-only dashboard for GitHub Copilot usage: a FastAPI JSO
 **Standalone by design** — this repo is shared publicly and with colleagues on locked-down corporate machines:
 
 - No references to any private infrastructure, other local repos, or machine-specific paths.
-- No CDNs or external assets — vendor what the frontend needs (`static/vendor/`).
+- No CDNs or external assets — vendor what the frontend needs (`app/webapp/static/vendor/`).
 - Anything that can be absent on a given machine (Copilot CLI, billing PAT, tray extras, a particular editor variant) must degrade gracefully with a visible reason, never crash the page or the server.
 
 ## Constraints worth knowing
@@ -28,31 +28,34 @@ Standalone, public, local-only dashboard for GitHub Copilot usage: a FastAPI JSO
 ## Verification gate
 
 ```
-.venv\Scripts\python.exe -m compileall -q app tests
-.venv\Scripts\python.exe -m pytest -q
+powershell -File scripts/verify-before-ship.ps1
 ```
 
-There is no CI — the gate is local. For changes with a runtime surface, additionally hit `/api/summary?period=all` on a running instance and load `/` in a browser (both themes) before calling it done.
+That runs `compileall -q app src tests`, `pytest -q` and the structure ratchet. There is no CI — the gate is local. For changes with a runtime surface, additionally hit `/api/summary?period=all` on a running instance and load `/` in a browser (both themes) before calling it done.
+
+## Structure ratchet
+
+The gate fails when a file passes 1,000 lines, a function 100 lines, a directory 40 modules, when `src/` imports `app/`, or when a root folder falls outside the `webapp-tray` shape in `.fleet.toml`; baselined offenders (`.structure-ratchet-baseline.json`, currently empty) may not grow. Exit 3 (not confirmed) is a failure, never a pass. `scripts/structure_ratchet.py` is vendored byte-for-byte (`.fleet.toml` `[vendored]`); never edit it here. Lower the baseline with `--update-baseline`; `--update-baseline --allow-additions` is the only way to add an entry and shows in review. Where code goes: `docs/layout.md`. The script needs Python 3.11+; the app itself still runs on 3.9+.
 
 ## UX surface
 
 - design spec applies: yes
 - paths:
-  - static/**/*.css
-  - static/**/*.{js,html}
+  - app/webapp/static/**/*.css
+  - app/webapp/static/**/*.{js,html}
 - key views:
   - /    (single-page dashboard; session-detail and settings dialogs)
 
 Chart palettes are CVD-validated (fixed assignment order, model keeps its color, 8th+ series folds into gray "Other"); if you touch chart colors, re-validate for both themes before shipping.
 
-The light palette matches `design.md` exactly; the dark palette matches `design.dark.md` (which is itself GitHub's dark palette this app deliberately mirrors — see `static/styles.css:1-2`).
+The light palette matches `design.md` exactly; the dark palette matches `design.dark.md` (which is itself GitHub's dark palette this app deliberately mirrors — see `app/webapp/static/styles.css:1-2`).
 
 ### Design-system conformance exceptions
 
 `/design-sync` (fleet-config `design_lint.py`) emits one finding against this app that is an **accepted exception**, not drift to fix:
 
-- **hit-target WARN (`.model-dot`, 10×10px)** — accepted. `.model-dot` is a decorative colour swatch (`<span>` in the models table, `static/app.js`), not a pointer target, so the 44px floor (design.md Touch targets, which governs *pointer* targets) doesn't apply; the lint flags it only because "del" in "model" trips its interactive-selector heuristic. The two genuinely-interactive compact controls (`.icon-btn`, `.dialog-close`) carry the invisible `::before` hit-area expansion.
-- **nav-contract — fixed, no longer a WARN (`ferraroroberto/github-copilot-usage#22`).** The bottom-tab pill still doesn't apply — single-view dashboard, the only `<nav>` is the period segmented control (`static/index.html`, `class="seg"`), not primary navigation, no `_vendored/nav/` to adopt. The shell mechanics the nav contract requires are carried for the installed PWA: `static/styles.css` has a `@media (display-mode: standalone)` block making `.app` the fixed-inset scroller (viewport-anchored `100dvh`/`100lvh` sizing, `env(safe-area-inset-bottom)`, `body:has(dialog[open])` hide-under-dialog). If this app ever grows a second top-level view, still adopt `_vendored/nav/` verbatim on top of this shell — never re-author it.
+- **hit-target WARN (`.model-dot`, 10×10px)** — accepted. `.model-dot` is a decorative colour swatch (`<span>` in the models table, `app/webapp/static/app.js`), not a pointer target, so the 44px floor (design.md Touch targets, which governs *pointer* targets) doesn't apply; the lint flags it only because "del" in "model" trips its interactive-selector heuristic. The two genuinely-interactive compact controls (`.icon-btn`, `.dialog-close`) carry the invisible `::before` hit-area expansion.
+- **nav-contract — fixed, no longer a WARN (`ferraroroberto/github-copilot-usage#22`).** The bottom-tab pill still doesn't apply — single-view dashboard, the only `<nav>` is the period segmented control (`app/webapp/static/index.html`, `class="seg"`), not primary navigation, no `_vendored/nav/` to adopt. The shell mechanics the nav contract requires are carried for the installed PWA: `app/webapp/static/styles.css` has a `@media (display-mode: standalone)` block making `.app` the fixed-inset scroller (viewport-anchored `100dvh`/`100lvh` sizing, `env(safe-area-inset-bottom)`, `body:has(dialog[open])` hide-under-dialog). If this app ever grows a second top-level view, still adopt `_vendored/nav/` verbatim on top of this shell — never re-author it.
 - **Re-audit log** — append a line whenever a re-audit lands (don't rewrite existing entries), so the next auditor sees they were checked, not missed. `static/` was byte-unchanged through 2026-09-03; #22 (2026-09-10) is the first change.
   - 2026-07-31 — #8: both WARNs filed.
   - 2026-08-07 — #10: both reconfirmed.
@@ -62,5 +65,6 @@ The light palette matches `design.md` exactly; the dark palette matches `design.
   - 2026-09-03 — #20: `static/` byte-unchanged since #17 (`git log e91d9aa..HEAD -- static/` empty): re-emission, not new drift; nav-contract reconfirmed accepted.
   - 2026-09-10 — #22: nav-contract WARN resolved by the standalone fixed-inset `.app` shell (above) — `design_lint contracts` PASS. `hit-target` WARN is the sole accepted exception.
   - 2026-10-07 — #25: `--font-label`/`--font-caption` aligned to the spec scale (0.875rem/0.75rem); global `font: inherit` form-control reset added; text-size setting adopted (pre-paint `data-textsize` stamp in `index.html` + Small/Default/Large control in Settings, written in-repo not vendored, to keep the repo free of references to other local repos); token-direction `↑`/`↓` replaced by inline Lucide arrows. Two prose arrows in `index.html` stay as copy (accepted `glyph-icons` WARN, low materiality); `hit-target` and the unmeasured rendered leg unchanged.
+  - 2026-10-24 — #28: `static/` moved byte-for-byte to `app/webapp/static/` (`git mv`) for the structure-ratchet layout; no design change, `hit-target` unchanged.
 
-**App icons — self-contained, no `brand_gen`.** The installable-PWA icon family (`icon-180/192/512`, distinct `icon-512-maskable`, multi-size `favicon.ico`) + `static/manifest.webmanifest` are generated by `scripts/gen_icons.py`, a standalone Pillow-only script that reproduces this app's own `static/favicon.svg` brand geometry (GitHub-blue tile, white column-chart bars). It does **not** import project-scaffolding's shared `brand_gen` generator: this repo ships publicly and may not reference other local repos / private infra. The generated assets are committed; regenerate after a brand change with `.venv\Scripts\python.exe scripts\gen_icons.py`. (`design_lint`'s app-icon-family check keys on the `brand_gen` contract name + a `render_set()` call in `scripts/`, both satisfied by this local implementation of the same contract.)
+**App icons — self-contained, no `brand_gen`.** The installable-PWA icon family (`icon-180/192/512`, distinct `icon-512-maskable`, multi-size `favicon.ico`) + `app/webapp/static/manifest.webmanifest` are generated by `scripts/gen_icons.py`, a standalone Pillow-only script that reproduces this app's own `app/webapp/static/favicon.svg` brand geometry (GitHub-blue tile, white column-chart bars). It does **not** import project-scaffolding's shared `brand_gen` generator: this repo ships publicly and may not reference other local repos / private infra. The generated assets are committed; regenerate after a brand change with `.venv\Scripts\python.exe scripts\gen_icons.py`. (`design_lint`'s app-icon-family check keys on the `brand_gen` contract name + a `render_set()` call in `scripts/`, both satisfied by this local implementation of the same contract.)

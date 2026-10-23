@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from app.vscode_parser import RequestRecord, _MtimeCache
+from src.vscode_parser import RequestRecord, _MtimeCache
 
 _log = logging.getLogger(__name__)
 

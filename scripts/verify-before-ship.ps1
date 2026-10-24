@@ -12,6 +12,9 @@
                              contract and the root layout against the baseline;
                              exit 3 ("not confirmed") is a failure, never a pass
                              (docs/layout.md)
+      4. instruction ratchet - scripts/instruction_ratchet.py: the prompt-audit lint
+                             rules and size caps over CLAUDE.md / AGENTS.md /
+                             skills against the baseline; exit 3 is a failure
 
     Anchors to the repo root, so run it from anywhere:
         powershell -File scripts/verify-before-ship.ps1
@@ -44,6 +47,7 @@ function Invoke-Stage {
 Invoke-Stage "byte-compile"      { & $py -m compileall -q app src tests }
 Invoke-Stage "pytest"            { & $py -m pytest -q }
 Invoke-Stage "structure ratchet" { & $py "scripts/structure_ratchet.py" }
+Invoke-Stage "instruction ratchet" { & $py "scripts/instruction_ratchet.py" }
 
 Write-Host ""
 Write-Host "[PASS] all checks green - safe to ship." -ForegroundColor Green

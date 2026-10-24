@@ -20,8 +20,9 @@ github-copilot-usage/
 │
 ├── tests/                     # pytest suite, fixtures only — no real logs or credentials
 ├── scripts/
-│   ├── verify-before-ship.ps1 # the local gate: byte-compile, tests, structure ratchet
+│   ├── verify-before-ship.ps1 # the local gate: byte-compile, tests, structure + instruction ratchets
 │   ├── structure_ratchet.py   # vendored byte-for-byte; see "Structure ratchet" below
+│   ├── instruction_ratchet.py # vendored byte-for-byte; holds the instruction files to the prompt-audit rules
 │   ├── gen_icons.py           # regenerates the PWA icon family under app/webapp/static/
 │   └── tray_lifecycle.ps1     # detect / stop / start / verify the tray, called by `tray.bat`
 └── docs/                      # durable reference (this file)

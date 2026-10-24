@@ -13,6 +13,7 @@ extra_roots = []
 # scaffold commit each came from. Re-vendor from there, never edit the copy.
 [vendored]
 structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "84d2b12ab416551762e4a615e4a706df91cea69f", dest = "scripts/structure_ratchet.py" }
+instruction_ratchet = { src = "scripts/instruction_ratchet.py", sha = "60fdd0350f18d28838428b2e773f7868f6381fbf", dest = "scripts/instruction_ratchet.py" }
 
 # [structure_ratchet] -- baseline-and-ratchet layout stage. scripts/verify-before-ship.ps1
 # runs scripts/structure_ratchet.py, which fails when a new file passes 1,000 lines, a
@@ -23,3 +24,13 @@ structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "84d2b12ab4165
 [structure_ratchet]
 enabled  = true
 baseline = ".structure-ratchet-baseline.json"
+
+# [instruction_ratchet] -- baseline-and-ratchet stage for the instruction files
+# (CLAUDE.md, AGENTS.md, .claude/rules, SKILL.md): the lint-tier prompt-audit rules and
+# the size caps. scripts/verify-before-ship.ps1 runs scripts/instruction_ratchet.py,
+# which fails when a per-file rule count rises above .instruction-ratchet-baseline.json
+# or a file passes its cap. Existing hits are baselined, never excluded. Exit 3
+# (git unusable, an unreadable file) fails the gate.
+[instruction_ratchet]
+enabled  = true
+baseline = ".instruction-ratchet-baseline.json"

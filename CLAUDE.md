@@ -31,7 +31,7 @@ Standalone, public, local-only dashboard for GitHub Copilot usage: a FastAPI JSO
 powershell -File scripts/verify-before-ship.ps1
 ```
 
-That runs `compileall -q app src tests`, `pytest -q`, the structure ratchet and the instruction ratchet (`scripts/instruction_ratchet.py`, vendored byte-for-byte like the structure ratchet; it holds `CLAUDE.md`/`AGENTS.md` to the prompt-audit lint rules and size caps against `.instruction-ratchet-baseline.json`, currently empty). There is no CI — the gate is local. For changes with a runtime surface, additionally hit `/api/summary?period=all` on a running instance and load `/` in a browser (both themes) before calling it done.
+That runs `compileall -q app src tests`, `pytest -q`, the structure ratchet, the instruction ratchet (`scripts/instruction_ratchet.py`, vendored byte-for-byte like the structure ratchet; it holds `CLAUDE.md`/`AGENTS.md` to the prompt-audit lint rules and size caps against `.instruction-ratchet-baseline.json`, currently empty) and the doc-refs ratchet (`scripts/doc_refs_ratchet.py`, also vendored; it fails on a README/CLAUDE.md/`docs/` reference to a path, module, link or port that does not exist, against `.doc-refs-ratchet-baseline.json`, currently empty). There is no CI — the gate is local. For changes with a runtime surface, additionally hit `/api/summary?period=all` on a running instance and load `/` in a browser (both themes) before calling it done.
 
 ## Structure ratchet
 

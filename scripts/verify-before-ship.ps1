@@ -15,6 +15,9 @@
       4. instruction ratchet - scripts/instruction_ratchet.py: the prompt-audit lint
                              rules and size caps over CLAUDE.md / AGENTS.md /
                              skills against the baseline; exit 3 is a failure
+      5. doc refs ratchet    - scripts/doc_refs_ratchet.py: README.md / CLAUDE.md / docs
+                             naming a path, module, link or port that does not exist,
+                             against the baseline; exit 3 is a failure
 
     Anchors to the repo root, so run it from anywhere:
         powershell -File scripts/verify-before-ship.ps1
@@ -48,6 +51,7 @@ Invoke-Stage "byte-compile"      { & $py -m compileall -q app src tests }
 Invoke-Stage "pytest"            { & $py -m pytest -q }
 Invoke-Stage "structure ratchet" { & $py "scripts/structure_ratchet.py" }
 Invoke-Stage "instruction ratchet" { & $py "scripts/instruction_ratchet.py" }
+Invoke-Stage "doc refs ratchet" { & $py "scripts/doc_refs_ratchet.py" }
 
 Write-Host ""
 Write-Host "[PASS] all checks green - safe to ship." -ForegroundColor Green

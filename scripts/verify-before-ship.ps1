@@ -18,6 +18,9 @@
       5. doc refs ratchet    - scripts/doc_refs_ratchet.py: README.md / CLAUDE.md / docs
                              naming a path, module, link or port that does not exist,
                              against the baseline; exit 3 is a failure
+      6. dead code ratchet   - scripts/dead_code_ratchet.py: Python functions, classes and
+                             methods nothing refers to, against the baseline;
+                             exit 3 is a failure
 
     Anchors to the repo root, so run it from anywhere:
         powershell -File scripts/verify-before-ship.ps1
@@ -52,6 +55,7 @@ Invoke-Stage "pytest"            { & $py -m pytest -q }
 Invoke-Stage "structure ratchet" { & $py "scripts/structure_ratchet.py" }
 Invoke-Stage "instruction ratchet" { & $py "scripts/instruction_ratchet.py" }
 Invoke-Stage "doc refs ratchet" { & $py "scripts/doc_refs_ratchet.py" }
+Invoke-Stage "dead code ratchet" { & $py "scripts/dead_code_ratchet.py" }
 
 Write-Host ""
 Write-Host "[PASS] all checks green - safe to ship." -ForegroundColor Green

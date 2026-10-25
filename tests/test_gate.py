@@ -39,6 +39,7 @@ def test_static_ratchet_without_npx_is_not_confirmed():
     proc = subprocess.run(
         [sys.executable, str(ROOT / "scripts" / "static_ratchet.py")],
         cwd=str(ROOT), env=env, capture_output=True, text=True, timeout=60,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     assert proc.returncode == 3
     assert "NOT CONFIRMED" in proc.stdout + proc.stderr

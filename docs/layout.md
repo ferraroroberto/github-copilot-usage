@@ -20,7 +20,7 @@ github-copilot-usage/
 │
 ├── tests/                     # pytest suite, fixtures only — no real logs or credentials
 ├── scripts/
-│   ├── verify-before-ship.ps1 # the local gate: byte-compile, tests, structure, instruction, doc-refs, dead-code, static, docs and comment ratchets
+│   ├── verify-before-ship.ps1 # the local gate: byte-compile, tests, structure, instruction, doc-refs, dead-code, static, docs, comment and conventions ratchets
 │   ├── structure_ratchet.py   # vendored byte-for-byte; see "Structure ratchet" below
 │   ├── instruction_ratchet.py # vendored byte-for-byte; holds the instruction files to the prompt-audit rules
 │   ├── doc_refs_ratchet.py    # vendored byte-for-byte; fails on dangling doc references
@@ -28,6 +28,7 @@ github-copilot-usage/
 │   ├── static_ratchet.py      # vendored byte-for-byte; fails on new duplicates, unused names and bug patterns
 │   ├── docs_ratchet.py        # vendored byte-for-byte; fails on a growing README or new history markers in the docs
 │   ├── comment_ratchet.py     # vendored byte-for-byte; fails on new issue references in code comments
+│   ├── conventions_ratchet.py # vendored byte-for-byte; fails on new spawns without creationflags, library prints and drive paths
 │   ├── gen_icons.py           # regenerates the PWA icon family under app/webapp/static/
 │   └── tray_lifecycle.ps1     # detect / stop / start / verify the tray, called by `tray.bat`
 └── docs/                      # durable reference (this file)

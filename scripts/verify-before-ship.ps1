@@ -21,6 +21,9 @@
       6. dead code ratchet   - scripts/dead_code_ratchet.py: Python functions, classes and
                              methods nothing refers to, against the baseline;
                              exit 3 is a failure
+      7. static ratchet      - scripts/static_ratchet.py: duplicated blocks (jscpd, needs
+                             Node), unused imports/variables and likely-bug/security
+                             patterns (ruff) against the baseline; exit 3 is a failure
 
     Anchors to the repo root, so run it from anywhere:
         powershell -File scripts/verify-before-ship.ps1
@@ -56,6 +59,7 @@ Invoke-Stage "structure ratchet" { & $py "scripts/structure_ratchet.py" }
 Invoke-Stage "instruction ratchet" { & $py "scripts/instruction_ratchet.py" }
 Invoke-Stage "doc refs ratchet" { & $py "scripts/doc_refs_ratchet.py" }
 Invoke-Stage "dead code ratchet" { & $py "scripts/dead_code_ratchet.py" }
+Invoke-Stage "static ratchet" { & $py "scripts/static_ratchet.py" }
 
 Write-Host ""
 Write-Host "[PASS] all checks green - safe to ship." -ForegroundColor Green

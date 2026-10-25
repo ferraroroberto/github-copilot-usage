@@ -30,6 +30,9 @@
       9. comment ratchet     - scripts/comment_ratchet.py: issue references in product-code
                              comments (Python, JS, CSS, PowerShell) against the baseline;
                              exit 3 is a failure
+     10. conventions ratchet - scripts/conventions_ratchet.py: the no-window,
+                             logging-not-print and no-drive-path rules over the
+                             tracked .py files against the baseline; exit 3 is a failure
 
     Anchors to the repo root, so run it from anywhere:
         powershell -File scripts/verify-before-ship.ps1
@@ -68,6 +71,7 @@ Invoke-Stage "dead code ratchet" { & $py "scripts/dead_code_ratchet.py" }
 Invoke-Stage "static ratchet" { & $py "scripts/static_ratchet.py" }
 Invoke-Stage "docs ratchet" { & $py "scripts/docs_ratchet.py" }
 Invoke-Stage "comment ratchet" { & $py "scripts/comment_ratchet.py" }
+Invoke-Stage "conventions ratchet" { & $py "scripts/conventions_ratchet.py" }
 
 Write-Host ""
 Write-Host "[PASS] all checks green - safe to ship." -ForegroundColor Green

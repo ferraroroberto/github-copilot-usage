@@ -77,7 +77,7 @@ body {
  * shell mechanics from design.md's nav contract still apply: anchor `.app`
  * to the viewport, not the window, so a momentum scroll can never drag
  * installed-PWA browser chrome, and make `.app` itself the only scroller
- * (design.md nav contract, home-automation#303). */
+ * (design.md nav contract). */
 @media (display-mode: standalone) {
   .app {
     position: fixed;

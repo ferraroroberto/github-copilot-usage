@@ -102,9 +102,12 @@ GET /api/config          POST /api/config
 ## Development
 
 ```
+.venv/Scripts/python.exe -m pip install -r requirements-dev.txt   # test + lint deps
 .venv/Scripts/python.exe -m pytest      # tests (synthetic session fixtures)
 .venv/Scripts/python.exe -m app         # run without opening a browser
 ```
+
+Verification gate (also needs Node, for `jscpd`): `powershell -File scripts/verify-before-ship.ps1`.
 
 Layout: `app/` (FastAPI server, optional tray, the vanilla-JS dashboard in `app/webapp/static/`) · `src/` (discovery, the jsonl replay parser, aggregation, optional billing client) · `tests/` — see [docs/layout.md](docs/layout.md).
 

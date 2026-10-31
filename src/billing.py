@@ -29,6 +29,8 @@ try:
 except ImportError:  # pragma: no cover - httpx is in requirements.txt
     httpx = None  # type: ignore[assignment]
 
+from src.aggregate import USD_PER_CREDIT
+
 _log = logging.getLogger(__name__)
 
 PAT_ENV = "GITHUB_COPILOT_BILLING_PAT"
@@ -123,7 +125,7 @@ def _aggregate_day(d: date, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]
             continue
     return [
         {"date": d.isoformat(), "model": model, "credits": round(credits, 4),
-         "usd": round(credits * 0.01, 4)}
+         "usd": round(credits * USD_PER_CREDIT, 4)}
         for model, credits in by_model.items()
     ]
 

@@ -533,9 +533,10 @@ function renderBilling(body) {
   }
   $('billing-wrap').hidden = false;
   const total = rows.reduce((acc, r) => acc + (Number(r.credits) || 0), 0);
+  const totalUsd = rows.reduce((acc, r) => acc + (Number(r.usd) || 0), 0);
   $('billing-note').textContent =
     'Account-wide official spend (all devices), last 14 days: '
-    + fmtCredits(total) + ' credits ≈ ' + fmtUsd(total * 0.01) + '.';
+    + fmtCredits(total) + ' credits ≈ ' + fmtUsd(totalUsd) + '.';
   tbody.innerHTML = rows.map((r) => `
     <tr>
       <td>${esc(r.date)}</td>

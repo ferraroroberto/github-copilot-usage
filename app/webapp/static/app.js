@@ -332,7 +332,6 @@ function renderCharts(s) {
     },
   });
 
-  const accent = modelColor(models[0] || 'default');
   const theme = currentTheme();
   const inColor = PALETTE[theme][0];
   const outColor = PALETTE[theme][1];
@@ -375,7 +374,6 @@ function renderCharts(s) {
       },
     },
   });
-  void accent;
 }
 
 // ---- prompt mix ----

@@ -2,8 +2,7 @@
 
 Binds to 127.0.0.1 only — this is a personal, local tool; nothing is exposed
 on the network. All endpoints are read-only over Copilot's own log files
-except POST /api/config (writes config.json) and POST /api/scan (re-runs
-discovery, still read-only on disk).
+except POST /api/config (writes config.json).
 """
 
 from __future__ import annotations

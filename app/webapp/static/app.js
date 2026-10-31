@@ -13,6 +13,10 @@
 /* global Chart */
 
 const POLL_MS = 30_000;
+// Billing changes server-side at most every 5 min (src/billing.py caches today),
+// so the 30 s refresh need not re-ask each time; 60 s is a stated guess, not a
+// measurement, and is deliberately shorter than that cache.
+const BILLING_POLL_MS = 60_000;
 const SESSIONS_PREVIEW = 12;
 
 const PALETTE = {
@@ -169,7 +173,7 @@ async function refresh() {
 
 let _billingFetched = 0;
 async function fetchBilling() {
-  if (Date.now() - _billingFetched < 60_000) return;
+  if (Date.now() - _billingFetched < BILLING_POLL_MS) return;
   _billingFetched = Date.now();
   const body = await jsonApi('/api/billing');
   renderBilling(body);

@@ -33,6 +33,9 @@ if (Test-Path $ConfigPath) {
     } catch { }
 }
 $HealthUrl = "http://127.0.0.1:$Port/health"
+# A stated guess, not a measurement: time for the OS to drop the listening
+# socket after taskkill, before the port-busy check below.
+$PortReleaseWaitMs = 500
 
 function Get-TrayProcesses {
     $esc = [regex]::Escape($VenvDir)
@@ -66,7 +69,7 @@ if ($Action -match "^(--)?restart$") {
             cmd /c "taskkill /PID $ownerPid /T /F >nul 2>&1"
         }
     }
-    Start-Sleep -Milliseconds 500
+    Start-Sleep -Milliseconds $PortReleaseWaitMs
 } elseif ($existing.Count -gt 0) {
     Write-Output "[ok] tray already running - PID $($existing[0].ProcessId) - $HealthUrl"
     exit 0

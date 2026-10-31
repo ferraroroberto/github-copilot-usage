@@ -36,6 +36,12 @@ import uvicorn
 
 from src import config
 
+# How long a restart waits for uvicorn's graceful shutdown; a stated guess that
+# is generous for an idle local server. On expiry the old thread is abandoned
+# (it is a daemon) and the restart rebinds anyway, which fails only if the
+# port is still held.
+_SERVER_STOP_JOIN_SECS = 5
+
 
 def _make_icon_image() -> "Image.Image":
     """A simple generated glyph: rounded blue square with a white gauge arc."""
@@ -64,7 +70,7 @@ class _Server:
         if self._server is not None:
             self._server.should_exit = True
         if self._thread is not None:
-            self._thread.join(timeout=5)
+            self._thread.join(timeout=_SERVER_STOP_JOIN_SECS)
 
 
 def main() -> None:

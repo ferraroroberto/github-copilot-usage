@@ -23,16 +23,33 @@ if (-not (Test-Path $Pythonw)) {
     exit 1
 }
 
-# Resolve the port (config.json override, else the 8377 default).
+# Resolve the port by asking src/config.py, the one place that applies the
+# COPILOT_USAGE_PORT env / .env override over config.json over the 8377
+# default, so the script polls the port the tray actually binds. Only if that
+# probe fails does it fall back to config.json / 8377 and say so.
 $Port = 8377
-$ConfigPath = Join-Path $RepoDir "config.json"
-if (Test-Path $ConfigPath) {
-    try {
-        $cfg = Get-Content $ConfigPath -Raw | ConvertFrom-Json
-        if ($cfg.port) { $Port = [int]$cfg.port }
-    } catch { }
+$VenvPython = Join-Path $VenvDir "Scripts\python.exe"
+$resolved = $null
+try {
+    Push-Location $RepoDir
+    $resolved = & $VenvPython -c "from src import config; print(int(config.load()['port']))" 2>$null
+} catch { $resolved = $null } finally { Pop-Location }
+if ($resolved -and "$resolved".Trim() -match "^\d+$") {
+    $Port = [int]"$resolved".Trim()
+} else {
+    Write-Output "[warn] could not resolve the port via src.config - falling back to config.json / 8377."
+    $ConfigPath = Join-Path $RepoDir "config.json"
+    if (Test-Path $ConfigPath) {
+        try {
+            $cfg = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+            if ($cfg.port) { $Port = [int]$cfg.port }
+        } catch { }
+    }
 }
 $HealthUrl = "http://127.0.0.1:$Port/health"
+# A stated guess, not a measurement: time for the OS to drop the listening
+# socket after taskkill, before the port-busy check below.
+$PortReleaseWaitMs = 500
 
 function Get-TrayProcesses {
     $esc = [regex]::Escape($VenvDir)
@@ -66,7 +83,7 @@ if ($Action -match "^(--)?restart$") {
             cmd /c "taskkill /PID $ownerPid /T /F >nul 2>&1"
         }
     }
-    Start-Sleep -Milliseconds 500
+    Start-Sleep -Milliseconds $PortReleaseWaitMs
 } elseif ($existing.Count -gt 0) {
     Write-Output "[ok] tray already running - PID $($existing[0].ProcessId) - $HealthUrl"
     exit 0

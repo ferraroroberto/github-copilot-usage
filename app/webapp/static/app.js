@@ -13,6 +13,10 @@
 /* global Chart */
 
 const POLL_MS = 30_000;
+// Billing changes server-side at most every 5 min (src/billing.py caches today),
+// so the 30 s refresh need not re-ask each time; 60 s is a stated guess, not a
+// measurement, and is deliberately shorter than that cache.
+const BILLING_POLL_MS = 60_000;
 const SESSIONS_PREVIEW = 12;
 
 const PALETTE = {
@@ -169,7 +173,7 @@ async function refresh() {
 
 let _billingFetched = 0;
 async function fetchBilling() {
-  if (Date.now() - _billingFetched < 60_000) return;
+  if (Date.now() - _billingFetched < BILLING_POLL_MS) return;
   _billingFetched = Date.now();
   const body = await jsonApi('/api/billing');
   renderBilling(body);
@@ -332,7 +336,6 @@ function renderCharts(s) {
     },
   });
 
-  const accent = modelColor(models[0] || 'default');
   const theme = currentTheme();
   const inColor = PALETTE[theme][0];
   const outColor = PALETTE[theme][1];
@@ -375,7 +378,6 @@ function renderCharts(s) {
       },
     },
   });
-  void accent;
 }
 
 // ---- prompt mix ----
@@ -533,9 +535,10 @@ function renderBilling(body) {
   }
   $('billing-wrap').hidden = false;
   const total = rows.reduce((acc, r) => acc + (Number(r.credits) || 0), 0);
+  const totalUsd = rows.reduce((acc, r) => acc + (Number(r.usd) || 0), 0);
   $('billing-note').textContent =
     'Account-wide official spend (all devices), last 14 days: '
-    + fmtCredits(total) + ' credits ≈ ' + fmtUsd(total * 0.01) + '.';
+    + fmtCredits(total) + ' credits ≈ ' + fmtUsd(totalUsd) + '.';
   tbody.innerHTML = rows.map((r) => `
     <tr>
       <td>${esc(r.date)}</td>

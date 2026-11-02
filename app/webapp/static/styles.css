@@ -9,6 +9,7 @@
   --border-muted: #d8dee4;
   --fg: #1f2328;
   --fg-muted: #656d76;
+  --muted: var(--fg-muted);
   --accent: #0969da;
   --accent-fg: #ffffff;
   --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);

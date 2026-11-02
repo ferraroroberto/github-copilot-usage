@@ -252,9 +252,8 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .empty svg { width: 24px; height: 24px; }
 .empty p { margin: 0; font-size: var(--font-label); }
 
-/* ---- footer ---- */
-.page-foot { display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 24px; }
-.page-foot .muted { font-size: var(--font-caption); font-weight: 600; }
+/* ---- export row (the build footer is the vendored page-foot) ---- */
+.export-row { display: flex; align-items: center; padding: 4px 4px 0; }
 
 /* ---- dialogs ---- */
 dialog {

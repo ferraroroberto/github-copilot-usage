@@ -12,6 +12,8 @@
 
 /* global Chart */
 
+import { buildReadoutText } from './_vendored/page-foot/page-foot.js';
+
 const POLL_MS = 30_000;
 // Billing changes server-side at most every 5 min (src/billing.py caches today),
 // so the 30 s refresh need not re-ask each time; 60 s is a stated guess, not a
@@ -624,8 +626,8 @@ $('settings-save').addEventListener('click', async () => {
 // Boot
 // ---------------------------------------------------------------------------
 
-fetch('/health').then((r) => r.json()).then((h) => {
-  $('version-tag').textContent = 'github-copilot-usage v' + h.version;
+fetch('/api/version').then((r) => r.json()).then((v) => {
+  $('buildReadout').textContent = buildReadoutText(v.git_sha || 'unknown', v.built_at || '');
 }).catch(() => {});
 
 refresh();

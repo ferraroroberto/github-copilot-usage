@@ -6,6 +6,7 @@ github-copilot-usage/
 │   ├── __main__.py            # `python -m app` — argparse, uvicorn, optional browser open
 │   ├── server.py              # FastAPI routes (JSON API + serves the dashboard); no parsing logic
 │   ├── tray.py                # optional Windows tray icon (pystray) that owns the server thread
+│   ├── build_info.py          # short commit + process start time for the footer
 │   ├── version.py             # single source of the version reported by /health
 │   └── webapp/
 │       └── static/            # the vanilla-JS SPA: index.html, app.js, styles.css, PWA manifest + icons, vendored Chart.js

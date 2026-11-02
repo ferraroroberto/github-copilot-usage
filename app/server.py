@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from src import aggregate, billing, config
+from app import build_info
 from app.version import VERSION
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -39,6 +40,11 @@ async def _shutdown() -> None:
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok", "version": VERSION}
+
+
+@app.get("/api/version")
+async def api_version() -> dict:
+    return {"version": VERSION, "git_sha": build_info.GIT_SHA, "built_at": build_info.BUILT_AT}
 
 
 @app.get("/api/summary")

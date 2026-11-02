@@ -8,3 +8,5 @@ config.json
 *.log
 # Launcher scratch (ephemeral images/logs written by the tray launcher)
 .launcher-tmp/
+# UI proof pages (local only, never committed)
+.proof/

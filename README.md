@@ -91,6 +91,7 @@ The dashboard is a thin client over a JSON API you can script against (interacti
 
 ```
 GET /health
+GET /api/version        build identity (version, git_sha, built_at) behind the page footer
 GET /api/summary?period=today|week|month|cycle|all
 GET /api/sessions?period=...
 GET /api/sessions/{session_id}

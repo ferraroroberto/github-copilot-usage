@@ -11,6 +11,7 @@
   <link rel="apple-touch-icon" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="_vendored/page-foot/page-foot.css">
   <script>
     // Pre-paint stamps: theme (localStorage override, else OS preference) and
     // text size (small | default | large). Storage can throw (blocked site data).
@@ -201,9 +202,12 @@
     <p class="footnote">Every VS Code build on this machine is discovered automatically. Using a company-branded editor stored somewhere unusual? Add its path under Settings → extra roots.</p>
   </section>
 
-  <footer class="page-foot">
+  <div class="export-row">
     <a class="btn-surface" id="export-link" href="/api/export.csv?period=all" download>Export CSV</a>
-    <span class="muted" id="version-tag"></span>
+  </div>
+
+  <footer class="page-foot">
+    <p id="buildReadout"></p>
   </footer>
 </div>
 

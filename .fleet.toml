@@ -25,6 +25,7 @@ comment_ratchet = { src = "scripts/comment_ratchet.py", sha = "5505185c5f4b10eea
 conventions_ratchet = { src = "scripts/conventions_ratchet.py", sha = "5505185c5f4b10eea5ab268e7b6676c6c54340c4", dest = "scripts/conventions_ratchet.py" }
 runtime_write_ratchet = { src = "scripts/runtime_write_ratchet.py", sha = "5505185c5f4b10eea5ab268e7b6676c6c54340c4", dest = "scripts/runtime_write_ratchet.py" }
 runtime_write_resolve = { src = "scripts/runtime_write_resolve.py", sha = "5505185c5f4b10eea5ab268e7b6676c6c54340c4", dest = "scripts/runtime_write_resolve.py" }
+page-foot = { src = "app/webapp/static/_vendored/page-foot", sha = "35c1f11348e100fa6b5da487411424c6d6ced43c", dest = "app/webapp/static/_vendored/page-foot" }
 
 # [structure_ratchet] -- baseline-and-ratchet layout stage. scripts/verify-before-ship.ps1
 # runs scripts/structure_ratchet.py, which fails when a new file passes 1,000 lines, a

@@ -16,6 +16,8 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from src import aggregate, billing, config
+from src.runtime_data import runtime_db_path
+from src.usage_log import usage_router
 from app import build_info
 from app.version import VERSION
 
@@ -25,6 +27,10 @@ _log = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).resolve().parent / "webapp" / "static"
 
 app = FastAPI(title="github-copilot-usage", version=VERSION, docs_url="/api/docs")
+
+# Local-only view/tap log: the vendored router, over a database under the runtime-data root.
+# Mounted before the catch-all static mount below.
+app.include_router(usage_router(runtime_db_path("github-copilot-usage", "usage.sqlite3", create=True)))
 
 
 @app.on_event("shutdown")

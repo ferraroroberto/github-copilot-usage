@@ -4,7 +4,7 @@
 layer       = "working-web"
 icon        = "📊"
 port        = ":8377"
-description = "Local-only GitHub Copilot usage dashboard: credits, models and sessions from Copilot's own logs."
+description = "Local GitHub Copilot usage dashboard: credits, models and sessions from Copilot's own logs."
 shape       = "webapp-tray"
 # `static/` moved under app/webapp/, so the front end needs no extra root folder.
 extra_roots = []

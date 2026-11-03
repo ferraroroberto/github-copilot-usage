@@ -39,6 +39,9 @@
      11. runtime write ratchet - scripts/runtime_write_ratchet.py: a write target resolving
                              under a code folder against the baseline; a new unresolvable
                              target is exit 3, a failure
+     12. usage track ratchet - scripts/usage_track_ratchet.py: a web control with no constant
+                             tracking id, a <dialog> with no data-track-view, a built id or
+                             an unwired usage log against the baseline; exit 3 is a failure
 
     Anchors to the repo root, so run it from anywhere:
         powershell -File scripts/verify-before-ship.ps1
@@ -86,6 +89,7 @@ Invoke-Stage "docs ratchet" { & $py "scripts/docs_ratchet.py" }
 Invoke-Stage "comment ratchet" { & $py "scripts/comment_ratchet.py" }
 Invoke-Stage "conventions ratchet" { & $py "scripts/conventions_ratchet.py" }
 Invoke-Stage "runtime write ratchet" { & $py "scripts/runtime_write_ratchet.py" }
+Invoke-Stage "usage track ratchet" { & $py "scripts/usage_track_ratchet.py" }
 
 Write-Host ""
 Write-Host "[PASS] all checks green - safe to ship." -ForegroundColor Green

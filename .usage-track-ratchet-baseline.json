@@ -1,7 +1,4 @@
 {
   "version": 1,
-  "entries": [
-    {"key": "app/webapp/static/app.js", "counts": {"untracked-control": 1}},
-    {"key": "app/webapp/static/index.html", "counts": {"untracked-control": 17, "untracked-sheet": 2}}
-  ]
+  "entries": []
 }

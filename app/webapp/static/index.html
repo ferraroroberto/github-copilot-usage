@@ -39,22 +39,22 @@
     </div>
     <div class="topbar-actions">
       <span id="freshness" class="freshness"></span>
-      <button id="theme-toggle" class="icon-btn" type="button" aria-label="Toggle theme">
+      <button data-track="theme-toggle" id="theme-toggle" class="icon-btn" type="button" aria-label="Toggle theme">
         <svg class="glyph-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
         <svg class="glyph-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
       </button>
-      <button id="settings-btn" class="icon-btn" type="button" aria-label="Settings">
+      <button data-track="settings-open" id="settings-btn" class="icon-btn" type="button" aria-label="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
     </div>
   </header>
 
   <nav class="seg" id="period-seg" aria-label="Period">
-    <button data-period="today" class="active" type="button">Today</button>
-    <button data-period="week" type="button">Week</button>
-    <button data-period="month" type="button">Month</button>
-    <button data-period="cycle" type="button">Cycle</button>
-    <button data-period="all" type="button">All</button>
+    <button data-track="period-today" data-period="today" class="active" type="button">Today</button>
+    <button data-track="period-week" data-period="week" type="button">Week</button>
+    <button data-track="period-month" data-period="month" type="button">Month</button>
+    <button data-track="period-cycle" data-period="cycle" type="button">Cycle</button>
+    <button data-track="period-all" data-period="all" type="button">All</button>
   </nav>
 
   <!-- Stat tiles -->
@@ -164,8 +164,8 @@
       <h2>Sessions</h2>
       <span class="badge" id="sessions-count">0</span>
       <div class="seg seg-mini" id="sessions-sort">
-        <button data-sort="credits" class="active" type="button">Cost</button>
-        <button data-sort="recent" type="button">Recent</button>
+        <button data-track="sessions-sort-cost" data-sort="credits" class="active" type="button">Cost</button>
+        <button data-track="sessions-sort-recent" data-sort="recent" type="button">Recent</button>
       </div>
     </div>
     <ul class="session-list" id="session-list"></ul>
@@ -173,7 +173,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       <p>No sessions in this period.</p>
     </div>
-    <button class="btn-surface" id="sessions-more" type="button" hidden>Show all</button>
+    <button data-track="sessions-show-all" class="btn-surface" id="sessions-more" type="button" hidden>Show all</button>
   </section>
 
   <!-- Official billing (optional PAT) -->
@@ -203,7 +203,7 @@
   </section>
 
   <div class="export-row">
-    <a class="btn-surface" id="export-link" href="/api/export.csv?period=all" download>Export CSV</a>
+    <a data-track="export-csv" class="btn-surface" id="export-link" href="/api/export.csv?period=all" download>Export CSV</a>
   </div>
 
   <footer class="page-foot">
@@ -212,10 +212,10 @@
 </div>
 
 <!-- Session detail modal -->
-<dialog id="session-dialog">
+<dialog data-track-view="session-detail" id="session-dialog">
   <div class="dialog-head">
     <h2 id="sd-title">Session</h2>
-    <button class="dialog-close" id="sd-close" type="button" aria-label="Close">
+    <button data-track="session-close" class="dialog-close" id="sd-close" type="button" aria-label="Close">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
     </button>
   </div>
@@ -230,39 +230,39 @@
 </dialog>
 
 <!-- Settings modal -->
-<dialog id="settings-dialog">
+<dialog data-track-view="settings" id="settings-dialog">
   <div class="dialog-head">
     <h2>Settings</h2>
-    <button class="dialog-close" id="settings-close" type="button" aria-label="Close">
+    <button data-track="settings-close" class="dialog-close" id="settings-close" type="button" aria-label="Close">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
     </button>
   </div>
   <div class="setting-row">
     <span class="setting-label" id="set-textsize-label">Text size</span>
     <div class="seg" id="set-textsize" role="group" aria-labelledby="set-textsize-label">
-      <button type="button" data-textsize="small">Small</button>
-      <button type="button" data-textsize="default">Default</button>
-      <button type="button" data-textsize="large">Large</button>
+      <button data-track="textsize-small" type="button" data-textsize="small">Small</button>
+      <button data-track="textsize-default" type="button" data-textsize="default">Default</button>
+      <button data-track="textsize-large" type="button" data-textsize="large">Large</button>
     </div>
   </div>
   <div class="setting-row">
     <label for="set-allowance">Monthly credit allowance<br><small class="muted">Copy the total from VS Code's Copilot menu — "Credits X / Y used" → enter Y.<br>Plan defaults: Business 300 · Enterprise 1000 · Pro 300 · Pro+ 1500; org credit pools can be much larger (e.g. 23400).</small></label>
-    <input id="set-allowance" type="number" min="0" step="1">
+    <input data-track="setting-allowance" id="set-allowance" type="number" min="0" step="1">
   </div>
   <div class="setting-row">
     <label for="set-reset">Cycle reset day</label>
-    <input id="set-reset" type="number" min="1" max="28" step="1">
+    <input data-track="setting-reset-day" id="set-reset" type="number" min="1" max="28" step="1">
   </div>
   <div class="setting-row">
     <label for="set-cli">Include Copilot CLI sessions</label>
-    <button id="set-cli" class="switch" type="button" role="switch" aria-checked="true"><span class="switch-thumb"></span></button>
+    <button data-track="setting-cli" id="set-cli" class="switch" type="button" role="switch" aria-checked="true"><span class="switch-thumb"></span></button>
   </div>
   <div class="setting-row setting-col">
     <label for="set-roots">Extra storage roots (one path per line)</label>
-    <textarea id="set-roots" rows="3" placeholder="C:\Users\me\AppData\Roaming\MyCompanyEditor"></textarea>
+    <textarea data-track="setting-roots" id="set-roots" rows="3" placeholder="C:\Users\me\AppData\Roaming\MyCompanyEditor"></textarea>
   </div>
   <p class="footnote" id="set-pat-note"></p>
-  <button class="btn-primary" id="settings-save" type="button">Save</button>
+  <button data-track="settings-save" class="btn-primary" id="settings-save" type="button">Save</button>
 </dialog>
 
 <script src="vendor/chart.umd.min.js"></script>

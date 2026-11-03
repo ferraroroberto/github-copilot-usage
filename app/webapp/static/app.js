@@ -453,7 +453,7 @@ function renderSessions() {
     ? 'Show fewer' : 'Show all ' + rows.length;
 
   $('session-list').innerHTML = shown.map((s) => `
-    <li data-sid="${esc(s.session_id)}" tabindex="0" role="button" aria-label="Open session detail">
+    <li data-track="session-open" data-sid="${esc(s.session_id)}" tabindex="0" role="button" aria-label="Open session detail">
       <span class="sess-title">${esc(s.title)}</span>
       <span class="sess-credits">${fmtCredits(s.credits)} cr</span>
       <span class="sess-meta">

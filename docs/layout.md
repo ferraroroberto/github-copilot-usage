@@ -17,6 +17,7 @@ github-copilot-usage/
 │   ├── vscode_parser.py       # read-only, mtime-cached parser for VS Code chat session logs
 │   ├── cli_parser.py          # read-only, mtime-cached parser for Copilot CLI session logs
 │   ├── aggregate.py           # period bucketing, per-model and per-session rollups, CSV export
+│   ├── static_versioning.py   # content-hash cache busting: the ?v= stamp, CachingStaticFiles and the stamped index.html
 │   └── billing.py             # optional GitHub billing API client (needs a token; absent → visible reason)
 │
 ├── tests/                     # pytest suite, fixtures only — no real logs or credentials
@@ -29,7 +30,8 @@ github-copilot-usage/
 │   ├── static_ratchet.py      # vendored byte-for-byte; fails on new duplicates, unused names and bug patterns
 │   ├── docs_ratchet.py        # vendored byte-for-byte; fails on a growing README or new history markers in the docs
 │   ├── comment_ratchet.py     # vendored byte-for-byte; fails on new issue references in code comments
-│   ├── conventions_ratchet.py # vendored byte-for-byte; fails on new spawns without creationflags, library prints and drive paths
+│   ├── conventions_ratchet.py # vendored byte-for-byte; fails on new spawns without creationflags, library prints, drive paths and a bare StaticFiles
+│   ├── conventions_readers.py # vendored byte-for-byte; the syntax-tree and line readers conventions_ratchet loads
 │   ├── gen_icons.py           # regenerates the PWA icon family under app/webapp/static/
 │   └── tray_lifecycle.ps1     # detect / stop / start / verify the tray, called by `tray.bat`
 └── docs/                      # durable reference (this file)

@@ -18,6 +18,7 @@ Standalone, public, local-only dashboard for GitHub Copilot usage: a FastAPI JSO
 - **Period bucketing uses local dates deliberately** ("today" = today at your desk); the optional billing API card is the UTC-exact counterpart. Don't "fix" one to match the other.
 - **Credits are the primary unit** (1 credit = 1 premium-request unit = $0.01 under GitHub's AI-credits model); USD is always derived, never stored.
 - Server binds to `127.0.0.1` only. Keep it that way.
+- **Static assets are served through `CachingStaticFiles`** (`src/static_versioning.py`), never a bare `StaticFiles`: one content hash is stamped as `?v=` onto the shell's asset URLs and the ES-module imports, `.js`/`.css` are immutable, and `index.html` always revalidates, so an installed phone PWA picks up a new build on a normal reload. No service worker.
 
 ## Run / restart
 

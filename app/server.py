@@ -12,11 +12,11 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI, Query
-from fastapi.responses import FileResponse, PlainTextResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import PlainTextResponse, Response
 
 from src import aggregate, billing, config
 from src.runtime_data import runtime_db_path
+from src.static_versioning import CachingStaticFiles, StaticVersion
 from src.usage_log import usage_router
 from app import build_info
 from app.version import VERSION
@@ -25,6 +25,8 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(messag
 _log = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).resolve().parent / "webapp" / "static"
+# Hashed once at import: the app restarts on every code edit, so the stamp never goes stale.
+STATIC_VERSION = StaticVersion(STATIC_DIR)
 
 app = FastAPI(title="github-copilot-usage", version=VERSION, docs_url="/api/docs")
 
@@ -123,8 +125,8 @@ async def api_config_post(updates: dict) -> dict:
 
 
 @app.get("/")
-async def index() -> FileResponse:
-    return FileResponse(STATIC_DIR / "index.html")
+async def index() -> Response:
+    return STATIC_VERSION.index_response()
 
 
-app.mount("/", StaticFiles(directory=str(STATIC_DIR)), name="static")
+app.mount("/", CachingStaticFiles(directory=STATIC_DIR, version=STATIC_VERSION), name="static")

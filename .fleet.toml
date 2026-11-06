@@ -12,7 +12,7 @@ extra_roots = []
 # [vendored] -- components copied byte-for-byte from project-scaffolding, with the
 # scaffold commit each came from. Re-vendor from there, never edit the copy.
 [vendored]
-usage-log = { src = "app/webapp/static/_vendored/usage-log", sha = "ea11037a42f9f99ea8e728f574c6bb89480f3aa2", dest = "app/webapp/static/_vendored/usage-log" }
+usage-log = { src = "app/webapp/static/_vendored/usage-log", sha = "6c8ae06472edc4c7448a767656060cd2b79cefe9", dest = "app/webapp/static/_vendored/usage-log" }
 usage_log = { src = "src/usage_log.py", sha = "ea11037a42f9f99ea8e728f574c6bb89480f3aa2", dest = "src/usage_log.py" }
 runtime_data = { src = "src/runtime_data.py", sha = "ea11037a42f9f99ea8e728f574c6bb89480f3aa2", dest = "src/runtime_data.py" }
 usage_track_ratchet = { src = "scripts/usage_track_ratchet.py", sha = "ea11037a42f9f99ea8e728f574c6bb89480f3aa2", dest = "scripts/usage_track_ratchet.py" }
@@ -147,3 +147,10 @@ baseline = ".runtime-write-ratchet-baseline.json"
 enabled  = true
 baseline = ".usage-track-ratchet-baseline.json"
 rules    = ["untracked-control", "untracked-sheet", "dynamic-id", "usage-log-wired"]
+
+# [[design.accepted]] -- a design_lint finding that is accurate but whose proposed fix is wrong
+# for this repo, recorded once so /design-sync does not re-file it.
+[[design.accepted]]
+check  = "nav-contract"
+detail = "nav contract partially present — missing: standalone 100lvh bar anchor (.tabs, bottom: auto)"
+reason = "single-view dashboard: the only <nav> is the period segmented control, so there is no bottom-tab bar to anchor; _vendored/nav/ is adopted if a second top-level view appears"

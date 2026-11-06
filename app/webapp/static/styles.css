@@ -19,6 +19,9 @@
   --attention: #9a6700;
   --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-pill: 9999px;
   --gutter: 12px;
+  /* spacing — design.md `spacing` roles, read by the vendored page-foot */
+  --space-xs: 4px;
+  --space-md: 16px;
   /* typography scale — design.md `typography` roles (theme-independent) */
   --font-heading-xl: 2rem;
   --font-heading-lg: 1.5rem;
@@ -66,31 +69,17 @@ body {
 .app {
   max-width: 772px;
   margin: 0 auto;
-  padding: var(--gutter);
+  padding: var(--gutter) var(--gutter) calc(var(--gutter) + env(safe-area-inset-bottom));
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--gutter);
 }
 
-/* ---- installed-PWA app shell ----
- * This app has no bottom-tab nav — single-view dashboard, no `_vendored/nav/`
- * to adopt (see CLAUDE.md's design-system conformance exceptions) — but the
- * shell mechanics from design.md's nav contract still apply: anchor `.app`
- * to the viewport, not the window, so a momentum scroll can never drag
- * installed-PWA browser chrome, and make `.app` itself the only scroller
- * (design.md nav contract). */
-@media (display-mode: standalone) {
-  .app {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 100vh;
-    height: 100lvh;
-    overflow-y: auto;
-    padding-bottom: calc(var(--gutter) + env(safe-area-inset-bottom));
-  }
-  /* Never let the app shell scroll behind an open dialog. */
-  body:has(dialog[open]) .app { overflow: hidden; }
-}
+/* ---- installed-PWA shell ----
+ * The window is the scroller (a fixed-inset `.app` scroller is the superseded
+ * shell). Single-view dashboard: no bottom-tab nav, so no `_vendored/nav/`.
+ * Never let the page scroll behind an open dialog. */
+body:has(dialog[open]) { overflow: hidden; }
 
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 

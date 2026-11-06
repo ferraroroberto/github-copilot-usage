@@ -14,7 +14,7 @@ Requires Python 3.9+ and a machine where you use GitHub Copilot in VS Code (any 
 git clone https://github.com/ferraroroberto/github-copilot-usage.git
 cd github-copilot-usage
 start.bat        # Windows
-./start.sh       # macOS / Linux
+bash scripts/start.sh   # macOS / Linux
 ```
 
 That's it — the first run creates a virtual environment, installs three dependencies (fastapi, uvicorn, httpx), starts the server on `http://127.0.0.1:8377/` and opens the dashboard in your browser.

@@ -37,7 +37,7 @@ github-copilot-usage/
 └── docs/                      # durable reference (this file)
 ```
 
-Root files: `start.bat` / `start.sh` (foreground launch), `tray.bat` (resident Windows tray, self-bootstrapping), `requirements*.txt`, `config.example.json`, `.env.example`, `.fleet.toml` (shape and vendored manifest), `.structure-ratchet-baseline.json`.
+Root files: `start.bat` (foreground launch on Windows; `scripts/start.sh` is the macOS / Linux equivalent), `tray.bat` (resident Windows tray, self-bootstrapping), `requirements*.txt`, `config.example.json`, `.env.example`, `.fleet.toml` (shape and vendored manifest), `.structure-ratchet-baseline.json`.
 
 ## Where new code goes
 

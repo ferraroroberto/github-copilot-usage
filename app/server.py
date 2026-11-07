@@ -16,12 +16,12 @@ from fastapi import FastAPI, Header, Query
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import PlainTextResponse, Response
 
+from app import build_info
+from app.version import VERSION
 from src import aggregate, billing, config
 from src.runtime_data import runtime_db_path
 from src.static_versioning import CachingStaticFiles, StaticVersion
 from src.usage_log import usage_router
-from app import build_info
-from app.version import VERSION
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 _log = logging.getLogger(__name__)

@@ -9,7 +9,12 @@ from starlette.applications import Starlette
 from starlette.routing import Mount, Route
 from starlette.testclient import TestClient
 
-from src.static_versioning import CachingStaticFiles, StaticVersion, rewrite_index_html, rewrite_js_imports
+from src.static_versioning import (
+    CachingStaticFiles,
+    StaticVersion,
+    rewrite_index_html,
+    rewrite_js_imports,
+)
 
 LONG = "public, max-age=31536000, immutable"
 INDEX = (

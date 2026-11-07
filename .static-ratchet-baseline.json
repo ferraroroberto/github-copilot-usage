@@ -1,8 +1,5 @@
 {
   "version": 1,
   "tools": {"jscpd": "5.4.0", "ruff": "0.17.2"},
-  "entries": [
-    {"key": "order:I001:app/server.py:from __future__ import annotations", "files": ["app/server.py"]},
-    {"key": "order:I001:tests/test_static_versioning.py:from __future__ import annotations", "files": ["tests/test_static_versioning.py"]}
-  ]
+  "entries": []
 }

@@ -10,8 +10,10 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
+from typing import Optional
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Header, Query
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import PlainTextResponse, Response
 
 from src import aggregate, billing, config
@@ -29,6 +31,8 @@ STATIC_DIR = Path(__file__).resolve().parent / "webapp" / "static"
 STATIC_VERSION = StaticVersion(STATIC_DIR)
 
 app = FastAPI(title="github-copilot-usage", version=VERSION, docs_url="/api/docs")
+# A phone on a slow link pays for every byte of the shell, the module graph and the JSON.
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # Local-only view/tap log: the vendored router, over a database under the runtime-data root.
 # Mounted before the catch-all static mount below.
@@ -125,8 +129,8 @@ async def api_config_post(updates: dict) -> dict:
 
 
 @app.get("/")
-async def index() -> Response:
-    return STATIC_VERSION.index_response()
+async def index(if_none_match: Optional[str] = Header(None)) -> Response:
+    return STATIC_VERSION.index_response(if_none_match)
 
 
 app.mount("/", CachingStaticFiles(directory=STATIC_DIR, version=STATIC_VERSION), name="static")

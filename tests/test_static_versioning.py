@@ -39,7 +39,7 @@ def _tree(root: Path, app_js: str = "import { a } from './_vendored/mod/a.js';\n
 def _client(static: Path) -> TestClient:
     version = StaticVersion(static)
     app = Starlette(routes=[
-        Route("/", lambda request: version.index_response()),
+        Route("/", lambda request: version.index_response(request.headers.get("if-none-match"))),
         Mount("/", CachingStaticFiles(directory=static, version=version), name="static"),
     ])
     return TestClient(app)
@@ -106,6 +106,28 @@ def test_a_missing_static_dir_degrades_to_unstamped_urls(tmp_path: Path) -> None
     version = StaticVersion(tmp_path / "absent")
     assert version.fleet_hash == ""
     assert version.stamp_html(INDEX) == INDEX
+
+
+def test_shell_carries_an_etag_and_a_repeat_costs_no_body(tmp_path: Path) -> None:
+    client = _client(_tree(tmp_path))
+    first = client.get("/")
+    etag = first.headers["etag"]
+    again = client.get("/", headers={"If-None-Match": etag})
+    assert again.status_code == 304
+    assert again.content == b""
+    assert again.headers["etag"] == etag
+    assert again.headers["cache-control"] == "no-cache, must-revalidate"
+    assert client.get("/", headers={"If-None-Match": f'"stale", W/{etag}'}).status_code == 304
+    assert client.get("/", headers={"If-None-Match": '"stale"'}).status_code == 200
+
+
+def test_the_real_dashboard_shell_is_gzipped(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("GITHUB_COPILOT_USAGE_DATA_DIR", str(tmp_path))
+    from app import server
+
+    shell = TestClient(server.app).get("/", headers={"Accept-Encoding": "gzip"})
+    assert shell.headers.get("content-encoding") == "gzip"
+    assert shell.headers.get("etag")
 
 
 def test_the_real_dashboard_shell_and_modules_are_stamped(tmp_path: Path, monkeypatch) -> None:

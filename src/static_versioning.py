@@ -23,7 +23,7 @@ import os
 import posixpath
 import re
 from pathlib import Path
-from typing import Dict, Iterable
+from typing import Dict, Iterable, Optional
 
 from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
@@ -91,6 +91,24 @@ def compute_asset_hashes(static_dir: Path) -> Dict[str, str]:
     return {name: fleet_hash for name in per_file}
 
 
+def fleet_hash_of(hashes: Dict[str, str]) -> str:
+    """The one stamp every asset carries; ``""`` when nothing was hashed."""
+    return next(iter(hashes.values()), "")
+
+
+def _etag_matches(if_none_match: Optional[str], etag: str) -> bool:
+    """Weak comparison (RFC 9110 13.1.2): ``W/`` prefixes are ignored, ``*`` matches."""
+    if not if_none_match:
+        return False
+    if if_none_match.strip() == "*":
+        return True
+    for tag in if_none_match.split(","):
+        tag = tag.strip()
+        if (tag[2:] if tag.startswith("W/") else tag) == etag:
+            return True
+    return False
+
+
 def rewrite_index_html(body: str, hashes: Dict[str, str]) -> str:
     """Stamp ``?v=<hash>`` onto every relative ``.css`` / ``.js`` href and src.
 
@@ -136,7 +154,7 @@ class StaticVersion:
     def __init__(self, static_dir: Path) -> None:
         self._static_dir = static_dir.resolve()
         self.asset_hashes: Dict[str, str] = compute_asset_hashes(static_dir)
-        self.fleet_hash: str = next(iter(self.asset_hashes.values()), "")
+        self.fleet_hash: str = fleet_hash_of(self.asset_hashes)
 
     def stamp_html(self, html: str) -> str:
         """Stamp the asset URLs in the ``index.html`` shell."""
@@ -151,14 +169,18 @@ class StaticVersion:
         from_dir = "" if rel_parent == Path(".") else rel_parent.as_posix()
         return rewrite_js_imports(body, self.asset_hashes, from_dir)
 
-    def index_response(self) -> Response:
-        """The stamped ``index.html``; ``no-cache`` so a cached shell never points at old assets."""
+    def index_response(self, if_none_match: Optional[str] = None) -> Response:
+        """The stamped ``index.html``, revalidated by ETag.
+
+        ``no-cache`` keeps a cached shell from pointing at old assets; the ETag over the
+        stamped body lets that revalidation cost a bodiless 304 when nothing changed.
+        """
         html = self.stamp_html((self._static_dir / "index.html").read_text(encoding="utf-8"))
-        return Response(
-            html,
-            media_type="text/html",
-            headers={"Cache-Control": _SHELL_CACHE},
-        )
+        etag = f'"{_short_hash(html.encode("utf-8"))}"'
+        headers = {"Cache-Control": _SHELL_CACHE, "ETag": etag}
+        if _etag_matches(if_none_match, etag):
+            return Response(status_code=304, headers=headers)
+        return Response(html, media_type="text/html", headers=headers)
 
 
 class CachingStaticFiles(StaticFiles):

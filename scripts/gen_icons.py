@@ -84,7 +84,7 @@ def render_set(out_dir: Path = STATIC_DIR) -> None:
     Writes: ``icon-512.png``, ``icon-512-maskable.png``, ``icon-192.png``,
     ``icon-180.png`` and a multi-size ``favicon.ico`` (16/32/48).
     """
-    # runtime-write-exempt: dev-time generator whose committed output is the static assets, not runtime data
+    # runtime-write-exempt: deliberately committed artefact, the PWA icons served from app/webapp/static (the manifest names these paths)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     icon_512 = _render_tile(512, FULL_BLEED_PAD)

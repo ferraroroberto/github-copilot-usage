@@ -134,6 +134,12 @@ call   = ["fastapi.staticfiles.StaticFiles", "starlette.staticfiles.StaticFiles"
 helper = ["src/static_versioning.py"]
 why    = "CLAUDE.md: static assets go through CachingStaticFiles"
 
+# The usage log owns the one SQLite connection; any other sqlite3.connect fails.
+[[conventions_ratchet.must_use]]
+call   = ["sqlite3.connect"]
+helper = ["src/usage_log.py"]
+why    = "one connection helper: the usage log opens its own database"
+
 # [runtime_write_ratchet] -- scripts/runtime_write_ratchet.py fails when a tracked
 # Python file gains a write target (open for writing, Path.write_*, mkdir, a log
 # FileHandler, sqlite3.connect, a copy destination) whose path resolves under a code

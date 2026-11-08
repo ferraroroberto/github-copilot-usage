@@ -47,7 +47,7 @@ There is no CI — the gate is local. For changes with a runtime surface, additi
 
 ## Structure ratchet
 
-The gate fails when a file passes 1,000 lines, a function 100 lines, a directory 40 modules, when `src/` imports `app/`, or when a root folder falls outside the `webapp-tray` shape in `.fleet.toml`; baselined offenders (`.structure-ratchet-baseline.json`, currently empty) may not grow. Exit 3 (not confirmed) is a failure, never a pass. `scripts/structure_ratchet.py` is vendored byte-for-byte (`.fleet.toml` `[vendored]`); never edit it here. Lower the baseline with `--update-baseline`; `--update-baseline --allow-additions` is the only way to add an entry and shows in review. Where code goes: `docs/layout.md`. The script needs Python 3.11+; the app itself still runs on 3.9+.
+The structure ratchet's limits, baseline and Python requirement are in `docs/layout.md`. `scripts/structure_ratchet.py` is vendored byte-for-byte (`.fleet.toml` `[vendored]`); never edit it here. Lower the baseline with `--update-baseline`; `--update-baseline --allow-additions` is the only way to add an entry and shows in review.
 
 ## UX surface
 

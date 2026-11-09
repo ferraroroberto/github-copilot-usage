@@ -43,6 +43,12 @@
                              tracking id, a <dialog> with no data-track-view, a built id or
                              an unwired usage log against the baseline; exit 3 is a failure
 
+    Verdict line: the last line on stdout is `GATE-RESULT: PASS` or
+    `GATE-RESULT: FAIL`, on every path that can still run code. Never pipe the
+    gate when its exit code matters (a pipeline reports its last command's
+    status, so `... | tail -40` turns a red run green); a caller that cannot
+    avoid a pipe asserts on that line. A run with no such line is not a pass.
+
     Anchors to the repo root, so run it from anywhere:
         powershell -File scripts/verify-before-ship.ps1
 #>
@@ -50,16 +56,27 @@
 param()
 
 $ErrorActionPreference = "Stop"
-Set-Location (Join-Path $PSScriptRoot "..")
 
-$py = ".\.venv\Scripts\python.exe"
-if (-not (Test-Path $py)) {
-    Write-Host "[FAIL] .venv not found at $py" -ForegroundColor Red
-    Write-Host "       Create it and run: $py -m pip install -r requirements.txt -r requirements-dev.txt" -ForegroundColor Red
-    exit 1
+# gate-verdict:begin
+# The verdict is the last stdout line of every path that can still run code. A
+# terminating error under the "Stop" preference above would otherwise print to
+# stderr only and exit 1, leaving a piped caller an empty, apparently clean run,
+# so the trap reports it on stdout first. Exit codes stay 0 (pass) and 1 (fail).
+function Write-GateResult($verdict) {
+    Write-Host "GATE-RESULT: $verdict"
 }
 
-. (Join-Path $PSScriptRoot "box_lock_gate.ps1"); Enter-BoxLockGate
+function Complete-Gate([int]$Code) {
+    Write-GateResult $(if ($Code -eq 0) { "PASS" } else { "FAIL" })
+    exit $Code
+}
+
+trap {
+    Write-Host ""
+    Write-Host "[FAIL] the gate aborted on an unhandled error:" -ForegroundColor Red
+    Write-Host ("       {0}" -f $_.Exception.Message) -ForegroundColor Red
+    Complete-Gate 1
+}
 
 function Invoke-Stage {
     param([string]$Name, [scriptblock]$Body)
@@ -68,10 +85,25 @@ function Invoke-Stage {
     & $Body
     if ($LASTEXITCODE -ne 0) {
         Write-Host "[FAIL] $Name (exit $LASTEXITCODE)" -ForegroundColor Red
-        exit 1
+        Complete-Gate 1
     }
     Write-Host "[PASS] $Name" -ForegroundColor Green
 }
+# gate-verdict:end
+
+Set-Location (Join-Path $PSScriptRoot "..")
+
+$py = ".\.venv\Scripts\python.exe"
+if (-not (Test-Path $py)) {
+    Write-Host "[FAIL] .venv not found at $py" -ForegroundColor Red
+    Write-Host "       Create it and run: $py -m pip install -r requirements.txt -r requirements-dev.txt" -ForegroundColor Red
+    Complete-Gate 1
+}
+
+# Box load lock: re-runs this script under the shared lock and exits with its
+# code. The gate itself only ever exits 0 or 1, so the helper's exit 3 ("lock
+# not taken in time") cannot be confused with it.
+. (Join-Path $PSScriptRoot "box_lock_gate.ps1"); Enter-BoxLockGate
 
 Invoke-Stage "byte-compile"      { & $py -m compileall -q app src tests }
 # Runtime write probe, first half: what already sits untracked or ignored under
@@ -93,3 +125,4 @@ Invoke-Stage "usage track ratchet" { & $py "scripts/usage_track_ratchet.py" }
 
 Write-Host ""
 Write-Host "[PASS] all checks green - safe to ship." -ForegroundColor Green
+Complete-Gate 0

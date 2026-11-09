@@ -108,7 +108,7 @@ GET /api/config          POST /api/config
 .venv/Scripts/python.exe -m app         # run without opening a browser
 ```
 
-Verification gate (also needs Node, for `jscpd`): `powershell -File scripts/verify-before-ship.ps1`.
+Verification gate (also needs Node, for `jscpd`): `powershell -File scripts/verify-before-ship.ps1`. Its last stdout line is `GATE-RESULT: PASS` or `GATE-RESULT: FAIL`; don't pipe it (a pipe hides the exit code), and treat a run without that line as not passed.
 
 Layout: `app/` (FastAPI server, optional tray, the vanilla-JS dashboard in `app/webapp/static/`) · `src/` (discovery, the jsonl replay parser, aggregation, optional billing client) · `tests/` — see [docs/layout.md](docs/layout.md).
 

@@ -7,22 +7,22 @@ Trade-off: no session/project attribution, so the dashboard shows it as its
 own "official" card next to the local breakdown.
 
 Auth: a fine-grained GitHub PAT with the **"Plan" read-only** user permission
-in ``GITHUB_COPILOT_BILLING_PAT`` (via ``.env`` or the environment). Unset
-PAT, a 404 (account not on the enhanced billing platform), or any HTTP error
-degrade to ``{"available": False, "reason": ...}`` — the dashboard renders
-fine with zero billing configured.
+in ``GITHUB_COPILOT_BILLING_PAT`` (via ``.env`` or the environment). This
+module only *gathers* what happened (``Observation``); ``src/billing_state.py``
+decides what it means (not configured / unavailable / ready / partial /
+unknown). The dashboard renders fine with zero billing configured.
 
-Cached, not hammered: past days are immutable and cached forever; only
-"today" (still accruing) is refreshed, at most every 5 minutes.
+Cached, not hammered: a day is cached once it is *final*, meaning it was
+fetched after its UTC day ended. A day fetched while it was still accruing is
+refreshed at most every 5 minutes and re-fetched once after midnight.
 """
 
 from __future__ import annotations
 
 import logging
 import os
-import time
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 try:
     import httpx
@@ -30,18 +30,34 @@ except ImportError:  # pragma: no cover - httpx is in requirements.txt
     httpx = None  # type: ignore[assignment]
 
 from src.aggregate import USD_PER_CREDIT
+from src.billing_state import (
+    PAT_ENV,
+    BillingState,
+    BillingStatus,
+    DayOutcome,
+    Observation,
+    Outcome,
+    derive,
+)
 
 _log = logging.getLogger(__name__)
 
-PAT_ENV = "GITHUB_COPILOT_BILLING_PAT"
 _API_BASE = "https://api.github.com"
 _TODAY_REFRESH_SECS = 300
 _UNAVAILABLE_TTL_SECS = 300
 
 _username_cache: Optional[str] = None
+# date -> {"items": [...], "fetched_at": aware UTC datetime}
 _day_cache: Dict[date, Dict[str, Any]] = {}
-_unavailable: Optional[Dict[str, Any]] = None
+# The last UNAVAILABLE verdict and when it was reached, so a refused token is not re-asked
+# on every poll. Only a definite "no" is held; UNKNOWN is always retried.
+_unavailable: Optional[Tuple[BillingStatus, datetime]] = None
+_logged_state: Optional[BillingState] = None
 _client: Optional["httpx.AsyncClient"] = None
+
+
+def _utcnow() -> datetime:
+    return datetime.now(tz=timezone.utc)
 
 
 def _get_client() -> "httpx.AsyncClient":
@@ -66,27 +82,54 @@ def _headers(pat: str) -> Dict[str, str]:
     }
 
 
-def _degraded(reason: str) -> Dict[str, Any]:
+def _read_pat() -> str:
+    return os.environ.get(PAT_ENV, "").strip()
+
+
+def pat_configured() -> bool:
+    """Whether a token is set, read from the same derivation as the card."""
+    status = derive(Observation(pat_present=bool(_read_pat()), httpx_present=httpx is not None))
+    return status.state is not BillingState.NOT_CONFIGURED
+
+
+def _response(status: BillingStatus, rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """The /api/billing body. ``available`` is derived for older clients."""
+    global _logged_state
+    if status.state is not _logged_state:
+        _log.info("ℹ️ billing: state %s (%s)", status.state.value, status.reason or "ok")
+        _logged_state = status.state
     return {
-        "available": False,
-        "reason": reason,
-        "daily": [],
-        "as_of": datetime.now(tz=timezone.utc).isoformat(),
+        "state": status.state.value,
+        "available": status.available,
+        "reason": status.reason,
+        "reason_kind": status.kind.value if status.kind is not None else None,
+        "failed_days": list(status.failed_days),
+        "daily": rows,
+        "as_of": _utcnow().isoformat(),
     }
 
 
-def _set_unavailable(reason: str) -> str:
-    global _unavailable
-    _unavailable = {"reason": reason, "at": time.time()}
-    return reason
+def failed_response(exc: Exception) -> Dict[str, Any]:
+    """The body for an unexpected exception: the card could not tell."""
+    return _response(derive(Observation(internal_error=str(exc))), [])
 
 
-def _still_unavailable() -> Optional[str]:
+def _held_unavailable() -> Optional[BillingStatus]:
     if _unavailable is None:
         return None
-    if time.time() - _unavailable["at"] > _UNAVAILABLE_TTL_SECS:
+    status, at = _unavailable
+    if (_utcnow() - at).total_seconds() > _UNAVAILABLE_TTL_SECS:
         return None
-    return _unavailable["reason"]
+    return status
+
+
+def _outcome_of(exc: Exception) -> Outcome:
+    if isinstance(exc, httpx.HTTPStatusError):
+        return Outcome(ok=False, status=exc.response.status_code,
+                       detail="HTTP %d" % exc.response.status_code)
+    if isinstance(exc, ValueError):
+        return Outcome(ok=False, detail=str(exc), malformed=True)
+    return Outcome(ok=False, detail=type(exc).__name__ + ": " + str(exc))
 
 
 async def _resolve_username(client: "httpx.AsyncClient", pat: str) -> str:
@@ -130,59 +173,67 @@ def _aggregate_day(d: date, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     ]
 
 
+def _needs_fetch(d: date, now: datetime) -> bool:
+    """A day is final once it was fetched after its UTC day ended; until then it is refetched."""
+    cached = _day_cache.get(d)
+    if cached is None:
+        return True
+    fetched_at = cached["fetched_at"]
+    if fetched_at.date() > d:
+        return False
+    if d < now.date():
+        return True  # fetched while still accruing, and the day has since ended: once more
+    return (now - fetched_at).total_seconds() > _TODAY_REFRESH_SECS
+
+
 async def get_daily_credits(days: int = 14) -> Dict[str, Any]:
     """Per-day x per-model credit spend for the last ``days`` days (UTC)."""
-    pat = os.environ.get(PAT_ENV, "").strip()
-    if not pat:
-        return _degraded("no PAT configured — set " + PAT_ENV + " in .env to enable")
-    if httpx is None:
-        return _degraded("httpx not installed")
+    global _username_cache, _unavailable
+    pat = _read_pat()
+    base = Observation(pat_present=bool(pat), httpx_present=httpx is not None)
+    unconfigured = derive(base)
+    if unconfigured.state in (BillingState.NOT_CONFIGURED, BillingState.UNAVAILABLE):
+        return _response(unconfigured, [])
 
-    sticky = _still_unavailable()
-    if sticky is not None:
-        return _degraded(sticky)
+    held = _held_unavailable()
+    if held is not None:
+        return _response(held, [])
 
     client = _get_client()
 
-    global _username_cache
     if _username_cache is None:
         try:
             _username_cache = await _resolve_username(client, pat)
         except (httpx.HTTPError, ValueError) as exc:
-            reason = "could not resolve GitHub username: " + str(exc)
-            _log.warning("⚠️ billing: %s", reason)
-            return _degraded(_set_unavailable(reason))
+            _log.warning("⚠️ billing: username lookup failed: %s", exc)
+            status = derive(Observation(pat_present=True, username=_outcome_of(exc)))
+            if status.state is BillingState.UNAVAILABLE:
+                _unavailable = (status, _utcnow())
+            return _response(status, [])
 
-    today = datetime.now(tz=timezone.utc).date()
+    now = _utcnow()
+    today = now.date()
     window = [today - timedelta(days=i) for i in range(days - 1, -1, -1)]
 
     rows: List[Dict[str, Any]] = []
+    outcomes: List[DayOutcome] = []
     for d in window:
-        cached = _day_cache.get(d)
-        stale = cached is not None and d == today and (
-            time.time() - cached["fetched_at"] > _TODAY_REFRESH_SECS
-        )
-        if cached is None or stale:
+        if _needs_fetch(d, now):
             try:
                 items = await _fetch_day(client, pat, _username_cache, d)
-            except httpx.HTTPStatusError as exc:
-                if exc.response is not None and exc.response.status_code == 404:
-                    reason = ("GitHub billing API returned 404 "
-                              "(account likely not on the enhanced billing platform)")
-                    _log.info("ℹ️ billing: %s", reason)
-                    return _degraded(_set_unavailable(reason))
-                _log.warning("⚠️ billing: %s failed: %s", d, exc)
+            except (httpx.HTTPError, ValueError) as exc:
+                outcome = _outcome_of(exc)
+                _log.warning("⚠️ billing: fetching %s failed: %s", d, outcome.detail)
+                outcomes.append(DayOutcome(d, outcome))
+                if outcome.status == 404:
+                    break  # the account has no such endpoint; the rest would say the same
                 continue
-            except httpx.HTTPError as exc:
-                _log.warning("⚠️ billing: network error fetching %s: %s", d, exc)
-                continue
-            _day_cache[d] = {"items": items, "fetched_at": time.time()}
-            cached = _day_cache[d]
-        rows.extend(_aggregate_day(d, cached["items"]))
+            _day_cache[d] = {"items": items, "fetched_at": _utcnow()}
+        outcomes.append(DayOutcome(d, Outcome(ok=True)))
+        rows.extend(_aggregate_day(d, _day_cache[d]["items"]))
 
-    return {
-        "available": True,
-        "reason": None,
-        "daily": rows,
-        "as_of": datetime.now(tz=timezone.utc).isoformat(),
-    }
+    status = derive(Observation(pat_present=True, username=Outcome(ok=True), days=tuple(outcomes)))
+    if status.state is BillingState.UNAVAILABLE:
+        _unavailable = (status, _utcnow())
+        rows = []
+    return _response(status, rows)

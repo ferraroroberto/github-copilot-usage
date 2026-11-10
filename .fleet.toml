@@ -169,3 +169,12 @@ rules    = ["untracked-control", "untracked-sheet", "dynamic-id", "usage-log-wir
 check  = "nav-contract"
 detail = "nav contract partially present — missing: standalone 100lvh bar anchor (.tabs, bottom: auto)"
 reason = "single-view dashboard: the only <nav> is the period segmented control, so there is no bottom-tab bar to anchor; _vendored/nav/ is adopted if a second top-level view appears"
+
+# [[state_machines]] -- a lifecycle declared in one module with one derive function; the
+# conventions ratchet's state rules never report the owner module. Mechanism:
+# project-scaffolding docs/implicit-state-machines.md. See docs/billing-state.md.
+[[state_machines]]
+name   = "billing"
+module = "src/billing_state.py"
+type   = "BillingState"
+derive = "derive"

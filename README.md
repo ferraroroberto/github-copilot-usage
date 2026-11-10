@@ -77,7 +77,7 @@ Create a **fine-grained PAT** at <https://github.com/settings/personal-access-to
 cp .env.example .env     # and paste the token into GITHUB_COPILOT_BILLING_PAT
 ```
 
-No PAT → the card simply explains it's not configured. The token is only ever sent to `api.github.com`.
+No PAT → the card simply explains it's not configured. The token is only ever sent to `api.github.com`. The card is always in one of five declared states (not configured, unavailable, ready, partial, unknown) and shows the reason when it cannot give figures; a refused token or an unreachable API is never shown as "no spend" ([docs/billing-state.md](docs/billing-state.md)).
 
 Note: this is the **user** billing endpoint, so it works for individually-paid plans (Pro / Pro+). On a **Business / Enterprise seat the organization pays**, and this endpoint typically has no data for you — there, the local session stats plus the quota bar in VS Code's Copilot menu are your sources of truth.
 

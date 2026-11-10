@@ -181,7 +181,18 @@ let _billingFetched = 0;
 async function fetchBilling() {
   if (Date.now() - _billingFetched < BILLING_POLL_MS) return;
   _billingFetched = Date.now();
-  const body = await jsonApi('/api/billing');
+  let body;
+  try {
+    body = await jsonApi('/api/billing');
+  } catch (exc) {
+    // The card could not tell: say so, and let the next 30 s refresh retry.
+    _billingFetched = 0;
+    $('billing-wrap').hidden = true;
+    $('billing-asof').textContent = '';
+    $('billing-note').textContent = 'Could not load billing data from the dashboard server.';
+    console.error(exc);
+    return;
+  }
   renderBilling(body);
 }
 
@@ -529,14 +540,20 @@ $('sd-close').addEventListener('click', () => $('session-dialog').close());
 // ---- billing ----
 
 function renderBilling(body) {
-  const rows = (body && body.daily) || [];
+  const rows = body.daily || [];
+  const missing = (body.failed_days || []).length;
   const tbody = $('billing-table').querySelector('tbody');
-  $('billing-asof').textContent = body && body.as_of ? 'as of ' + fmtTime(body.as_of) : '';
-  if (!body || !body.available || !rows.length) {
+  $('billing-asof').textContent = body.as_of ? 'as of ' + fmtTime(body.as_of) : '';
+  // The server decides the mode (src/billing_state.py); this only presents it. A card that
+  // is not ready or partial shows the server's reason, never the empty-data sentence.
+  const missingNote = missing
+    ? ' ' + missing + (missing === 1 ? ' day' : ' days') + ' could not be fetched.'
+    : '';
+  if (!rows.length) {
     $('billing-wrap').hidden = true;
-    $('billing-note').textContent = body && body.available === false
-      ? (body.reason || 'Not available.')
-      : 'No account-level billing data in this window.';
+    $('billing-note').textContent = body.available
+      ? 'No spend recorded in this window.' + missingNote
+      : (body.reason || 'Not available.');
     return;
   }
   $('billing-wrap').hidden = false;
@@ -544,7 +561,7 @@ function renderBilling(body) {
   const totalUsd = rows.reduce((acc, r) => acc + (Number(r.usd) || 0), 0);
   $('billing-note').textContent =
     'Account-wide official spend (all devices), last 14 days: '
-    + fmtCredits(total) + ' credits ≈ ' + fmtUsd(totalUsd) + '.';
+    + fmtCredits(total) + ' credits ≈ ' + fmtUsd(totalUsd) + '.' + missingNote;
   tbody.innerHTML = rows.map((r) => `
     <tr>
       <td>${esc(r.date)}</td>

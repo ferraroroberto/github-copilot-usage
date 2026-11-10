@@ -18,7 +18,8 @@ github-copilot-usage/
 │   ├── cli_parser.py          # read-only, mtime-cached parser for Copilot CLI session logs
 │   ├── aggregate.py           # period bucketing, per-model and per-session rollups, CSV export
 │   ├── static_versioning.py   # content-hash cache busting: the ?v= stamp, CachingStaticFiles and the stamped index.html
-│   └── billing.py             # optional GitHub billing API client (needs a token; absent → visible reason)
+│   ├── billing.py             # optional GitHub billing API client (needs a token; absent → visible reason)
+│   └── billing_state.py       # the billing card's declared state and its one derive function (docs/billing-state.md)
 │
 ├── tests/                     # pytest suite, fixtures only — no real logs or credentials
 ├── scripts/

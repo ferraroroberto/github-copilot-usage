@@ -8,7 +8,6 @@ except POST /api/config (writes config.json).
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -108,13 +107,13 @@ async def api_billing(days: int = Query(14, ge=1, le=30)) -> dict:
         return await billing.get_daily_credits(days)
     except Exception as exc:  # never let the optional card break the page
         _log.warning("⚠️ billing endpoint error: %s", exc, exc_info=True)
-        return {"available": False, "reason": str(exc), "daily": [], "as_of": None}
+        return billing.failed_response(exc)
 
 
 @app.get("/api/config")
 async def api_config_get() -> dict:
     cfg = config.load()
-    cfg["billing_pat_configured"] = bool(os.environ.get(billing.PAT_ENV, "").strip())
+    cfg["billing_pat_configured"] = billing.pat_configured()
     return cfg
 
 

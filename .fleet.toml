@@ -118,7 +118,7 @@ baseline = ".comment-ratchet-baseline.json"
 # scripts/conventions_ratchet.py, which fails when a file's hit count for a rule rises above
 # .conventions-ratchet-baseline.json. Rules on: `no-window` (the tray spawns child processes on
 # Windows), `logging-not-print` (app/ and src/ log through `logging`) and `no-drive-path` (no
-# hardcoded drive paths), plus `must-use` for the entry below (a `StaticFiles` mount outside
+# hardcoded drive paths), `subprocess-timeout` (every subprocess call passes a `timeout=` or carries a `# subprocess-timeout-exempt: <reason>` marker), plus `must-use` for the entry below (a `StaticFiles` mount outside
 # `src/static_versioning.py` fails). Rules off: `secret-compare` and `git-wrapper`, because this
 # repo has neither helper. Needs Python 3.11+ (tomllib). Exit 3 (git unusable, a file that does not
 # parse) fails the gate.
@@ -127,7 +127,7 @@ history_phrases = true
 [conventions_ratchet]
 enabled  = true
 baseline = ".conventions-ratchet-baseline.json"
-rules    = ["no-window", "logging-not-print", "no-drive-path", "must-use", "state-literal", "state-set-repeat", "state-write"]
+rules    = ["no-window", "logging-not-print", "no-drive-path", "must-use", "state-literal", "state-set-repeat", "state-write", "subprocess-timeout"]
 
 # Static files go through the cache-busting mount, never a bare StaticFiles.
 [[conventions_ratchet.must_use]]

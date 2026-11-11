@@ -41,7 +41,7 @@ That runs `compileall -q app src tests`, `pytest -q`, and these ratchets, each a
 - static ratchet (`static_ratchet.py`): fails on a new duplicated block, unused import or variable, or likely-bug pattern (`.static-ratchet-baseline.json`); needs Node for `jscpd` and `ruff` from `requirements-dev.txt`, and a detector that cannot run exits 3, which fails the gate.
 - docs ratchet (`docs_ratchet.py`): fails when the root `README.md` outgrows its size budget or `README.md`/`docs/` gain an issue reference, dated heading or changelog heading (`.docs-ratchet-baseline.json`).
 - comment ratchet (`comment_ratchet.py`): fails when a product-code comment gains an issue reference (`.comment-ratchet-baseline.json`).
-- conventions ratchet (`conventions_ratchet.py`): rules `no-window`, `logging-not-print` and `no-drive-path` fail when a source file gains a spawn without `creationflags`, a `print` in library code or a hardcoded drive path (`.conventions-ratchet-baseline.json`).
+- conventions ratchet (`conventions_ratchet.py`): rules `no-window`, `logging-not-print`, `no-drive-path` and `subprocess-timeout` fail when a source file gains a spawn without `creationflags`, a `print` in library code, a hardcoded drive path or a subprocess call without `timeout=` (or a `# subprocess-timeout-exempt: <reason>` marker) (`.conventions-ratchet-baseline.json`).
 
 There is no CI — the gate is local. For changes with a runtime surface, additionally hit `/api/summary?period=all` on a running instance and load `/` in a browser (both themes) before calling it done.
 

@@ -19,7 +19,6 @@ from app import build_info
 from app.version import VERSION
 from src import aggregate, billing, config
 from src.static_versioning import CachingStaticFiles, StaticVersion
-from src.usage_log import usage_router
 from src.usage_store import usage_db_path
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -35,8 +34,14 @@ app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # Local-only view/tap log: the vendored router over a per-user database. Resolving the path creates
 # nothing, so an unwritable data folder cannot stop the server from starting.
-# Mounted before the catch-all static mount below.
-app.include_router(usage_router(usage_db_path()))
+# Mounted before the catch-all static mount below. The vendored module targets Python 3.11+ while
+# this app promises 3.9+, so a failed import drops only the log: the dashboard still starts.
+try:
+    from src.usage_log import usage_router
+except Exception as exc:  # any failure of this optional component must not stop the server
+    _log.warning("⚠️ usage log disabled, the dashboard runs without it: %s: %s", type(exc).__name__, exc)
+else:
+    app.include_router(usage_router(usage_db_path()))
 
 
 @app.on_event("shutdown")

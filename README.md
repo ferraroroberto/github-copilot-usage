@@ -8,7 +8,7 @@ Everything runs locally. Read-only. Nothing ever leaves your machine.
 
 ## Quick start
 
-Requires Python 3.9+ and a machine where you use GitHub Copilot in VS Code (any variant) and/or the Copilot CLI.
+Requires Python 3.9+ (the local usage log below needs 3.11+ and switches itself off, with a logged warning, on older interpreters) and a machine where you use GitHub Copilot in VS Code (any variant) and/or the Copilot CLI.
 
 ```
 git clone https://github.com/ferraroroberto/github-copilot-usage.git

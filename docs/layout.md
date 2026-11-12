@@ -19,7 +19,9 @@ github-copilot-usage/
 │   ├── aggregate.py           # period bucketing, per-model and per-session rollups, CSV export
 │   ├── static_versioning.py   # content-hash cache busting: the ?v= stamp, CachingStaticFiles and the stamped index.html
 │   ├── billing.py             # optional GitHub billing API client (needs a token; absent → visible reason)
-│   └── billing_state.py       # the billing card's declared state and its one derive function (docs/billing-state.md)
+│   ├── billing_state.py       # the billing card's declared state and its one derive function (docs/billing-state.md)
+│   ├── usage_log.py           # vendored byte-for-byte; the local view/tap log: `/api/usage/*` router, SQLite store and foreground-time rollup
+│   └── runtime_data.py        # vendored byte-for-byte; resolves the runtime-data directory the usage database lives in (`FLEET_DATA_ROOT`, `GITHUB_COPILOT_USAGE_DATA_DIR`)
 │
 ├── tests/                     # pytest suite, fixtures only — no real logs or credentials
 ├── scripts/

@@ -18,9 +18,9 @@ from fastapi.responses import PlainTextResponse, Response
 from app import build_info
 from app.version import VERSION
 from src import aggregate, billing, config
-from src.runtime_data import runtime_db_path
 from src.static_versioning import CachingStaticFiles, StaticVersion
 from src.usage_log import usage_router
+from src.usage_store import usage_db_path
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 _log = logging.getLogger(__name__)
@@ -33,9 +33,10 @@ app = FastAPI(title="github-copilot-usage", version=VERSION, docs_url="/api/docs
 # A phone on a slow link pays for every byte of the shell, the module graph and the JSON.
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
-# Local-only view/tap log: the vendored router, over a database under the runtime-data root.
+# Local-only view/tap log: the vendored router over a per-user database. Resolving the path creates
+# nothing, so an unwritable data folder cannot stop the server from starting.
 # Mounted before the catch-all static mount below.
-app.include_router(usage_router(runtime_db_path("github-copilot-usage", "usage.sqlite3", create=True)))
+app.include_router(usage_router(usage_db_path()))
 
 
 @app.on_event("shutdown")

@@ -98,6 +98,9 @@ GET /api/sessions/{session_id}
 GET /api/export.csv?period=...
 GET /api/billing
 GET /api/config          POST /api/config
+POST /api/usage/events   the page's batched view/tap events (local usage log)
+GET /api/usage/summary   views and taps per control
+GET /api/usage/time      foreground minutes: ?days=7&by=day|device|view
 ```
 
 ## Development
@@ -115,6 +118,8 @@ Layout: `app/` (FastAPI server, optional tray, the vanilla-JS dashboard in `app/
 ## Privacy
 
 Read-only over Copilot's own local log files; zero subprocesses; binds to `127.0.0.1` only; no telemetry; the only outbound call is the optional GitHub billing API when *you* configure a PAT. Your prompts stay on your machine — the dashboard shows the first ~200 characters of each request message so you can recognize what a request was, and the CSV export contains the same.
+
+**Usage log.** Besides reading Copilot's files, the dashboard records its own use — which view or control was used, a random per-visit id, the device class and timestamps, never prompts, names, URLs or addresses — into `usage.sqlite3`, one SQLite file under `<root>/github-copilot-usage/` on the machine serving it. The root is `C:\sqlite` on Windows and `~/.local/share/sqlite` elsewhere; set `FLEET_DATA_ROOT` to move the root or `GITHUB_COPILOT_USAGE_DATA_DIR` to move just this directory. Rows older than a year, or beyond 200,000, are pruned; nothing leaves the machine, and deleting the file resets it.
 
 ## License
 

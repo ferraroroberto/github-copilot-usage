@@ -24,7 +24,7 @@ github-copilot-usage/
 │   ├── runtime_data.py        # vendored byte-for-byte; resolves the runtime-data directory when `FLEET_DATA_ROOT` or `GITHUB_COPILOT_USAGE_DATA_DIR` is set
 │   └── usage_store.py         # the usage database path: those overrides, else the user's local data folder; creates nothing
 │
-├── tests/                     # pytest suite, fixtures only — no real logs or credentials
+├── tests/                     # pytest suite, fixtures only — no real logs or credentials; test_python_floor.py holds the 3.9 promise
 ├── scripts/
 │   ├── verify-before-ship.ps1 # the local gate: byte-compile, tests, structure, instruction, doc-refs, dead-code, static, docs, comment and conventions ratchets
 │   ├── structure_ratchet.py   # vendored byte-for-byte; see "Structure ratchet" below

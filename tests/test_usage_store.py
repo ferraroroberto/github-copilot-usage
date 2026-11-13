@@ -1,4 +1,4 @@
-"""The usage database path: user-level by default, overridable, and never created on resolve."""
+"""The usage database path: the runtime-data root by default, overridable, and never created on resolve."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from src import usage_store
+from src import runtime_data, usage_store
 
 
 @pytest.fixture(autouse=True)
@@ -16,9 +16,10 @@ def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(name, raising=False)
 
 
-def test_default_is_the_users_data_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
-    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+def test_default_comes_from_the_runtime_data_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(runtime_data, "fleet_data_root", lambda: tmp_path)
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "local"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "local"))
     assert usage_store.usage_db_path() == tmp_path / "github-copilot-usage" / "usage.sqlite3"
 
 

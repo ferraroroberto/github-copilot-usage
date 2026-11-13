@@ -21,8 +21,8 @@ github-copilot-usage/
 │   ├── billing.py             # optional GitHub billing API client (needs a token; absent → visible reason)
 │   ├── billing_state.py       # the billing card's declared state and its one derive function (docs/billing-state.md)
 │   ├── usage_log.py           # vendored byte-for-byte; the local view/tap log: `/api/usage/*` router, SQLite store and foreground-time rollup
-│   ├── runtime_data.py        # vendored byte-for-byte; resolves the runtime-data directory when `FLEET_DATA_ROOT` or `GITHUB_COPILOT_USAGE_DATA_DIR` is set
-│   └── usage_store.py         # the usage database path: those overrides, else the user's local data folder; creates nothing
+│   ├── runtime_data.py        # vendored byte-for-byte; the runtime-data root and its `FLEET_DATA_ROOT` / `<APP>_DATA_DIR` overrides
+│   └── usage_store.py         # the usage database path, resolved through `runtime_data`; creates nothing
 │
 ├── tests/                     # pytest suite, fixtures only — no real logs or credentials; test_python_floor.py holds the 3.9 promise
 ├── scripts/

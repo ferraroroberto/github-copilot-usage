@@ -16,7 +16,9 @@ import { buildReadoutText } from './_vendored/page-foot/page-foot.js';
 import { initUsageLog } from './_vendored/usage-log/usage-log.js';
 
 // Local-only usage log (views, taps, device class); same-origin, no content recorded.
-initUsageLog();
+const usage = initUsageLog();
+// Single-view page: the base view the dialogs return to when they close.
+usage.trackView('dashboard');
 
 const POLL_MS = 30_000;
 // Billing changes server-side at most every 5 min (src/billing.py caches today),

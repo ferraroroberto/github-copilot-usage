@@ -345,3 +345,41 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
+
+/* ---- request explorer ----
+ * The rows reuse the session list; the fields sit at the 44px touch floor because the
+ * filters are the whole point of this view and a phone is where it is used. */
+.rq-intro { margin: 0 0 4px; }
+.rq-period { margin: 8px 0 12px; width: 100%; }
+.rq-period button { flex: 1 1 0; min-width: 0; padding: 0 4px; }
+.rq-field {
+  width: 100%; min-width: 0; height: 44px; padding: 0 10px;
+  background: var(--input-bg); color: var(--fg);
+  border: 1px solid var(--control-border); border-radius: var(--r-md);
+  font: inherit; font-size: var(--font-body);
+}
+.rq-search { margin-bottom: 12px; }
+.rq-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px var(--gutter); }
+@media (min-width: 560px) { .rq-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.rq-label { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); }
+.rq-toolbar { display: flex; flex-wrap: wrap; gap: var(--gutter); margin-top: 4px; }
+.rq-toolbar .btn-surface { margin-top: 0; }
+.rq-summary { margin: 14px 0 4px; font-weight: 600; }
+.rq-list { margin-top: 4px; }
+.rq-pager { display: flex; align-items: center; justify-content: space-between; gap: var(--gutter); margin-top: 8px; }
+.rq-pager .btn-surface { margin-top: 0; }
+.rq-pager .btn-surface:disabled { color: var(--fg-muted); cursor: default; }
+.rq-page { font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); }
+.rq-sortbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--gutter); margin-bottom: 4px; }
+.rq-sortbar .rq-order { margin-top: 0; height: 44px; }
+.rq-filter-box { margin-top: 8px; }
+.rq-filter-box > summary {
+  display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; list-style: none;
+  font-size: var(--font-label); font-weight: 700;
+}
+.rq-filter-box > summary::-webkit-details-marker { display: none; }
+.rq-chevron { width: 16px; height: 16px; margin-left: auto; color: var(--fg-muted); transition: transform 0.15s ease; }
+.rq-filter-box[open] > summary .rq-chevron { transform: rotate(90deg); }
+.rq-filter-box[open] > summary { border-bottom: 1px solid var(--border-muted); margin-bottom: 10px; }
+.rq-list .sess-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
+.rq-list .sess-meta { white-space: normal; }

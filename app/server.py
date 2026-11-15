@@ -18,7 +18,7 @@ from fastapi.responses import PlainTextResponse, Response
 
 from app import build_info
 from app.version import VERSION
-from src import aggregate, billing, config, pace_alert
+from src import aggregate, billing, config, pace_alert, request_explorer
 from src.static_versioning import CachingStaticFiles, StaticVersion
 from src.usage_store import usage_db_path
 
@@ -116,6 +116,31 @@ async def api_session_detail(session_id: str) -> dict:
     if detail is None:
         return {"error": "session not found", "session_id": session_id}
     return detail
+
+
+@app.get("/api/requests")
+async def api_requests(
+    period: str = Query("week", description="today | week | month | cycle | all"),
+    project: str = Query("", description="project key from the facets"),
+    model: str = Query(""),
+    mode: str = Query(""),
+    ide: str = Query(""),
+    result: str = Query("", description="ok | error"),
+    min_credits: Optional[float] = Query(None, ge=0, description="billed requests only"),
+    max_credits: Optional[float] = Query(None, ge=0, description="billed requests only"),
+    q: str = Query("", description="text in the prompt preview or the session title"),
+    sort: str = Query("ts", description="ts | credits | tokens | elapsed"),
+    order: str = Query("desc", description="asc | desc"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(request_explorer.DEFAULT_PAGE_SIZE, ge=1, le=request_explorer.MAX_PAGE_SIZE),
+) -> dict:
+    records, _ = aggregate.gather_records()
+    query = request_explorer.Query.build(
+        period=period, project=project, model=model, mode=mode, ide=ide, result=result,
+        min_credits=min_credits, max_credits=max_credits, q=q, sort=sort, order=order,
+        page=page, page_size=page_size,
+    )
+    return request_explorer.explore(records, query)
 
 
 @app.get("/api/export.csv")

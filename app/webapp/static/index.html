@@ -234,6 +234,16 @@
     <button data-track="sessions-show-all" class="btn-surface" id="sessions-more" type="button" hidden>Show all</button>
   </section>
 
+  <!-- Request explorer entry: the view itself is the requests dialog below -->
+  <section class="card">
+    <div class="card-head">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <h2>Requests</h2>
+    </div>
+    <p class="footnote rq-intro">Search every request by project, model, mode, result, credits or prompt text.</p>
+    <button data-track="requests-open" class="btn-surface" id="requests-open" type="button" aria-haspopup="dialog">Search requests</button>
+  </section>
+
   <!-- Official billing (optional PAT) -->
   <section class="card" id="billing-card">
     <div class="card-head">
@@ -284,6 +294,82 @@
       <thead><tr><th>Time</th><th>Prompt</th><th>Mode</th><th>Model</th><th class="num">In</th><th class="num">Out</th><th class="num">Credits</th><th class="num">Took</th></tr></thead>
       <tbody></tbody>
     </table>
+  </div>
+</dialog>
+
+<!-- Request explorer: filters, sort and page live in the URL (?view=requests&...) -->
+<dialog data-track-view="requests" id="requests-dialog" class="requests-dialog">
+  <div class="dialog-head">
+    <h2>Requests</h2>
+    <button data-track="requests-close" class="dialog-close" id="rq-close" type="button" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </div>
+
+  <div class="seg rq-period" id="rq-period" role="group" aria-label="Period">
+    <button data-track="requests-period-today" data-period="today" type="button">Today</button>
+    <button data-track="requests-period-week" data-period="week" type="button">Week</button>
+    <button data-track="requests-period-month" data-period="month" type="button">Month</button>
+    <button data-track="requests-period-cycle" data-period="cycle" type="button">Cycle</button>
+    <button data-track="requests-period-all" data-period="all" type="button">All</button>
+  </div>
+
+  <input data-track="requests-search" class="rq-field rq-search" id="rq-q" type="search" placeholder="Search prompts and sessions" aria-label="Search prompts and sessions" autocomplete="off">
+
+  <div class="rq-sortbar">
+    <label class="rq-label">Sort by
+      <select data-track="requests-sort" class="rq-field" id="rq-sort">
+        <option value="ts">Time</option>
+        <option value="credits">Credits</option>
+        <option value="tokens">Tokens</option>
+        <option value="elapsed">Time taken</option>
+      </select>
+    </label>
+    <button data-track="requests-order" class="btn-surface rq-order" id="rq-order" type="button">Newest first</button>
+  </div>
+
+  <details class="rq-filter-box" id="rq-filter-box">
+    <summary data-track="requests-filters-toggle">
+      <span>Filters</span><span class="badge" id="rq-filter-count" hidden></span>
+      <svg class="rq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+    </summary>
+  <div class="rq-filters">
+    <label class="rq-label">Project<select data-track="requests-filter-project" class="rq-field" id="rq-project"></select></label>
+    <label class="rq-label">Model<select data-track="requests-filter-model" class="rq-field" id="rq-model"></select></label>
+    <label class="rq-label">Mode<select data-track="requests-filter-mode" class="rq-field" id="rq-mode"></select></label>
+    <label class="rq-label">Editor<select data-track="requests-filter-ide" class="rq-field" id="rq-ide"></select></label>
+    <label class="rq-label">Result<select data-track="requests-filter-result" class="rq-field" id="rq-result"></select></label>
+    <label class="rq-label">Min credits<input data-track="requests-min-credits" class="rq-field" id="rq-min" type="number" inputmode="decimal" min="0" step="any" placeholder="Any"></label>
+    <label class="rq-label">Max credits<input data-track="requests-max-credits" class="rq-field" id="rq-max" type="number" inputmode="decimal" min="0" step="any" placeholder="Any"></label>
+  </div>
+  <div class="rq-toolbar">
+    <button data-track="requests-clear" class="btn-surface" id="rq-clear" type="button" hidden>Clear filters</button>
+  </div>
+  </details>
+
+  <p class="dialog-meta rq-summary" id="rq-summary" role="status" aria-live="polite"></p>
+
+  <div id="rq-body" data-state="loading">
+    <div class="empty" id="rq-loading">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <p>Reading requests…</p>
+    </div>
+    <div class="empty" id="rq-empty" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <p>No requests match these filters.</p>
+    </div>
+    <div class="empty" id="rq-error" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      <p>Could not load requests.</p>
+      <button data-track="requests-retry" class="btn-surface" id="rq-retry" type="button">Retry</button>
+    </div>
+    <ul class="session-list rq-list" id="rq-list" hidden></ul>
+  </div>
+
+  <div class="rq-pager" id="rq-pager" hidden>
+    <button data-track="requests-prev" class="btn-surface" id="rq-prev" type="button">Previous</button>
+    <span class="rq-page" id="rq-page"></span>
+    <button data-track="requests-next" class="btn-surface" id="rq-next" type="button">Next</button>
   </div>
 </dialog>
 

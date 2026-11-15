@@ -27,6 +27,10 @@ _log = logging.getLogger(__name__)
 
 USD_PER_CREDIT = 0.01
 
+# Cache traffic counts at a tenth toward effective tokens: that is the definition
+# the README documents, so cards, breakdowns and request detail all agree.
+CACHE_WEIGHT = 0.1
+
 VALID_PERIODS = ("today", "week", "month", "cycle", "all")
 
 _MAX_DAILY_BUCKETS = 14
@@ -73,7 +77,7 @@ def gather_records() -> Tuple[List[RequestRecord], List[dict]]:
     if config.load().get("include_copilot_cli", True):
         cli_dir = discovery.copilot_cli_dir()
         if cli_dir is not None:
-            cli_records = cli_parser.all_records(cli_dir)
+            cli_records, cli_usage = cli_parser.all_records(cli_dir)
             records.extend(cli_records)
             sources.append({
                 "ide": "Copilot CLI",
@@ -83,6 +87,7 @@ def gather_records() -> Tuple[List[RequestRecord], List[dict]]:
                 "session_files": len({r.session_id for r in cli_records}),
                 "requests": len(cli_records),
                 "last_activity": max((r.ts.isoformat() for r in cli_records), default=None),
+                **cli_usage,
             })
 
     return records, sources
@@ -154,6 +159,33 @@ def _blank() -> Dict[str, Any]:
         "error_credits": 0.0,
         "prompt_tokens": 0,
         "completion_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "estimated_requests": 0,
+    }
+
+
+def token_metrics(
+    prompt_tokens: int,
+    completion_tokens: int,
+    cache_read_tokens: int,
+    cache_write_tokens: int,
+    credits: Optional[float],
+) -> Dict[str, Any]:
+    """The derived token figures, from one set of definitions.
+
+    ``prompt_tokens`` is the input volume (uncached input plus cache-write);
+    cache-read never counts toward it or toward output.
+    """
+    uncached = max(prompt_tokens - cache_write_tokens, 0)
+    eff_in = uncached + CACHE_WEIGHT * cache_read_tokens
+    eff_out = completion_tokens + CACHE_WEIGHT * cache_write_tokens
+    return {
+        "uncached_input_tokens": uncached,
+        "total_input_tokens": prompt_tokens + cache_read_tokens,
+        "effective_input_tokens": round(eff_in),
+        "effective_output_tokens": round(eff_out),
+        "tokens_per_credit": round((eff_in + eff_out) / credits, 1) if credits else None,
     }
 
 
@@ -161,6 +193,10 @@ def _add(acc: Dict[str, Any], r: RequestRecord) -> None:
     acc["requests"] += 1
     acc["prompt_tokens"] += r.prompt_tokens
     acc["completion_tokens"] += r.completion_tokens
+    acc["cache_read_tokens"] += r.cache_read_tokens
+    acc["cache_write_tokens"] += r.cache_write_tokens
+    if r.usage_estimated:
+        acc["estimated_requests"] += 1
     if r.credits is not None:
         acc["billed_requests"] += 1
         acc["credits"] += r.credits
@@ -174,6 +210,10 @@ def _finish(acc: Dict[str, Any]) -> Dict[str, Any]:
     acc["credits"] = round(acc["credits"], 4)
     acc["error_credits"] = round(acc["error_credits"], 4)
     acc["usd"] = round(acc["credits"] * USD_PER_CREDIT, 4)
+    acc.update(token_metrics(
+        acc["prompt_tokens"], acc["completion_tokens"],
+        acc["cache_read_tokens"], acc["cache_write_tokens"], acc["credits"],
+    ))
     return acc
 
 
@@ -334,8 +374,11 @@ def _time_series(records: List[RequestRecord], period: str, today: date) -> List
             slot = bmap[bk][r.model] = {
                 "credits": 0.0, "requests": 0,
                 "prompt_tokens": 0, "completion_tokens": 0,
+                "cache_read_tokens": 0, "cache_write_tokens": 0,
             }
         slot["requests"] += 1
+        slot["cache_read_tokens"] += r.cache_read_tokens
+        slot["cache_write_tokens"] += r.cache_write_tokens
         slot["credits"] = round(slot["credits"] + (r.credits or 0.0), 4)
         slot["prompt_tokens"] += r.prompt_tokens
         slot["completion_tokens"] += r.completion_tokens
@@ -410,6 +453,7 @@ def build_sessions(records: List[RequestRecord]) -> List[dict]:
                 "last_ts": r.ts.isoformat(),
                 "models": [],
                 "modes": [],
+                "usage_sources": [],
                 **_blank(),
             }
         _add(s, r)
@@ -422,6 +466,8 @@ def build_sessions(records: List[RequestRecord]) -> List[dict]:
             s["models"].append(r.model)
         if r.mode and r.mode not in s["modes"]:
             s["modes"].append(r.mode)
+        if r.usage_source and r.usage_source not in s["usage_sources"]:
+            s["usage_sources"].append(r.usage_source)
 
     rows = [_finish(s) for s in smap.values()]
     rows.sort(key=lambda x: (x["credits"], x["last_ts"]), reverse=True)
@@ -452,6 +498,14 @@ def get_session_detail(records: List[RequestRecord], session_id: str) -> Optiona
             "model_requested": r.model_requested,
             "prompt_tokens": r.prompt_tokens,
             "completion_tokens": r.completion_tokens,
+            "cache_read_tokens": r.cache_read_tokens,
+            "cache_write_tokens": r.cache_write_tokens,
+            **token_metrics(
+                r.prompt_tokens, r.completion_tokens,
+                r.cache_read_tokens, r.cache_write_tokens, r.credits,
+            ),
+            "usage_source": r.usage_source,
+            "usage_estimated": r.usage_estimated,
             "credits": r.credits,
             "usd": round(r.credits * USD_PER_CREDIT, 4) if r.credits is not None else None,
             "elapsed_ms": r.elapsed_ms,
@@ -471,7 +525,8 @@ def get_session_detail(records: List[RequestRecord], session_id: str) -> Optiona
 _CSV_COLUMNS = [
     "timestamp", "ide", "source", "project", "session_id", "session_title",
     "request_id", "mode", "model", "model_requested", "prompt_tokens",
-    "completion_tokens", "credits", "usd", "elapsed_ms", "error", "message",
+    "completion_tokens", "cache_read_tokens", "cache_write_tokens", "credits",
+    "usd", "elapsed_ms", "error", "usage_source", "usage_estimated", "message",
 ]
 
 
@@ -491,9 +546,10 @@ def export_csv(records: List[RequestRecord], period: str = "all") -> str:
             r.ts.astimezone().isoformat(), r.ide, r.source, r.project_name,
             r.session_id, r.session_title, r.request_id, r.mode, r.model,
             r.model_requested, r.prompt_tokens, r.completion_tokens,
+            r.cache_read_tokens, r.cache_write_tokens,
             "" if r.credits is None else r.credits,
             "" if r.credits is None else round(r.credits * USD_PER_CREDIT, 4),
             "" if r.elapsed_ms is None else r.elapsed_ms,
-            int(r.error), r.message,
+            int(r.error), r.usage_source, int(r.usage_estimated), r.message,
         ])
     return buf.getvalue()

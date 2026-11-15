@@ -57,6 +57,12 @@ class RequestRecord:
     elapsed_ms: Optional[int]
     prompt_details: List[dict] = field(default_factory=list)
     error: bool = False
+    # prompt_tokens is the comparable input volume: uncached input plus
+    # cache-write. Cache-read is kept apart so it never inflates that volume.
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
+    usage_source: str = ""          # vscode | session-store | events.jsonl | events.jsonl-allocated | events.jsonl-checkpoint
+    usage_estimated: bool = False   # True = allocated from session/checkpoint totals, not measured per prompt
 
 
 @dataclass
@@ -331,6 +337,7 @@ def parse_session_file(
                 elapsed_ms=int(req["elapsedMs"]) if isinstance(req.get("elapsedMs"), (int, float)) else None,
                 prompt_details=details if isinstance(details, list) else [],
                 error=_has_error(req),
+                usage_source="vscode",
             )
         )
 

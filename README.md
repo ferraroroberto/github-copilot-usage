@@ -67,7 +67,7 @@ The **Data sources** card at the bottom of the dashboard shows exactly what was 
 | `extra_roots` | `[]` | additional editor storage paths to scan |
 | `include_copilot_cli` | `true` | also parse Copilot CLI sessions |
 
-Everything except the port is editable live from the ⚙ Settings dialog.
+Everything except the port is editable live from the ⚙ Settings dialog; each setting saves as you change it (numbers when you leave the field), with a toast, and there is no Save button.
 
 ### Optional: official billing card
 

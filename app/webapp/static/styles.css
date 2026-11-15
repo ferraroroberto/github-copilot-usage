@@ -33,9 +33,35 @@
   --font-caption: 0.75rem;
   /* shared inline-control height — design.md `components.control.height` */
   --control-h: 36px;
+  /* The vendored components (card, switch, settings-group) read the fleet's token
+   * names; these map them onto this app's own names so neither side is renamed. */
+  --ink: var(--fg);
+  --line: var(--border);
+  --line-muted: var(--border-muted);
+  --card-2: var(--canvas-subtle);
+  --input-bg: var(--canvas-subtle);
+  --toggle-knob: #ffffff;
+  --accent-text: #0550ae;
+  --attention-text: #7d4e00;
+  --danger-text: #a40e26;
+  --radius: var(--r-lg);
+  --radius-md: var(--r-md);
+  --radius-pill: var(--r-pill);
+  --space-sm: 8px;
+  --gap: 12px;
+  --font-body-sm: 0.875rem;
+  --row-sm: 44px;
+  --row-md: 52px;
+  --icon-title: 18px;
+  --icon-inline: 16px;
 }
 
 [data-theme="dark"] {
+  --card-2: var(--border-muted);
+  --input-bg: var(--border-muted);
+  --accent-text: #58a6ff;
+  --attention-text: #e3b341;
+  --danger-text: #ff7b72;
   --canvas: #0d1117;
   --canvas-subtle: #010409;
   --card: #161b22;
@@ -105,11 +131,10 @@ body:has(dialog[open]) { overflow: hidden; }
 }
 /* Invisible hit-area expansion lifts a compact control to the 44px touch floor
  * without changing the visual: 34+2×5=44 for the dialog close, 36+2×4=44 for a
- * labelled control. The header icon buttons are real 44px, so side-by-side
+ * labelled control (the vendored switch carries its own). The header icon buttons are real 44px, so side-by-side
  * targets never overlap. */
 .dialog-close::before { content: ""; position: absolute; inset: -5px; }
 .btn-surface::before, .seg button::before { content: ""; position: absolute; inset: -4px 0; }
-.switch::before { content: ""; position: absolute; inset: -9px 0; }
 .icon-btn svg { width: 18px; height: 18px; }
 .icon-btn:hover { color: var(--fg); }
 [data-theme="dark"] .glyph-moon { display: none; }
@@ -153,14 +178,13 @@ body:has(dialog[open]) { overflow: hidden; }
 .delta.down { color: var(--success); }  /* less spend = green */
 
 /* ---- cards ---- */
-.card {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--r-lg);
-  padding: 16px; min-width: 0;
-}
-.card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+/* The card surface is the vendored card.css; this page's headers stay left-packed
+ * (the vendored one spreads title and meta apart) and carry a bottom margin. */
+.card { min-width: 0; }
+.card-head { justify-content: flex-start; margin-bottom: 10px; flex-wrap: wrap; }
 .card-head h2 { font-size: var(--font-body); font-weight: 700; margin: 0; }
 .card-icon { width: 18px; height: 18px; color: var(--fg-muted); flex: none; }
-.card-meta { margin-left: auto; font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); }
+.card-meta { margin: 0 0 0 auto; font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); }
 .badge {
   font-size: var(--font-caption); font-weight: 700; color: var(--fg-muted);
   background: var(--canvas-subtle); border: 1px solid var(--border-muted);
@@ -282,40 +306,41 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .dialog-close svg { width: 18px; height: 18px; }
 .dialog-meta { font-size: var(--font-label); color: var(--fg-muted); margin-bottom: 10px; }
 
-/* ---- settings ---- */
-.setting-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 12px 0; border-top: 1px solid var(--border-muted);
+/* ---- settings ----
+ * The groups, rows, number fields and switch are the vendored settings-group,
+ * card and switch components; only the roots sheet and the toast are this app's. */
+.icon {
+  display: inline-block; width: 1em; height: 1em; flex: none;
+  stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  vertical-align: -0.15em;
 }
-.setting-row label, .setting-label { font-size: var(--font-label); font-weight: 600; }
-.setting-row input[type="number"] {
-  height: 44px; width: 110px; padding: 0 10px;
-  background: var(--canvas-subtle); color: var(--fg);
-  border: 1px solid var(--control-border); border-radius: var(--r-md); font: inherit;
-}
-.setting-row label small { font-size: var(--font-label); font-weight: 400; }
-.setting-col { flex-direction: column; align-items: stretch; }
-.setting-col textarea {
-  background: var(--canvas-subtle); color: var(--fg);
+.settings-row > .seg { flex: none; }
+.roots-field { display: block; margin: 8px 0 6px; font-size: var(--font-label); font-weight: 600; }
+#set-roots {
+  display: block; width: 100%;
+  background: var(--input-bg); color: var(--fg);
   border: 1px solid var(--control-border); border-radius: var(--r-md);
-  font: inherit; font-size: var(--font-label); padding: 8px 10px; resize: vertical;
+  font: inherit; font-size: var(--font-body); padding: 8px 10px; resize: vertical;
 }
-.btn-primary {
-  width: 100%; height: 48px; margin-top: 12px;
-  background: var(--accent-fill); color: var(--accent-fg);
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
-  border-radius: var(--r-md); font: inherit; font-size: var(--font-label); font-weight: 700; cursor: pointer;
+
+/* Neutral frosted toast: the card's glass, centred near the bottom; only an error
+ * tints. It is a manual popover so it sits above an open modal dialog. */
+.toast {
+  position: fixed; inset: auto; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%); margin: 0; display: none;
+  width: max-content; max-width: min(calc(100vw - 24px), 560px);
+  padding: 12px 18px; text-align: center; text-wrap: balance;
+  font-size: var(--font-label); font-weight: 700; line-height: 1.5;
+  color: var(--fg); background: color-mix(in srgb, var(--card) 80%, transparent);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  -webkit-backdrop-filter: blur(20px) saturate(1.25); backdrop-filter: blur(20px) saturate(1.25);
+  box-shadow: 0 8px 24px rgba(31, 35, 40, 0.12);
 }
-.switch {
-  width: 44px; height: 26px; flex: none; padding: 0; position: relative;
-  background: var(--control-border); border: 0; border-radius: var(--r-pill); cursor: pointer;
+.toast.show { display: block; }
+.toast[data-tone="danger"] {
+  color: var(--accent-fg); border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 75%, transparent);
 }
-.switch[aria-checked="true"] { background: var(--accent-fill); }
-.switch-thumb {
-  position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
-  background: var(--accent-fg); border-radius: 50%; transition: left 0.15s ease;
-}
-.switch[aria-checked="true"] .switch-thumb { left: 21px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }

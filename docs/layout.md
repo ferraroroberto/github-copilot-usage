@@ -16,6 +16,7 @@ github-copilot-usage/
 │   ├── discovery.py           # finds Copilot's session-log folders per editor variant and OS
 │   ├── vscode_parser.py       # read-only, mtime-cached parser for VS Code chat session logs
 │   ├── cli_parser.py          # read-only, mtime-cached parser for Copilot CLI session logs
+│   ├── cli_session_store.py   # read-only reader for the Copilot CLI's session-store.db per-call usage
 │   ├── aggregate.py           # period bucketing, per-model and per-session rollups, CSV export
 │   ├── static_versioning.py   # content-hash cache busting: the ?v= stamp, CachingStaticFiles and the stamped index.html
 │   ├── billing.py             # optional GitHub billing API client (needs a token; absent → visible reason)

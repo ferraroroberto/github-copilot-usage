@@ -25,7 +25,7 @@ That's it — the first run creates a virtual environment, installs three depend
 - **Billing-cycle burn-down** — set your monthly credit allowance and see % used, a "where you should be today" pace marker, and a linear projection to cycle end. Get the right number from VS Code's own Copilot menu: it shows **"Credits X / Y used"** — enter Y (plan defaults are Business 300 / Enterprise 1000 / Pro 300 / Pro+ 1500, but org-provisioned pools can be much larger, e.g. 23,400).
 - **Credits per model over time** (stacked daily/weekly/monthly chart) and tokens in/out trends.
 - **Where your prompt tokens go** — VS Code records a per-request composition breakdown (System Instructions / Tool Definitions / Messages / attachments…). The dashboard aggregates it, weighted by prompt size. If "Tool Definitions" dominates, disabling unused tools and MCP servers shrinks *every single request* you make.
-- **Session explorer** — every chat session, sortable by cost or recency; click one for the per-request drill-down: your prompt, mode (agent/ask/edit), resolved model, tokens in/out, **exact credits billed** (not an estimate — this is the number GitHub charges), and elapsed time.
+- **Session explorer** — every chat session, sortable by cost or recency; click one for the per-request drill-down: your prompt, mode (agent/ask/edit), resolved model, tokens in/out, **exact credits billed** (not an estimate — this is the number GitHub charges), and elapsed time. CLI rows spread from session totals are marked `~` as estimates.
 - **By model / by project / by mode breakdowns** with credit shares.
 - **CSV export** of every request for your own spreadsheets.
 - **Official GitHub billing card** (optional): add a PAT and see the account-wide per-day per-model credit spend straight from GitHub's billing API — covers usage from *all* your devices, not just this machine.
@@ -40,12 +40,28 @@ All sources are **discovered automatically at runtime** and parsed read-only:
 |---|---|---|
 | VS Code Copilot Chat | `<product-dir>/User/workspaceStorage/<hash>/chatSessions/*.jsonl` | per request — exact credits, tokens, model, prompt composition |
 | VS Code chats without a workspace | `<product-dir>/User/globalStorage/emptyWindowChatSessions/` | per request |
-| Copilot CLI (optional) | `~/.copilot/session-state/<uuid>/events.jsonl` | per session x model |
+| Copilot CLI (optional) | `~/.copilot/session-store.db` (`assistant_usage_events`) | per prompt x model — exact, active sessions and sub-agents included |
+| Copilot CLI fallback | `~/.copilot/session-state/<uuid>/events.jsonl` | session x model totals, spread over the session's prompts and marked estimated |
 | GitHub billing API (optional) | `api.github.com` with your PAT | per day x model, account-wide |
 
 `<product-dir>` is found by enumerating your platform's config root (`%APPDATA%` on Windows, `~/Library/Application Support` on macOS, `~/.config` on Linux) for anything that looks like a VS Code build — stock **Code**, **Code - Insiders**, **VSCodium**, **Cursor**, **Windsurf**, and any company-branded fork are all picked up without configuration. Remote-server installs (`~/.vscode-server`) are probed too. If your editor stores data somewhere exotic, add the path under **Settings → extra roots** (or `extra_roots` in `config.json`).
 
 The **Data sources** card at the bottom of the dashboard shows exactly what was found and how many sessions/requests each source contributed — use it to confirm your setup is being read.
+
+The CLI database's schema is undocumented: when it is missing or has an unexpected shape, the CLI falls back to `events.jsonl` and the Data sources card says why. Every request carries `usage_source` (`vscode`, `session-store`, `events.jsonl`, `events.jsonl-allocated`, `events.jsonl-checkpoint`) and `usage_estimated`. Estimated values come from session or checkpoint totals spread across prompts (weighted by each prompt's checkpoint credit delta, evenly without checkpoints); the UI marks them `~`.
+
+### Token definitions
+
+Credits stay the billing measure. Cache tokens are kept in their own buckets, and these definitions apply on every card, chart, breakdown and detail view:
+
+| Figure | Definition |
+|---|---|
+| Tokens in (input volume, `prompt_tokens`) | CLI: uncached input + cache-write. VS Code: `promptTokens` |
+| Cache read / cache write | separate buckets; cache-read never counts toward input volume or output |
+| Total input (context processed) | CLI total input including cache-read |
+| Effective input | uncached input + 10% of cache-read |
+| Effective output | output + 10% of cache-write |
+| Tokens per credit | (effective input + effective output) / billed credits; null when nothing was billed |
 
 ### Notes and honest limitations
 

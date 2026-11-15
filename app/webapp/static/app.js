@@ -94,6 +94,24 @@ function fmtNum(n) {
   return Number(n).toLocaleString();
 }
 
+// One-line token breakdown for a row's tooltip; cache buckets stay separate from input volume.
+function tokBreakdown(r) {
+  return 'uncached in ' + fmtNum(r.uncached_input_tokens)
+    + ' · cache read ' + fmtNum(r.cache_read_tokens)
+    + ' · cache write ' + fmtNum(r.cache_write_tokens)
+    + ' · out ' + fmtNum(r.completion_tokens)
+    + ' · total in ' + fmtNum(r.total_input_tokens)
+    + ' · effective ' + fmtNum(r.effective_input_tokens) + ' in / ' + fmtNum(r.effective_output_tokens) + ' out'
+    + (r.tokens_per_credit == null ? '' : ' · ' + fmtNum(r.tokens_per_credit) + ' tok/credit');
+}
+
+function cacheLine(r) {
+  const bits = [];
+  if (r.cache_read_tokens) bits.push(fmtTok(r.cache_read_tokens) + ' cache read');
+  if (r.cache_write_tokens) bits.push(fmtTok(r.cache_write_tokens) + ' cache write');
+  return bits.join(' · ');
+}
+
 function fmtTok(n) {
   n = Number(n) || 0;
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1) + 'M';
@@ -231,14 +249,19 @@ function renderTiles(s) {
   $('t-credits').textContent = fmtCredits(t.credits);
   $('t-usd').textContent = t.credits ? '≈ ' + fmtUsd(t.usd) : '';
   $('t-requests').textContent = fmtNum(t.requests);
-  $('t-avg').textContent = t.billed_requests
-    ? fmtCredits(t.avg_credits_per_request) + ' cr/req' : '';
+  $('t-avg').textContent = [
+    t.billed_requests ? fmtCredits(t.avg_credits_per_request) + ' cr/req' : '',
+    t.estimated_requests ? fmtNum(t.estimated_requests) + ' estimated' : '',
+  ].filter(Boolean).join(' · ');
   $('t-in').textContent = fmtTok(t.prompt_tokens);
+  $('t-in').title = tokBreakdown(t);
   $('t-out').textContent = fmtTok(t.completion_tokens);
-  $('t-in-sub').textContent = t.requests
-    ? '~' + fmtTok(t.prompt_tokens / Math.max(t.requests, 1)) + ' per request' : '';
-  $('t-out-sub').textContent = t.errors
-    ? t.errors + ' failed req (' + fmtCredits(t.error_credits) + ' cr)' : '';
+  $('t-in-sub').textContent = cacheLine(t) || (t.requests
+    ? '~' + fmtTok(t.prompt_tokens / Math.max(t.requests, 1)) + ' per request' : '');
+  $('t-out-sub').textContent = [
+    t.errors ? t.errors + ' failed req (' + fmtCredits(t.error_credits) + ' cr)' : '',
+    t.tokens_per_credit == null ? '' : fmtTok(t.tokens_per_credit) + ' effective tok/credit',
+  ].filter(Boolean).join(' · ');
 
   renderDelta($('d-credits'), t.credits, s.prev_totals && s.prev_totals.credits);
   renderDelta($('d-requests'), t.requests, s.prev_totals && s.prev_totals.requests);
@@ -363,9 +386,14 @@ function renderCharts(s) {
     },
   });
 
+  renderTokenChart(ts, labels);
+}
+
+function renderTokenChart(ts, labels) {
   const theme = currentTheme();
   const inColor = PALETTE[theme][0];
   const outColor = PALETTE[theme][1];
+  const cacheColor = PALETTE[theme][2];
   const sumField = (b, f) => Object.values(b.models || {}).reduce((acc, m) => acc + (m[f] || 0), 0);
 
   if (_chartTokens) _chartTokens.destroy();
@@ -388,6 +416,14 @@ function renderCharts(s) {
           borderColor: outColor,
           backgroundColor: outColor + '2e',
           fill: true, tension: 0.3, borderWidth: 2,
+          pointRadius: labels.length > 10 ? 0 : 3, pointHoverRadius: 4,
+        },
+        {
+          label: 'Cache read (not in tokens in)',
+          data: ts.map((b) => sumField(b, 'cache_read_tokens')),
+          borderColor: cacheColor,
+          borderDash: [5, 4],
+          fill: false, tension: 0.3, borderWidth: 2,
           pointRadius: labels.length > 10 ? 0 : 3, pointHoverRadius: 4,
         },
       ],
@@ -433,7 +469,7 @@ function renderModelTable(rows) {
       <td class="num">${fmtNum(r.requests)}</td>
       <td class="num">${fmtCredits(r.credits)}</td>
       <td class="num">${r.credits_share_pct}%</td>
-      <td class="num">${fmtTok(r.prompt_tokens)} / ${fmtTok(r.completion_tokens)}</td>
+      <td class="num" title="${esc(tokBreakdown(r))}">${fmtTok(r.prompt_tokens)} / ${fmtTok(r.completion_tokens)}</td>
     </tr>`).join('');
 }
 
@@ -445,7 +481,7 @@ function renderProjectTable(rows, byMode) {
       <td class="td-trunc" title="${esc(r.project_path || r.project)}">${esc(r.project)}</td>
       <td class="num">${fmtNum(r.requests)}</td>
       <td class="num">${fmtCredits(r.credits)}</td>
-      <td class="num">${fmtTok(r.prompt_tokens)} / ${fmtTok(r.completion_tokens)}</td>
+      <td class="num" title="${esc(tokBreakdown(r))}">${fmtTok(r.prompt_tokens)} / ${fmtTok(r.completion_tokens)}</td>
     </tr>`).join('');
 
   $('mode-chips').textContent = byMode
@@ -480,7 +516,7 @@ function renderSessions() {
       <span class="sess-meta">
         ${esc(s.project)} · ${esc(s.ide)} · ${fmtDay(s.last_ts)} ${fmtTime(s.first_ts)}–${fmtTime(s.last_ts)}
         · ${fmtNum(s.requests)} req · ${fmtTok(s.prompt_tokens)}<svg class="inline-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="in"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg> ${fmtTok(s.completion_tokens)}<svg class="inline-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="out"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
-        · ${esc((s.models || []).join(', '))}
+        · ${esc((s.models || []).join(', '))}${s.estimated_requests ? ' · estimated' : ''}
       </span>
     </li>`).join('');
 }
@@ -520,7 +556,10 @@ async function openSession(sid) {
     detail.project + ' · ' + detail.ide
     + ' · ' + fmtDay(detail.first_ts) + ' ' + fmtTime(detail.first_ts) + ' – ' + fmtTime(detail.last_ts)
     + ' · ' + fmtNum(detail.requests) + ' requests · '
-    + fmtCredits(detail.credits) + ' credits (≈ ' + fmtUsd(detail.usd) + ')';
+    + fmtCredits(detail.credits) + ' credits (≈ ' + fmtUsd(detail.usd) + ')'
+    + (cacheLine(detail) ? ' · ' + cacheLine(detail) : '')
+    + (detail.estimated_requests
+      ? ' · ' + fmtNum(detail.estimated_requests) + ' estimated (allocated from session totals, marked ~)' : '');
 
   const mix = detail.prompt_mix || [];
   $('sd-mix').innerHTML = mix.length ? mix.map((row) => `
@@ -530,17 +569,20 @@ async function openSession(sid) {
     </div>`).join('') : '';
 
   const tbody = $('sd-table').querySelector('tbody');
-  tbody.innerHTML = (detail.requests_detail || []).map((r) => `
-    <tr${r.error ? ' style="opacity:0.6"' : ''}>
+  tbody.innerHTML = (detail.requests_detail || []).map((r) => {
+    const est = r.usage_estimated ? '~' : '';
+    return `
+    <tr${r.error ? ' style="opacity:0.6"' : ''}${r.usage_estimated ? ' title="Estimated: allocated from session totals (' + esc(r.usage_source) + ')"' : ''}>
       <td class="num">${fmtTime(r.ts)}</td>
       <td class="td-trunc" title="${esc(r.message)}">${esc(r.message) || '<span class="muted">—</span>'}${r.error ? ' <svg class="inline-glyph glyph-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="errored"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>' : ''}</td>
       <td>${esc(r.mode)}</td>
       <td class="td-trunc" title="${esc(r.model)}">${esc(r.model)}</td>
-      <td class="num">${fmtTok(r.prompt_tokens)}</td>
-      <td class="num">${fmtTok(r.completion_tokens)}</td>
-      <td class="num">${r.credits === null ? '—' : fmtCredits(r.credits)}</td>
+      <td class="num" title="${esc(tokBreakdown(r))}">${est}${fmtTok(r.prompt_tokens)}</td>
+      <td class="num">${est}${fmtTok(r.completion_tokens)}</td>
+      <td class="num">${r.credits === null ? '—' : est + fmtCredits(r.credits)}</td>
       <td class="num">${r.elapsed_ms === null ? '—' : (r.elapsed_ms / 1000).toFixed(1) + 's'}</td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   $('session-dialog').showModal();
 }
@@ -590,6 +632,7 @@ function renderSources(sources) {
       <span class="badge">${esc(s.kind)}</span>
       <span class="muted">${fmtNum(s.session_files)} session file${s.session_files === 1 ? '' : 's'} · ${fmtNum(s.requests)} requests${s.last_activity ? ' · last ' + fmtDay(s.last_activity) + ' ' + fmtTime(s.last_activity) : ''}</span>
       <span class="source-path">${esc(s.path)}</span>
+      ${s.usage_note ? `<span class="muted">${esc(s.usage_note)}</span>` : ''}
     </li>`).join('') || '<li><span class="muted">No Copilot data locations found.</span></li>';
 }
 

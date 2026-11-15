@@ -114,3 +114,33 @@ def test_export_csv_shape():
     assert lines[0].startswith("timestamp,ide,source,project")
     assert "gpt-5-mini" in lines[1]
     assert "0.5" in lines[1]
+
+
+def test_token_definitions():
+    # input volume 500 = uncached 200 + cache-write 300; cache-read 1000 sits outside it.
+    m = aggregate.token_metrics(500, 40, 1000, 300, 2.0)
+    assert m["uncached_input_tokens"] == 200
+    assert m["total_input_tokens"] == 1500
+    assert m["effective_input_tokens"] == 300       # 200 + 10% of 1000
+    assert m["effective_output_tokens"] == 70       # 40 + 10% of 300
+    assert m["tokens_per_credit"] == pytest.approx(185.0)
+    assert aggregate.token_metrics(500, 40, 0, 0, 0.0)["tokens_per_credit"] is None
+    assert aggregate.token_metrics(500, 40, 0, 0, None)["tokens_per_credit"] is None
+
+
+def test_cache_buckets_and_estimates_reach_totals_and_detail():
+    records = [
+        _rec(source="cli", prompt_tokens=500, cache_read_tokens=1000, cache_write_tokens=300,
+             credits=2.0, usage_source="events.jsonl-allocated", usage_estimated=True),
+        _rec(request_id="req-2", usage_source="vscode"),
+    ]
+    t = aggregate.get_summary(records, "today")["totals"]
+    assert (t["prompt_tokens"], t["cache_read_tokens"], t["cache_write_tokens"]) == (1500, 1000, 300)
+    assert t["total_input_tokens"] == 2500
+    assert t["estimated_requests"] == 1
+
+    detail = aggregate.get_session_detail(records, "sess-1")
+    est = detail["requests_detail"][0]
+    assert est["usage_estimated"] is True and est["usage_source"] == "events.jsonl-allocated"
+    assert est["uncached_input_tokens"] == 200
+    assert detail["usage_sources"] == ["events.jsonl-allocated", "vscode"]

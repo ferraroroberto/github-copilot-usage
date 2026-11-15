@@ -11,7 +11,10 @@
   --fg-muted: #656d76;
   --muted: var(--fg-muted);
   --accent: #0969da;
+  --accent-fill: #0969da;
   --accent-fg: #ffffff;
+  --control-border: #818b98;
+  --neutral-soft: color-mix(in srgb, var(--fg-muted) 16%, transparent);
   --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
   --accent-border-soft: color-mix(in srgb, var(--accent) 24%, transparent);
   --success: #1a7f37;
@@ -41,6 +44,8 @@
   --fg: #e6edf3;
   --fg-muted: #7d8590;
   --accent: #2f81f7;
+  --accent-fill: #1f6feb;
+  --control-border: #6e7681;
   --success: #3fb950;
   --danger: #f85149;
   --attention: #d29922;
@@ -88,23 +93,23 @@ body:has(dialog[open]) { overflow: hidden; }
 .topbar-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .topbar-title h1 { font-size: var(--font-heading-lg); font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; margin: 0; }
 .logo { width: 24px; height: 24px; color: var(--accent); flex: none; }
-.topbar-actions { display: flex; align-items: center; gap: 8px; }
-.freshness { font-size: var(--font-caption); font-weight: 600; color: var(--fg-muted); }
+.topbar-actions { display: flex; align-items: center; gap: 0; }
+.freshness { font-size: var(--font-caption); font-weight: 600; color: var(--fg-muted); margin-right: 8px; }
 
 .icon-btn {
-  position: relative;
-  width: 36px; height: var(--control-h); padding: 0;
+  width: 44px; height: 44px; flex: none; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  background: var(--canvas-subtle); color: var(--fg-muted);
-  border: 1px solid var(--border); border-radius: var(--r-md);
+  background: transparent; color: var(--fg-muted);
+  border: 0; border-radius: var(--r-md);
   cursor: pointer;
 }
-/* invisible hit-area expansion — lift the compact 36/34px controls to the
- * design.md 44px effective touch floor (Touch targets) without changing the
- * visual. 36+2×5=46, 34+2×5=44 — both >= 44. */
-.icon-btn::before, .dialog-close::before {
-  content: ""; position: absolute; inset: -5px;
-}
+/* Invisible hit-area expansion lifts a compact control to the 44px touch floor
+ * without changing the visual: 34+2×5=44 for the dialog close, 36+2×4=44 for a
+ * labelled control. The header icon buttons are real 44px, so side-by-side
+ * targets never overlap. */
+.dialog-close::before { content: ""; position: absolute; inset: -5px; }
+.btn-surface::before, .seg button::before { content: ""; position: absolute; inset: -4px 0; }
+.switch::before { content: ""; position: absolute; inset: -9px 0; }
 .icon-btn svg { width: 18px; height: 18px; }
 .icon-btn:hover { color: var(--fg); }
 [data-theme="dark"] .glyph-moon { display: none; }
@@ -114,19 +119,20 @@ body:has(dialog[open]) { overflow: hidden; }
 
 /* ---- segmented control ---- */
 .seg {
-  display: flex; gap: 4px; padding: 4px;
-  background: var(--canvas-subtle);
-  border: 1px solid var(--border); border-radius: var(--r-md);
+  display: flex; gap: 0; padding: 3px;
+  background: var(--neutral-soft);
+  border-radius: var(--r-md);
   width: fit-content;
 }
 .seg button {
-  border: 0; background: transparent; color: var(--fg-muted);
+  position: relative; min-width: 44px; height: var(--control-h);
+  border: 0; background: transparent; color: var(--fg);
   font: inherit; font-size: var(--font-label); font-weight: 600;
-  padding: 6px 14px; border-radius: var(--r-sm); cursor: pointer;
+  padding: 0 14px; border-radius: var(--r-sm); cursor: pointer;
 }
-.seg button.active { background: var(--card); color: var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
-.seg-mini { margin-left: auto; padding: 2px; }
-.seg-mini button { padding: 3px 10px; font-size: var(--font-caption); }
+.seg button.active { background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+.seg-mini { margin-left: auto; }
+.seg-mini button { padding: 0 10px; }
 
 /* ---- stat tiles ---- */
 .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); }
@@ -136,12 +142,12 @@ body:has(dialog[open]) { overflow: hidden; }
   padding: 16px; min-width: 0;
 }
 .tile-hero { border-color: var(--accent-border-soft); background: linear-gradient(180deg, var(--accent-soft), transparent 70%), var(--card); }
-.tile-label { font-size: var(--font-caption); font-weight: 600; color: var(--fg-muted); }
+.tile-label { font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); }
 /* overflow-wrap: a grouped 6-7 digit value ("123,456") has no break
  * opportunity, so at the tightest tile widths (320px 2-up, the 640px 4-up
  * boundary) it would spill past the card edge. Wrapping keeps it readable. */
 .tile-value { font-size: var(--font-heading-xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin-top: 2px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.tile-sub { font-size: var(--font-caption); font-weight: 600; color: var(--fg-muted); min-height: 1.2em; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.tile-sub { font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); min-height: 1.2em; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .delta { font-size: var(--font-caption); font-weight: 700; border-radius: var(--r-pill); padding: 1px 8px; background: var(--canvas-subtle); border: 1px solid var(--border-muted); }
 .delta.up { color: var(--danger); }     /* more spend = red */
 .delta.down { color: var(--success); }  /* less spend = green */
@@ -154,16 +160,23 @@ body:has(dialog[open]) { overflow: hidden; }
 .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
 .card-head h2 { font-size: var(--font-body); font-weight: 700; margin: 0; }
 .card-icon { width: 18px; height: 18px; color: var(--fg-muted); flex: none; }
-.card-meta { margin-left: auto; font-size: var(--font-caption); font-weight: 600; color: var(--fg-muted); }
+.card-meta { margin-left: auto; font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); }
 .badge {
   font-size: var(--font-caption); font-weight: 700; color: var(--fg-muted);
   background: var(--canvas-subtle); border: 1px solid var(--border-muted);
   border-radius: var(--r-pill); padding: 1px 8px;
 }
-.footnote { font-size: var(--font-caption); color: var(--fg-muted); margin: 10px 0 0; }
+.footnote { font-size: var(--font-label); color: var(--fg-muted); margin: 10px 0 0; }
 /* A status line filled only after an action takes no space until then. */
 .footnote:empty { display: none; }
 .muted { color: var(--fg-muted); }
+
+/* identifiers (env var names) in prose: the code-inline chip */
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.875em; background: var(--neutral-soft); color: var(--fg);
+  border-radius: 6px; padding: 1px 6px; overflow-wrap: anywhere;
+}
 
 /* inline Lucide status glyphs (replace emoji in JS-rendered copy) */
 .inline-glyph { width: 1em; height: 1em; vertical-align: -0.125em; flex: none; }
@@ -203,7 +216,7 @@ body:has(dialog[open]) { overflow: hidden; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: var(--font-label); }
 th {
-  text-align: left; font-size: var(--font-caption); font-weight: 700; color: var(--fg-muted);
+  text-align: left; font-size: var(--font-label); font-weight: 700; color: var(--fg-muted);
   padding: 6px 8px 6px 0; border-bottom: 1px solid var(--border-muted); white-space: nowrap;
 }
 td { padding: 8px 8px 8px 0; border-bottom: 1px solid var(--border-muted); vertical-align: top; }
@@ -222,8 +235,9 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .session-list li:hover .sess-title { color: var(--accent); }
 .sess-title { font-weight: 600; font-size: var(--font-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sess-credits { font-weight: 700; font-size: var(--font-label); text-align: right; font-variant-numeric: tabular-nums; }
-.sess-meta { grid-column: 1 / -1; font-size: var(--font-caption); color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sess-meta { grid-column: 1 / -1; font-size: var(--font-label); color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btn-surface {
+  position: relative;
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   height: var(--control-h); padding: 0 14px; margin-top: 10px;
   background: var(--canvas-subtle); color: var(--fg-muted);
@@ -237,7 +251,7 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .source-list li { display: flex; gap: 10px; align-items: baseline; padding: 10px 0; flex-wrap: wrap; }
 .source-list li + li { border-top: 1px solid var(--border-muted); }
 .source-ide { font-weight: 700; }
-.source-path { color: var(--fg-muted); font-size: var(--font-caption); word-break: break-all; flex: 1 1 100%; }
+.source-path { color: var(--fg-muted); font-size: var(--font-label); word-break: break-all; flex: 1 1 100%; }
 
 /* ---- empty state ---- */
 .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 16px; color: var(--fg-muted); text-align: center; }
@@ -266,7 +280,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
   border: 0; border-radius: var(--r-md); cursor: pointer;
 }
 .dialog-close svg { width: 18px; height: 18px; }
-.dialog-meta { font-size: var(--font-caption); color: var(--fg-muted); margin-bottom: 10px; }
+.dialog-meta { font-size: var(--font-label); color: var(--fg-muted); margin-bottom: 10px; }
 
 /* ---- settings ---- */
 .setting-row {
@@ -275,27 +289,28 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 }
 .setting-row label, .setting-label { font-size: var(--font-label); font-weight: 600; }
 .setting-row input[type="number"] {
-  height: var(--control-h); width: 110px; padding: 0 10px;
+  height: 44px; width: 110px; padding: 0 10px;
   background: var(--canvas-subtle); color: var(--fg);
-  border: 1px solid var(--border); border-radius: var(--r-md); font: inherit;
+  border: 1px solid var(--control-border); border-radius: var(--r-md); font: inherit;
 }
+.setting-row label small { font-size: var(--font-label); font-weight: 400; }
 .setting-col { flex-direction: column; align-items: stretch; }
 .setting-col textarea {
   background: var(--canvas-subtle); color: var(--fg);
-  border: 1px solid var(--border); border-radius: var(--r-md);
+  border: 1px solid var(--control-border); border-radius: var(--r-md);
   font: inherit; font-size: var(--font-label); padding: 8px 10px; resize: vertical;
 }
 .btn-primary {
   width: 100%; height: 48px; margin-top: 12px;
-  background: var(--accent); color: var(--accent-fg);
+  background: var(--accent-fill); color: var(--accent-fg);
   border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
   border-radius: var(--r-md); font: inherit; font-size: var(--font-label); font-weight: 700; cursor: pointer;
 }
 .switch {
   width: 44px; height: 26px; flex: none; padding: 0; position: relative;
-  background: var(--border); border: 0; border-radius: var(--r-pill); cursor: pointer;
+  background: var(--control-border); border: 0; border-radius: var(--r-pill); cursor: pointer;
 }
-.switch[aria-checked="true"] { background: var(--success); }
+.switch[aria-checked="true"] { background: var(--accent-fill); }
 .switch-thumb {
   position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
   background: var(--accent-fg); border-radius: 50%; transition: left 0.15s ease;

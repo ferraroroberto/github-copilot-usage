@@ -81,6 +81,10 @@ No PAT → the card simply explains it's not configured. The token is only ever 
 
 Note: this is the **user** billing endpoint, so it works for individually-paid plans (Pro / Pro+). On a **Business / Enterprise seat the organization pays**, and this endpoint typically has no data for you — there, the local session stats plus the quota bar in VS Code's Copilot menu are your sources of truth.
 
+### Optional: Telegram pace alert
+
+Set `COPILOT_USAGE_TELEGRAM_BOT_TOKEN` (from [@BotFather](https://t.me/BotFather)) and `COPILOT_USAGE_TELEGRAM_CHAT_ID` in `.env` and restart. While the server runs it checks the cycle budget every 30 minutes and sends **one** message per billing cycle the first time the linear projection reaches 100% of `monthly_credits`. It waits until day 3 of the cycle unless the allowance is already used up, because one busy first morning projects absurdly. Which cycle has already alerted is kept in `pace-alert.json` in the app's data folder, the same folder as the usage log, and is written only after Telegram accepted the message, so a failed send is retried at the next check. Settings shows whether the alert is on and has a **Send test message** button. The token is only ever sent to `api.telegram.org`. The projection uses this machine's local data only.
+
 ## Optional: system tray (Windows)
 
 `tray.bat` runs the server under a tray icon (Open dashboard / Restart / Quit) instead of a console window — handy for keeping it always on. It works directly on a fresh clone (it creates the venv and installs everything itself, including two small tray extras: pystray, pillow), so it is a full alternative to `start.bat`. Re-running it is a no-op while the tray lives; `tray.bat --restart` restarts it. Detection is scoped to this repo's `.venv`, so no other Python process is ever touched. Put a shortcut in `shell:startup` to launch on login.
@@ -98,6 +102,7 @@ GET /api/sessions/{session_id}
 GET /api/export.csv?period=...
 GET /api/billing
 GET /api/config          POST /api/config
+POST /api/alerts/test    send a Telegram test message (pace alert)
 POST /api/usage/events   the page's batched view/tap events (local usage log)
 GET /api/usage/summary   views and taps per control
 GET /api/usage/time      foreground minutes: ?days=7&by=day|device|view

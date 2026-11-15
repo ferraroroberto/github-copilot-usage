@@ -20,6 +20,7 @@ github-copilot-usage/
 │   ├── static_versioning.py   # content-hash cache busting: the ?v= stamp, CachingStaticFiles and the stamped index.html
 │   ├── billing.py             # optional GitHub billing API client (needs a token; absent → visible reason)
 │   ├── billing_state.py       # the billing card's declared state and its one derive function (docs/billing-state.md)
+│   ├── pace_alert.py          # optional Telegram message once per cycle when the projection reaches the allowance
 │   ├── usage_log.py           # vendored byte-for-byte; the local view/tap log: `/api/usage/*` router, SQLite store and foreground-time rollup
 │   ├── runtime_data.py        # vendored byte-for-byte; the runtime-data root and its `FLEET_DATA_ROOT` / `<APP>_DATA_DIR` overrides
 │   └── usage_store.py         # the usage database path, resolved through `runtime_data`; creates nothing

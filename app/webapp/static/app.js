@@ -14,6 +14,7 @@
 
 import { buildReadoutText } from './_vendored/page-foot/page-foot.js';
 import { initUsageLog } from './_vendored/usage-log/usage-log.js';
+import { setSwitch } from './_vendored/switch/switch.js';
 
 // Local-only usage log (views, taps, device class); same-origin, no content recorded.
 const usage = initUsageLog();
@@ -80,6 +81,7 @@ $('set-textsize').addEventListener('click', (e) => {
   document.documentElement.dataset.textsize = btn.dataset.textsize;
   try { localStorage.setItem('copilot-usage.textsize', btn.dataset.textsize); } catch { /* applies for this view only */ }
   paintTextSize();
+  showToast('Text size: ' + btn.textContent.trim().toLowerCase());
 });
 paintTextSize();
 
@@ -608,63 +610,138 @@ $('period-seg').addEventListener('click', (e) => {
 // Settings
 // ---------------------------------------------------------------------------
 
+// What the server last confirmed; a failed save puts the field back to this.
+let settings = { monthly_credits: 0, cycle_reset_day: 1, extra_roots: [], include_copilot_cli: true };
+
+let toastTimer = null;
+// The toast is a manual popover so it paints above an open modal dialog; where
+// popovers are missing the .show class alone still displays it.
+function showToast(message, isError = false) {
+  const el = $('toast');
+  el.textContent = message;
+  if (isError) el.dataset.tone = 'danger'; else delete el.dataset.tone;
+  el.setAttribute('aria-live', isError ? 'assertive' : 'polite');
+  el.classList.add('show');
+  try { if (el.showPopover && !el.matches(':popover-open')) el.showPopover(); } catch { /* shown by the class */ }
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.classList.remove('show');
+    try { if (el.hidePopover && el.matches(':popover-open')) el.hidePopover(); } catch { /* already hidden */ }
+  }, 2600);
+}
+
+// Persist one setting. Resolves to the server's config, or null (and an error
+// toast) when the write failed, so the caller can put the control back.
+async function saveSetting(key, value, message) {
+  try {
+    const saved = await jsonApi('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [key]: value }),
+    });
+    settings = { ...settings, ...saved };
+    showToast(message);
+    refresh();
+    return saved;
+  } catch (exc) {
+    console.error(exc);
+    showToast('Could not save that setting. Try again.', true);
+    return null;
+  }
+}
+
+function rootsLabel(roots) {
+  if (!roots.length) return 'None';
+  return roots.length === 1 ? '1 path' : roots.length + ' paths';
+}
+
+function paintSettings(cfg) {
+  settings = cfg;
+  $('set-allowance').value = cfg.monthly_credits;
+  $('set-reset').value = cfg.cycle_reset_day;
+  setSwitch($('set-cli'), !!cfg.include_copilot_cli);
+  $('set-roots-value').textContent = rootsLabel(cfg.extra_roots || []);
+  const patSet = !!cfg.billing_pat_configured;
+  const pat = $('set-pat-value');
+  pat.textContent = patSet ? 'Configured' : 'Not set';
+  if (patSet) delete pat.dataset.tone; else pat.dataset.tone = 'attention';
+  // Static copy only (no user data), so innerHTML is safe and lets the env var wear the code chip.
+  $('set-pat-note').innerHTML = 'Add <code>GITHUB_COPILOT_BILLING_PAT</code> to <code>.env</code> for the official billing card.';
+  $('set-pat-note').hidden = patSet;
+  const alertReason = cfg.pace_alert_reason;
+  const alertValue = $('set-alert-value');
+  alertValue.textContent = alertReason ? 'Off' : 'On';
+  if (alertReason) alertValue.dataset.tone = 'attention'; else delete alertValue.dataset.tone;
+  setNote($('set-alert-note'), alertReason
+    ? 'Off — ' + alertReason + ', then restart. One message per cycle when the projection reaches your allowance.'
+    : 'One Telegram message per cycle when the projection reaches your allowance.');
+  $('alert-test').hidden = !!alertReason;
+}
+
 $('settings-btn').addEventListener('click', async () => {
   try {
-    const cfg = await jsonApi('/api/config');
-    $('set-allowance').value = cfg.monthly_credits;
-    $('set-reset').value = cfg.cycle_reset_day;
-    $('set-roots').value = (cfg.extra_roots || []).join('\n');
-    $('set-cli').setAttribute('aria-checked', String(!!cfg.include_copilot_cli));
-    // Static copy only (no user data) — innerHTML is safe here and lets the
-    // "configured" state carry an inline Lucide check instead of an emoji glyph.
-    $('set-pat-note').innerHTML = cfg.billing_pat_configured
-      ? 'GitHub billing PAT: configured <svg class="inline-glyph glyph-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="configured"><path d="M20 6 9 17l-5-5"/></svg>'
-      : 'GitHub billing PAT: not set — add <code>GITHUB_COPILOT_BILLING_PAT</code> to <code>.env</code> for the official billing card.';
-    const alertReason = cfg.pace_alert_reason;
-    setNote($('set-alert-note'), alertReason
-      ? 'Off — ' + alertReason + ', then restart. One message per cycle when the projection reaches your allowance.'
-      : 'On — one Telegram message per cycle when the projection reaches your allowance.');
-    $('alert-test').hidden = !!alertReason;
-    $('alert-test-result').textContent = '';
+    paintSettings(await jsonApi('/api/config'));
   } catch { /* open anyway with stale values */ }
   $('settings-dialog').showModal();
 });
 
-$('set-cli').addEventListener('click', () => {
-  const el = $('set-cli');
-  el.setAttribute('aria-checked', String(el.getAttribute('aria-checked') !== 'true'));
-});
-
 $('settings-close').addEventListener('click', () => $('settings-dialog').close());
 
-$('alert-test').addEventListener('click', async () => {
-  const out = $('alert-test-result');
-  out.textContent = 'Sending…';
-  try {
-    const res = await jsonApi('/api/alerts/test', { method: 'POST' });
-    out.textContent = res.ok ? 'Sent — check Telegram.' : 'Not sent: ' + res.reason;
-  } catch (exc) {
-    out.textContent = 'Not sent: ' + exc.message;
-  }
+// A number saves when its field loses focus (the change event); a value out of
+// range snaps to the nearest valid one, an empty or non-numeric one is put back.
+function bindNumberSetting(id, key, min, max, label) {
+  const el = $(id);
+  el.addEventListener('change', async () => {
+    const n = el.value.trim() === '' ? NaN : Number(el.value);
+    if (!Number.isFinite(n)) { el.value = settings[key]; return; }
+    const value = Math.min(max, Math.max(min, Math.round(n)));
+    el.value = value;
+    if (value === settings[key]) return;
+    if (!(await saveSetting(key, value, label + ' saved'))) el.value = settings[key];
+  });
+}
+bindNumberSetting('set-allowance', 'monthly_credits', 0, 1_000_000, 'Allowance');
+bindNumberSetting('set-reset', 'cycle_reset_day', 1, 28, 'Reset day');
+
+$('set-cli').addEventListener('click', async () => {
+  const el = $('set-cli');
+  const next = el.getAttribute('aria-checked') !== 'true';
+  setSwitch(el, next);
+  const saved = await saveSetting('include_copilot_cli', next,
+    next ? 'Copilot CLI sessions included' : 'Copilot CLI sessions left out');
+  if (!saved) setSwitch(el, !next);
 });
 
-$('settings-save').addEventListener('click', async () => {
-  const updates = {
-    monthly_credits: Number($('set-allowance').value) || 0,
-    cycle_reset_day: Number($('set-reset').value) || 1,
-    extra_roots: $('set-roots').value.split('\n').map((s) => s.trim()).filter(Boolean),
-    include_copilot_cli: $('set-cli').getAttribute('aria-checked') === 'true',
-  };
+$('roots-open').addEventListener('click', () => {
+  $('set-roots').value = (settings.extra_roots || []).join('\n');
+  $('roots-dialog').showModal();
+});
+
+$('roots-close').addEventListener('click', () => $('roots-dialog').close());
+
+// Saves on blur and again when the sheet closes (Esc closes it without a blur);
+// the second call finds nothing changed and sends nothing.
+async function saveRoots() {
+  const roots = $('set-roots').value.split('\n').map((l) => l.trim()).filter(Boolean);
+  const before = settings.extra_roots || [];
+  if (roots.join('\n') === before.join('\n')) return;
+  settings = { ...settings, extra_roots: roots };
+  if (await saveSetting('extra_roots', roots, 'Storage roots saved')) {
+    $('set-roots-value').textContent = rootsLabel(roots);
+  } else {
+    settings = { ...settings, extra_roots: before };
+    $('set-roots').value = before.join('\n');
+  }
+}
+$('set-roots').addEventListener('change', saveRoots);
+$('roots-dialog').addEventListener('close', saveRoots);
+
+$('alert-test').addEventListener('click', async () => {
   try {
-    await jsonApi('/api/config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
-    });
-    $('settings-dialog').close();
-    refresh();
+    const res = await jsonApi('/api/alerts/test', { method: 'POST' });
+    showToast(res.ok ? 'Test message sent. Check Telegram.' : 'Not sent: ' + res.reason, !res.ok);
   } catch (exc) {
-    console.error(exc);
+    showToast('Not sent: ' + exc.message, true);
   }
 });
 

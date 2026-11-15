@@ -11,6 +11,9 @@
   <link rel="icon" href="favicon.ico" sizes="48x48">
   <link rel="apple-touch-icon" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="_vendored/card/card.css">
+  <link rel="stylesheet" href="_vendored/switch/switch.css">
+  <link rel="stylesheet" href="_vendored/settings-group/settings-group.css">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="_vendored/page-foot/page-foot.css">
   <script>
@@ -32,6 +35,60 @@
   </script>
 </head>
 <body>
+<!-- Lucide sprite, trimmed to the glyphs the Settings pane uses (inline: iOS Safari does not
+     resolve an external <use>). Symbols are verbatim from _vendored/icons/icons-sprite.html. -->
+<svg width="0" height="0" aria-hidden="true" focusable="false"
+     style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-sliders-horizontal" viewBox="0 0 24 24" fill="none">
+    <path d="M10 5H3" />
+    <path d="M12 19H3" />
+    <path d="M14 3v4" />
+    <path d="M16 17v4" />
+    <path d="M21 12h-9" />
+    <path d="M21 19h-5" />
+    <path d="M21 5h-7" />
+    <path d="M8 10v4" />
+    <path d="M8 12H3" />
+  </symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24" fill="none">
+    <path d="m12 14 4-4" />
+    <path d="M3.34 19a10 10 0 1 1 17.32 0" />
+  </symbol>
+  <symbol id="i-calendar-days" viewBox="0 0 24 24" fill="none">
+    <path d="M8 2v4" />
+    <path d="M16 2v4" />
+    <rect width="18" height="18" x="3" y="4" rx="2" />
+    <path d="M3 10h18" />
+    <path d="M8 14h.01" />
+    <path d="M12 14h.01" />
+    <path d="M16 14h.01" />
+    <path d="M8 18h.01" />
+    <path d="M12 18h.01" />
+    <path d="M16 18h.01" />
+  </symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24" fill="none">
+    <path d="M12 19h8" />
+    <path d="m4 17 6-6-6-6" />
+  </symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24" fill="none">
+    <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
+  </symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none">
+    <path d="M10.268 21a2 2 0 0 0 3.464 0" />
+    <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" />
+  </symbol>
+  <symbol id="i-send-horizontal" viewBox="0 0 24 24" fill="none">
+    <path d="M3.714 3.048a.498.498 0 0 0-.683.627l2.843 7.627a2 2 0 0 1 0 1.396l-2.842 7.627a.498.498 0 0 0 .682.627l18-8.5a.5.5 0 0 0 0-.904z" />
+    <path d="M6 12h16" />
+  </symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none">
+    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none">
+    <path d="m9 18 6-6-6-6" />
+  </symbol>
+</svg>
 <main class="app">
   <header class="topbar">
     <div class="topbar-title">
@@ -230,7 +287,7 @@
   </div>
 </dialog>
 
-<!-- Settings modal -->
+<!-- Settings modal: each setting saves as it changes (a toast confirms), so there is no Save button. -->
 <dialog data-track-view="settings" id="settings-dialog">
   <div class="dialog-head">
     <h2>Settings</h2>
@@ -238,39 +295,91 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
     </button>
   </div>
-  <div class="setting-row">
-    <span class="setting-label" id="set-textsize-label">Text size</span>
-    <div class="seg" id="set-textsize" role="group" aria-labelledby="set-textsize-label">
-      <button data-track="textsize-small" type="button" data-textsize="small">Small</button>
-      <button data-track="textsize-default" type="button" data-textsize="default">Default</button>
-      <button data-track="textsize-large" type="button" data-textsize="large">Large</button>
+
+  <h3 class="settings-overline" id="group-display">Display</h3>
+  <section class="card settings-group" aria-labelledby="group-display">
+    <div class="settings-row">
+      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-sliders-horizontal"></use></svg>
+      <span class="settings-row-label" id="set-textsize-label">Text size</span>
+      <div class="seg seg-mini" id="set-textsize" role="group" aria-labelledby="set-textsize-label">
+        <button data-track="textsize-small" type="button" data-textsize="small">Small</button>
+        <button data-track="textsize-default" type="button" data-textsize="default">Default</button>
+        <button data-track="textsize-large" type="button" data-textsize="large">Large</button>
+      </div>
     </div>
-  </div>
-  <div class="setting-row">
-    <label for="set-allowance">Monthly credit allowance<br><small class="muted">Copy the total from VS Code's Copilot menu — "Credits X / Y used" → enter Y.<br>Plan defaults: Business 300 · Enterprise 1000 · Pro 300 · Pro+ 1500; org credit pools can be much larger (e.g. 23400).</small></label>
-    <input data-track="setting-allowance" id="set-allowance" type="number" min="0" step="1">
-  </div>
-  <div class="setting-row">
-    <label for="set-reset">Cycle reset day</label>
-    <input data-track="setting-reset-day" id="set-reset" type="number" min="1" max="28" step="1">
-  </div>
-  <div class="setting-row">
-    <label for="set-cli">Include Copilot CLI sessions</label>
-    <button data-track="setting-cli" id="set-cli" class="switch" type="button" role="switch" aria-checked="true" aria-label="Include Copilot CLI sessions"><span class="switch-thumb"></span></button>
-  </div>
-  <div class="setting-row setting-col">
-    <label for="set-roots">Extra storage roots (one path per line)</label>
-    <textarea data-track="setting-roots" id="set-roots" rows="3" placeholder="C:\Users\me\AppData\Roaming\MyCompanyEditor"></textarea>
-  </div>
-  <div class="setting-row setting-col">
-    <span class="setting-label">Pace alert (Telegram)</span>
-    <p class="footnote" id="set-alert-note"></p>
-    <button data-track="alert-test" class="btn-surface" id="alert-test" type="button" hidden>Send test message</button>
-    <p class="footnote" id="alert-test-result" role="status"></p>
-  </div>
-  <p class="footnote" id="set-pat-note"></p>
-  <button data-track="settings-save" class="btn-primary" id="settings-save" type="button">Save</button>
+  </section>
+
+  <h3 class="settings-overline" id="group-cycle">Billing cycle</h3>
+  <section class="card settings-group" aria-labelledby="group-cycle">
+    <label class="settings-row">
+      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-gauge"></use></svg>
+      <span class="settings-row-label">Allowance</span>
+      <span class="settings-row-number">
+        <input class="settings-row-input" data-track="setting-allowance" id="set-allowance" type="number" inputmode="numeric" min="0" step="1">
+        <span class="settings-row-unit">credits</span>
+      </span>
+    </label>
+    <label class="settings-row">
+      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-calendar-days"></use></svg>
+      <span class="settings-row-label">Reset day</span>
+      <span class="settings-row-number">
+        <input class="settings-row-input" data-track="setting-reset-day" id="set-reset" type="number" inputmode="numeric" min="1" max="28" step="1">
+        <span class="settings-row-unit">of month</span>
+      </span>
+    </label>
+  </section>
+  <p class="settings-footnote">Monthly allowance: the total in VS Code's Copilot menu ("Credits X / Y used", enter Y). Plan defaults: Business 300 · Enterprise 1000 · Pro 300 · Pro+ 1500; an org pool can be far larger.</p>
+
+  <h3 class="settings-overline" id="group-sources">Data sources</h3>
+  <section class="card settings-group" aria-labelledby="group-sources">
+    <label class="settings-row">
+      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-terminal"></use></svg>
+      <span class="settings-row-label">Copilot CLI sessions</span>
+      <button data-track="setting-cli" id="set-cli" class="toggle" type="button" role="switch" aria-checked="true" aria-label="Include Copilot CLI sessions"><span class="knob"></span><span class="toggle-label">ON</span></button>
+    </label>
+    <button data-track="setting-roots-open" id="roots-open" class="settings-row" type="button" aria-haspopup="dialog">
+      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-folder"></use></svg>
+      <span class="settings-row-label">Extra storage roots</span>
+      <span class="settings-row-value" id="set-roots-value">None</span>
+      <svg class="icon settings-row-chevron" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+    </button>
+    <div class="settings-row">
+      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-lock"></use></svg>
+      <span class="settings-row-label">GitHub billing token</span>
+      <span class="settings-row-value" id="set-pat-value">Not set</span>
+    </div>
+  </section>
+  <p class="settings-footnote" id="set-pat-note" hidden></p>
+
+  <h3 class="settings-overline" id="group-alerts">Alerts</h3>
+  <section class="card settings-group" aria-labelledby="group-alerts">
+    <div class="settings-row">
+      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-bell"></use></svg>
+      <span class="settings-row-label">Pace alert (Telegram)</span>
+      <span class="settings-row-value" id="set-alert-value">Off</span>
+    </div>
+    <button data-track="alert-test" class="settings-row" id="alert-test" type="button" hidden>
+      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-send-horizontal"></use></svg>
+      <span class="settings-row-label">Send test message</span>
+    </button>
+  </section>
+  <p class="settings-footnote" id="set-alert-note"></p>
 </dialog>
+
+<!-- Extra storage roots sheet: the paths are free text, so they cannot be a one-line row. -->
+<dialog data-track-view="settings-roots" id="roots-dialog">
+  <div class="dialog-head">
+    <h2>Extra storage roots</h2>
+    <button data-track="roots-close" class="dialog-close" id="roots-close" type="button" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </div>
+  <label class="roots-field" for="set-roots">One path per line</label>
+  <textarea data-track="setting-roots" id="set-roots" rows="4" placeholder="C:\Users\me\AppData\Roaming\MyCompanyEditor"></textarea>
+  <p class="footnote">Saves when you leave the field.</p>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" popover="manual"></div>
 
 <script src="vendor/chart.umd.min.js"></script>
 <script type="module" src="app.js"></script>

@@ -32,7 +32,7 @@
   </script>
 </head>
 <body>
-<div class="app">
+<main class="app">
   <header class="topbar">
     <div class="topbar-title">
       <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
@@ -97,7 +97,7 @@
       <span id="budget-used">—</span>
       <span id="budget-projection" class="muted"></span>
     </div>
-    <p class="footnote" id="budget-note"></p>
+    <p class="footnote" id="budget-note">Local data from this machine only — set your allowance in Settings.</p>
   </section>
 
   <!-- Charts -->
@@ -210,7 +210,7 @@
   <footer class="page-foot">
     <p id="buildReadout"></p>
   </footer>
-</div>
+</main>
 
 <!-- Session detail modal -->
 <dialog data-track-view="session-detail" id="session-dialog">
@@ -256,7 +256,7 @@
   </div>
   <div class="setting-row">
     <label for="set-cli">Include Copilot CLI sessions</label>
-    <button data-track="setting-cli" id="set-cli" class="switch" type="button" role="switch" aria-checked="true"><span class="switch-thumb"></span></button>
+    <button data-track="setting-cli" id="set-cli" class="switch" type="button" role="switch" aria-checked="true" aria-label="Include Copilot CLI sessions"><span class="switch-thumb"></span></button>
   </div>
   <div class="setting-row setting-col">
     <label for="set-roots">Extra storage roots (one path per line)</label>

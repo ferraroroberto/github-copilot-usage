@@ -128,6 +128,13 @@ function esc(s) {
     .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 }
 
+// A status line can name an environment variable (the server's own reason text);
+// each name is drawn as inline code, never as ordinary prose.
+const ENV_NAME = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g;
+function setNote(el, text) {
+  el.innerHTML = esc(text).replace(ENV_NAME, '<code>$&</code>');
+}
+
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
@@ -191,7 +198,7 @@ async function fetchBilling() {
     _billingFetched = 0;
     $('billing-wrap').hidden = true;
     $('billing-asof').textContent = '';
-    $('billing-note').textContent = 'Could not load billing data from the dashboard server.';
+    setNote($('billing-note'), 'Could not load billing data from the dashboard server.');
     console.error(exc);
     return;
   }
@@ -276,7 +283,6 @@ function renderBudget(b) {
     + ' credits (' + (b.used_pct ?? 0) + '%)';
   $('budget-projection').textContent =
     'projected ' + fmtCredits(b.projected_credits) + ' (' + (b.projected_pct ?? 0) + '%) by cycle end';
-  $('budget-note').textContent = 'Local data from this machine only — set your allowance in Settings.';
 }
 
 // ---- charts ----
@@ -553,17 +559,17 @@ function renderBilling(body) {
     : '';
   if (!rows.length) {
     $('billing-wrap').hidden = true;
-    $('billing-note').textContent = body.available
+    setNote($('billing-note'), body.available
       ? 'No spend recorded in this window.' + missingNote
-      : (body.reason || 'Not available.');
+      : (body.reason || 'Not available.'));
     return;
   }
   $('billing-wrap').hidden = false;
   const total = rows.reduce((acc, r) => acc + (Number(r.credits) || 0), 0);
   const totalUsd = rows.reduce((acc, r) => acc + (Number(r.usd) || 0), 0);
-  $('billing-note').textContent =
+  setNote($('billing-note'),
     'Account-wide official spend (all devices), last 14 days: '
-    + fmtCredits(total) + ' credits ≈ ' + fmtUsd(totalUsd) + '.' + missingNote;
+    + fmtCredits(total) + ' credits ≈ ' + fmtUsd(totalUsd) + '.' + missingNote);
   tbody.innerHTML = rows.map((r) => `
     <tr>
       <td>${esc(r.date)}</td>
@@ -613,11 +619,11 @@ $('settings-btn').addEventListener('click', async () => {
     // "configured" state carry an inline Lucide check instead of an emoji glyph.
     $('set-pat-note').innerHTML = cfg.billing_pat_configured
       ? 'GitHub billing PAT: configured <svg class="inline-glyph glyph-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="configured"><path d="M20 6 9 17l-5-5"/></svg>'
-      : 'GitHub billing PAT: not set — add GITHUB_COPILOT_BILLING_PAT to .env for the official billing card.';
+      : 'GitHub billing PAT: not set — add <code>GITHUB_COPILOT_BILLING_PAT</code> to <code>.env</code> for the official billing card.';
     const alertReason = cfg.pace_alert_reason;
-    $('set-alert-note').textContent = alertReason
+    setNote($('set-alert-note'), alertReason
       ? 'Off — ' + alertReason + ', then restart. One message per cycle when the projection reaches your allowance.'
-      : 'On — one Telegram message per cycle when the projection reaches your allowance.';
+      : 'On — one Telegram message per cycle when the projection reaches your allowance.');
     $('alert-test').hidden = !!alertReason;
     $('alert-test-result').textContent = '';
   } catch { /* open anyway with stale values */ }

@@ -161,6 +161,8 @@ body:has(dialog[open]) { overflow: hidden; }
   border-radius: var(--r-pill); padding: 1px 8px;
 }
 .footnote { font-size: var(--font-caption); color: var(--fg-muted); margin: 10px 0 0; }
+/* A status line filled only after an action takes no space until then. */
+.footnote:empty { display: none; }
 .muted { color: var(--fg-muted); }
 
 /* inline Lucide status glyphs (replace emoji in JS-rendered copy) */

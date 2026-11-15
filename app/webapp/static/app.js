@@ -614,6 +614,12 @@ $('settings-btn').addEventListener('click', async () => {
     $('set-pat-note').innerHTML = cfg.billing_pat_configured
       ? 'GitHub billing PAT: configured <svg class="inline-glyph glyph-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="configured"><path d="M20 6 9 17l-5-5"/></svg>'
       : 'GitHub billing PAT: not set — add GITHUB_COPILOT_BILLING_PAT to .env for the official billing card.';
+    const alertReason = cfg.pace_alert_reason;
+    $('set-alert-note').textContent = alertReason
+      ? 'Off — ' + alertReason + ', then restart. One message per cycle when the projection reaches your allowance.'
+      : 'On — one Telegram message per cycle when the projection reaches your allowance.';
+    $('alert-test').hidden = !!alertReason;
+    $('alert-test-result').textContent = '';
   } catch { /* open anyway with stale values */ }
   $('settings-dialog').showModal();
 });
@@ -624,6 +630,17 @@ $('set-cli').addEventListener('click', () => {
 });
 
 $('settings-close').addEventListener('click', () => $('settings-dialog').close());
+
+$('alert-test').addEventListener('click', async () => {
+  const out = $('alert-test-result');
+  out.textContent = 'Sending…';
+  try {
+    const res = await jsonApi('/api/alerts/test', { method: 'POST' });
+    out.textContent = res.ok ? 'Sent — check Telegram.' : 'Not sent: ' + res.reason;
+  } catch (exc) {
+    out.textContent = 'Not sent: ' + exc.message;
+  }
+});
 
 $('settings-save').addEventListener('click', async () => {
   const updates = {

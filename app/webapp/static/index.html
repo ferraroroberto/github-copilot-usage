@@ -262,6 +262,12 @@
     <label for="set-roots">Extra storage roots (one path per line)</label>
     <textarea data-track="setting-roots" id="set-roots" rows="3" placeholder="C:\Users\me\AppData\Roaming\MyCompanyEditor"></textarea>
   </div>
+  <div class="setting-row setting-col">
+    <span class="setting-label">Pace alert (Telegram)</span>
+    <p class="footnote" id="set-alert-note"></p>
+    <button data-track="alert-test" class="btn-surface" id="alert-test" type="button" hidden>Send test message</button>
+    <p class="footnote" id="alert-test-result" role="status"></p>
+  </div>
   <p class="footnote" id="set-pat-note"></p>
   <button data-track="settings-save" class="btn-primary" id="settings-save" type="button">Save</button>
 </dialog>

@@ -7,6 +7,7 @@ except POST /api/config (writes config.json).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 from typing import Optional
@@ -17,7 +18,7 @@ from fastapi.responses import PlainTextResponse, Response
 
 from app import build_info
 from app.version import VERSION
-from src import aggregate, billing, config
+from src import aggregate, billing, config, pace_alert
 from src.static_versioning import CachingStaticFiles, StaticVersion
 from src.usage_store import usage_db_path
 
@@ -44,8 +45,34 @@ else:
     app.include_router(usage_router(usage_db_path()))
 
 
+async def _pace_alert_loop() -> None:
+    """Check the cycle projection on a timer; a failed check is logged and retried next tick."""
+    while True:
+        try:
+            if pace_alert.channel_reason() is None:
+                records, _ = aggregate.gather_records()
+                await pace_alert.check(aggregate.budget_status(records))
+        except Exception as exc:  # the optional alert must never stop the loop or the server
+            _log.warning("⚠️ pace alert check failed: %s", exc)
+        await asyncio.sleep(pace_alert.CHECK_INTERVAL_SECS)
+
+
+# Held here so the event loop's weak reference is not the task's only one.
+_background: list = []
+
+
+@app.on_event("startup")
+async def _startup() -> None:
+    reason = pace_alert.channel_reason()
+    if reason is not None:
+        _log.info("ℹ️ pace alert off: Telegram %s", reason)
+    _background.append(asyncio.create_task(_pace_alert_loop()))
+
+
 @app.on_event("shutdown")
 async def _shutdown() -> None:
+    for task in _background:
+        task.cancel()
     await billing.close_client()
 
 
@@ -120,12 +147,23 @@ async def api_billing(days: int = Query(14, ge=1, le=30)) -> dict:
 async def api_config_get() -> dict:
     cfg = config.load()
     cfg["billing_pat_configured"] = billing.pat_configured()
+    cfg["pace_alert_reason"] = pace_alert.channel_reason()
     return cfg
 
 
 @app.post("/api/config")
 async def api_config_post(updates: dict) -> dict:
     return config.save(updates or {})
+
+
+@app.post("/api/alerts/test")
+async def api_alert_test() -> dict:
+    try:
+        await pace_alert.send_telegram("Test from github-copilot-usage: pace alerts will arrive in this chat.")
+    except Exception as exc:  # the reason goes back to the settings dialog
+        _log.warning("⚠️ pace alert test failed: %s", exc)
+        return {"ok": False, "reason": str(exc)}
+    return {"ok": True, "reason": None}
 
 
 # ---------------------------------------------------------------------------

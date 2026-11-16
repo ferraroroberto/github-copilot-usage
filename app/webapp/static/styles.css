@@ -424,3 +424,21 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .chip::before { content: ""; position: absolute; inset: -4px 0; }
 .chip.active { color: var(--accent-text); background: var(--accent-soft); border-color: var(--accent-border-soft); }
 .cx-bar { grid-column: 1 / -1; margin-top: 4px; }
+
+/* ---- overflow menu ----
+ * A popover is in the top layer, so it is placed from the button's rectangle in app.js
+ * and its items sit at the 44px touch floor. */
+.menu {
+  position: fixed; inset: auto; margin: 0; padding: 4px; min-width: 200px;
+  background: var(--card); color: var(--fg);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  box-shadow: 0 8px 24px rgba(31, 35, 40, 0.12);
+}
+.menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px;
+  background: transparent; color: var(--fg); border: 0; border-radius: var(--r-sm);
+  font: inherit; font-size: var(--font-body); text-align: left; cursor: pointer;
+}
+.menu-item:hover { background: color-mix(in srgb, var(--fg) 8%, transparent); }
+.menu-item:disabled { color: var(--fg-muted); cursor: default; }
+.menu-item .icon { color: var(--fg-muted); }

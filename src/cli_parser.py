@@ -43,6 +43,13 @@ _cache = _MtimeCache()
 # The last snapshot and the records built from it; rebuilt when the snapshot object changes.
 _store_records_cache: List[tuple] = []
 
+
+def clear_caches() -> None:
+    """Drop the parsed events files, the records built from the store and the store's own read."""
+    _cache.clear()
+    _store_records_cache.clear()
+    cli_session_store.clear_cache()
+
 _MESSAGE_LIMIT = 200
 
 

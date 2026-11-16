@@ -32,6 +32,7 @@ That's it — the first run creates a virtual environment, installs three depend
 - **Context drill-down** — select a row of *Where your prompt tokens go* (or *Who drives this?*) to see the projects, models, sessions and requests carrying that part of the prompt, each with its share and a coverage line saying how much of the period has a composition at all (Copilot CLI and older logs have none). Figures are prompt size times the logged percentage: estimates, never per-tool billing.
 - **Session diagnostics** — a session row and its detail flag a large prompt, a prompt that keeps growing and a high share of system and tool overhead. They are labelled heuristics, with the thresholds as constants in `src/session_diagnostics.py`.
 - **Insights** — a card of local, rule-based findings (top contributors, change against the previous period, billing-cycle risk, prompt composition), each with a severity and a tap that opens the session, drill-down or filtered request list it refers to. A period with no or too few requests says so rather than guessing. No model call, nothing leaves the machine.
+- **Refresh and clear cache** — the top bar's overflow menu has *Refresh* (re-read what changed) and *Force refresh* (drop every parse cache and rebuild from the files); *Settings → Data sources → Clear cache* drops the caches and rebuilds on the next load. Each reports its result in a toast. Overlapping refreshes share one rebuild, which keeps running if the page that asked for it goes away, and a summary is recomputed whenever any request's content changes.
 - **CSV export** of every request for your own spreadsheets.
 - **Official GitHub billing card** (optional): add a PAT and see the account-wide per-day per-model credit spend straight from GitHub's billing API — covers usage from *all* your devices, not just this machine.
 - **Light + dark theme** and a **Small / Default / Large text-size** setting (Settings dialog), colorblind-validated chart palette, no CDN dependencies (Chart.js is vendored — works behind corporate proxies).
@@ -131,6 +132,8 @@ GET /api/export.csv?period=...
 GET /api/billing
 GET /api/models          every model in the local history with its spellings, provider family and alias, for the Settings choices
 GET /api/config          POST /api/config
+POST /api/refresh?force=false|true   rebuild the data now (force clears the parser caches first); joins a rebuild already running
+POST /api/cache/clear   drop the snapshot, the cached summaries and the parser caches; the next read rebuilds
 POST /api/alerts/test    send a Telegram test message (pace alert)
 POST /api/usage/events   the page's batched view/tap events (local usage log)
 GET /api/usage/summary   views and taps per control

@@ -93,9 +93,18 @@ class _MtimeCache:
             return
         self._entries[str(path)] = _CacheEntry(st.st_mtime, st.st_size, records)
 
+    def clear(self) -> None:
+        self._entries.clear()
+
 
 _file_cache = _MtimeCache()
 _workspace_cache: Dict[str, Tuple[Optional[str], Optional[str]]] = {}
+
+
+def clear_caches() -> None:
+    """Drop every parsed file and resolved workspace, so the next scan re-reads from disk."""
+    _file_cache.clear()
+    _workspace_cache.clear()
 
 
 # ---------------------------------------------------------------------------

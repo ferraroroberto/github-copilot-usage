@@ -2,7 +2,8 @@
 
 Binds to 127.0.0.1 only — this is a personal, local tool; nothing is exposed
 on the network. All endpoints are read-only over Copilot's own log files
-except POST /api/config (writes config.json).
+except POST /api/config (writes config.json); the refresh and cache-clear
+endpoints only change this process's in-memory state.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from src import (
     insights,
     model_labels,
     pace_alert,
+    refresh,
     request_explorer,
 )
 from src.static_versioning import CachingStaticFiles, StaticVersion
@@ -59,7 +61,7 @@ async def _pace_alert_loop() -> None:
     while True:
         try:
             if pace_alert.channel_reason() is None:
-                records, _ = aggregate.gather_records()
+                records = (await refresh.store.snapshot()).records
                 await pace_alert.check(aggregate.budget_status(records))
         except Exception as exc:  # the optional alert must never stop the loop or the server
             _log.warning("⚠️ pace alert check failed: %s", exc)
@@ -104,9 +106,9 @@ async def api_version() -> dict:
 async def api_summary(
     period: str = Query("today", description="today | week | month | cycle | all"),
 ) -> dict:
-    records, sources = aggregate.gather_records()
-    body = aggregate.get_summary(records, period)
-    body["sources"] = sources
+    snap = await refresh.store.snapshot()
+    body = refresh.store.summary(snap, period, aggregate.get_summary)
+    body["sources"] = snap.sources
     return body
 
 
@@ -114,13 +116,13 @@ async def api_summary(
 async def api_sessions(
     period: str = Query("all", description="today | week | month | cycle | all"),
 ) -> dict:
-    records, _ = aggregate.gather_records()
+    records = (await refresh.store.snapshot()).records
     return {"period": period, "sessions": aggregate.get_sessions(records, period)}
 
 
 @app.get("/api/sessions/{session_id}")
 async def api_session_detail(session_id: str) -> dict:
-    records, _ = aggregate.gather_records()
+    records = (await refresh.store.snapshot()).records
     detail = aggregate.get_session_detail(records, session_id)
     if detail is None:
         return {"error": "session not found", "session_id": session_id}
@@ -143,7 +145,7 @@ async def api_requests(
     page: int = Query(1, ge=1),
     page_size: int = Query(request_explorer.DEFAULT_PAGE_SIZE, ge=1, le=request_explorer.MAX_PAGE_SIZE),
 ) -> dict:
-    records, _ = aggregate.gather_records()
+    records = (await refresh.store.snapshot()).records
     query = request_explorer.Query.build(
         period=period, project=project, model=model, mode=mode, ide=ide, result=result,
         min_credits=min_credits, max_credits=max_credits, q=q, sort=sort, order=order,
@@ -156,7 +158,7 @@ async def api_requests(
 async def api_insights(
     period: str = Query("week", description="today | week | month | cycle | all"),
 ) -> dict:
-    records, _ = aggregate.gather_records()
+    records = (await refresh.store.snapshot()).records
     return insights.build_insights(records, period)
 
 
@@ -165,7 +167,7 @@ async def api_context(
     period: str = Query("week", description="today | week | month | cycle | all"),
     label: str = Query("", description="a prompt-composition label; empty means the whole prompt"),
 ) -> dict:
-    records, _ = aggregate.gather_records()
+    records = (await refresh.store.snapshot()).records
     return context_drilldown.drilldown(records, period, label)
 
 
@@ -173,7 +175,7 @@ async def api_context(
 async def api_export(
     period: str = Query("all", description="today | week | month | cycle | all"),
 ) -> PlainTextResponse:
-    records, _ = aggregate.gather_records()
+    records = (await refresh.store.snapshot()).records
     csv_text = aggregate.export_csv(records, period)
     return PlainTextResponse(
         csv_text,
@@ -192,6 +194,23 @@ async def api_billing(days: int = Query(14, ge=1, le=30)) -> dict:
     except Exception as exc:  # never let the optional card break the page
         _log.warning("⚠️ billing endpoint error: %s", exc, exc_info=True)
         return billing.failed_response(exc)
+
+
+@app.post("/api/refresh")
+async def api_refresh(force: bool = Query(False, description="clear the parsers' caches and rebuild everything")) -> dict:
+    """Rebuild the snapshot now, or join the rebuild in flight; the body says which."""
+    try:
+        return refresh.describe(await refresh.store.refresh(force))
+    except Exception as exc:  # the reason goes back to the toast
+        _log.warning("⚠️ refresh failed: %s", exc, exc_info=True)
+        return {"ok": False, "reason": type(exc).__name__ + ": " + str(exc)}
+
+
+@app.post("/api/cache/clear")
+async def api_cache_clear() -> dict:
+    """Drop the snapshot, the cached summaries and the parsers' caches; the next read rebuilds."""
+    await refresh.store.clear()
+    return {"ok": True}
 
 
 @app.get("/api/config")
@@ -213,7 +232,7 @@ async def api_config_post(updates: dict) -> dict:
 @app.get("/api/models")
 async def api_models() -> dict:
     """Every model in the local history as spelled before any alias, for the Settings choices."""
-    records, _ = aggregate.gather_records()
+    records = (await refresh.store.snapshot()).records
     return {"families": model_labels.family_options(), "models": aggregate.labels_for(records).catalog()}
 
 

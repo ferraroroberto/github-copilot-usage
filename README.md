@@ -28,6 +28,9 @@ That's it — the first run creates a virtual environment, installs three depend
 - **Session explorer** — every chat session, sortable by cost or recency; click one for the per-request drill-down: your prompt, mode (agent/ask/edit), resolved model, tokens in/out, **exact credits billed** (not an estimate — this is the number GitHub charges), and elapsed time. CLI rows spread from session totals are marked `~` as estimates.
 - **Request explorer** — the *Search requests* card opens every request of a period in one list: filter by project, model, mode, editor, result and credit range, search prompt and session text, sort by time, credits, tokens or time taken, and page through. The option lists carry counts that follow the period and the other filters. The filters live in the URL (`/?view=requests&model=…`), so a filtered view can be bookmarked and survives a reload, and a row opens its session. A credit range matches billed requests only; unbilled requests stay listed when no range is set.
 - **By model / by project / by mode breakdowns** with credit shares.
+- **Context drill-down** — select a row of *Where your prompt tokens go* (or *Who drives this?*) to see the projects, models, sessions and requests carrying that part of the prompt, each with its share and a coverage line saying how much of the period has a composition at all (Copilot CLI and older logs have none). Figures are prompt size times the logged percentage: estimates, never per-tool billing.
+- **Session diagnostics** — a session row and its detail flag a large prompt, a prompt that keeps growing and a high share of system and tool overhead. They are labelled heuristics, with the thresholds as constants in `src/session_diagnostics.py`.
+- **Insights** — a card of local, rule-based findings (top contributors, change against the previous period, billing-cycle risk, prompt composition), each with a severity and a tap that opens the session, drill-down or filtered request list it refers to. A period with no or too few requests says so rather than guessing. No model call, nothing leaves the machine.
 - **CSV export** of every request for your own spreadsheets.
 - **Official GitHub billing card** (optional): add a PAT and see the account-wide per-day per-model credit spend straight from GitHub's billing API — covers usage from *all* your devices, not just this machine.
 - **Light + dark theme** and a **Small / Default / Large text-size** setting (Settings dialog), colorblind-validated chart palette, no CDN dependencies (Chart.js is vendored — works behind corporate proxies).
@@ -117,6 +120,8 @@ GET /api/summary?period=today|week|month|cycle|all
 GET /api/sessions?period=...
 GET /api/sessions/{session_id}
 GET /api/requests?period=...&project=&model=&mode=&ide=&result=ok|error&min_credits=&max_credits=&q=&sort=ts|credits|tokens|elapsed&order=asc|desc&page=&page_size=   the request explorer: rows, totals, facet counts
+GET /api/insights?period=...   local rule-based insights: type, severity, one sentence, evidence
+GET /api/context?period=...&label=   who drives the prompt tokens: projects, models, sessions, requests, plus coverage
 GET /api/export.csv?period=...
 GET /api/billing
 GET /api/config          POST /api/config

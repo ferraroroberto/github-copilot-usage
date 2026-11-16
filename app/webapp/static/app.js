@@ -16,6 +16,7 @@ import { buildReadoutText } from './_vendored/page-foot/page-foot.js';
 import { initUsageLog } from './_vendored/usage-log/usage-log.js';
 import { setSwitch } from './_vendored/switch/switch.js';
 import { initRequests } from './requests.js';
+import { flagChips, initInsights, refreshInsights, renderDiagnostics } from './insights.js';
 
 // Local-only usage log (views, taps, device class); same-origin, no content recorded.
 const usage = initUsageLog();
@@ -204,6 +205,7 @@ async function refresh() {
     $('freshness').textContent = 'error fetching data';
     console.error(exc);
   }
+  refreshInsights();
   fetchBilling().catch(() => {});
 }
 
@@ -449,14 +451,15 @@ function renderTokenChart(ts, labels) {
 function renderMix(mix, card, container) {
   if (!mix.length) { card.hidden = true; return; }
   card.hidden = false;
+  // Each row is a button: it opens the drill-down for that label (see insights.js).
   container.innerHTML = mix.map((row) => `
-    <div class="mix-row">
-      <div class="mix-top">
+    <button data-track="context-open-label" class="mix-row mix-pick" type="button" data-label="${esc(row.label)}" aria-haspopup="dialog">
+      <span class="mix-top">
         <span>${esc(row.label)}</span>
         <span class="pct">${row.pct}% · ~${fmtTok(row.est_tokens)} tok</span>
-      </div>
-      <div class="mix-track"><div class="mix-fill" style="width:${Math.min(100, row.pct)}%"></div></div>
-    </div>`).join('');
+      </span>
+      <span class="mix-track"><span class="mix-fill" style="width:${Math.min(100, row.pct)}%"></span></span>
+    </button>`).join('');
 }
 
 // ---- tables ----
@@ -518,6 +521,7 @@ function renderSessions() {
         ${esc(s.project)} · ${esc(s.ide)} · ${fmtDay(s.last_ts)} ${fmtTime(s.first_ts)}–${fmtTime(s.last_ts)}
         · ${fmtNum(s.requests)} req · ${fmtTok(s.prompt_tokens)}<svg class="inline-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="in"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg> ${fmtTok(s.completion_tokens)}<svg class="inline-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="out"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
         · ${esc((s.models || []).join(', '))}${s.estimated_requests ? ' · estimated' : ''}
+        ${flagChips(s.flags)}
       </span>
     </li>`).join('');
 }
@@ -561,6 +565,8 @@ async function openSession(sid) {
     + (cacheLine(detail) ? ' · ' + cacheLine(detail) : '')
     + (detail.estimated_requests
       ? ' · ' + fmtNum(detail.estimated_requests) + ' estimated (allocated from session totals, marked ~)' : '');
+
+  renderDiagnostics($('sd-diagnostics'), detail.diagnostics);
 
   const mix = detail.prompt_mix || [];
   $('sd-mix').innerHTML = mix.length ? mix.map((row) => `
@@ -797,8 +803,14 @@ fetch('/api/version').then((r) => r.json()).then((v) => {
   $('buildReadout').textContent = buildReadoutText(v.git_sha || 'unknown', v.built_at || '');
 }).catch(() => {});
 
-initRequests({
+const requests = initRequests({
   jsonApi, esc, fmtCredits, fmtTok, fmtNum, fmtDay, fmtTime, openSession,
+  getPeriod: () => state.period,
+});
+
+initInsights({
+  jsonApi, esc, fmtTok, fmtNum, fmtDay, fmtTime, openSession,
+  openRequests: requests.open,
   getPeriod: () => state.period,
 });
 

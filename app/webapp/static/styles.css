@@ -233,8 +233,8 @@ code {
 .mix-row + .mix-row { border-top: 1px solid var(--border-muted); }
 .mix-top { display: flex; justify-content: space-between; gap: 8px; font-size: var(--font-label); font-weight: 600; }
 .mix-top .pct { font-variant-numeric: tabular-nums; }
-.mix-track { height: 8px; border-radius: var(--r-pill); background: var(--canvas-subtle); border: 1px solid var(--border-muted); overflow: hidden; }
-.mix-fill { height: 100%; background: var(--accent); border-radius: var(--r-pill); }
+.mix-track { display: block; height: 8px; border-radius: var(--r-pill); background: var(--canvas-subtle); border: 1px solid var(--border-muted); overflow: hidden; }
+.mix-fill { display: block; height: 100%; background: var(--accent); border-radius: var(--r-pill); }
 
 /* ---- tables ---- */
 .table-wrap { overflow-x: auto; }
@@ -383,3 +383,35 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .rq-filter-box[open] > summary { border-bottom: 1px solid var(--border-muted); margin-bottom: 10px; }
 .rq-list .sess-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
 .rq-list .sess-meta { white-space: normal; }
+
+/* ---- insights and the context drill-down ----
+ * The rows reuse the session list. A severity or flag is always spelled out as text, never
+ * left to its colour alone. */
+.insight-list li { align-items: start; }
+.insight-list .sess-title { white-space: normal; }
+.insight-list li.insight-static { cursor: default; }
+.insight-list li.insight-static:hover .sess-title { color: inherit; }
+.insight-quiet { margin: 0; font-size: var(--font-label); color: var(--fg-muted); }
+.sev {
+  align-self: start; white-space: nowrap;
+  font-size: var(--font-caption); font-weight: 700; color: var(--fg-muted);
+  background: var(--canvas-subtle); border: 1px solid var(--border-muted);
+  border-radius: var(--r-pill); padding: 1px 8px;
+}
+.sev-warning, .flag { color: var(--attention-text); border-color: var(--attention); }
+.sev-critical { color: var(--danger-text); border-color: var(--danger); }
+.flag-list { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; font-size: var(--font-label); }
+.mix-pick {
+  width: 100%; min-height: 44px; margin: 0; border: 0; background: none;
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.mix-pick:hover .mix-top > span:first-child { color: var(--accent); }
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+.chip {
+  position: relative; min-height: 36px; padding: 0 12px;
+  font: inherit; font-size: var(--font-label); font-weight: 600; color: var(--fg-muted);
+  background: var(--canvas-subtle); border: 1px solid var(--border); border-radius: var(--r-pill); cursor: pointer;
+}
+.chip::before { content: ""; position: absolute; inset: -4px 0; }
+.chip.active { color: var(--accent-text); background: var(--accent-soft); border-color: var(--accent-border-soft); }
+.cx-bar { grid-column: 1 / -1; margin-top: 4px; }

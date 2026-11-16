@@ -236,4 +236,5 @@ export function initRequests(handedOver) {
   bindPagingAndRows();
   const fromUrl = readUrl();
   if (fromUrl) openView(fromUrl);
+  return { open: openView };
 }

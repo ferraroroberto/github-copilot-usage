@@ -132,9 +132,7 @@ body {
 
 /* ---- installed-PWA shell ----
  * The window is the scroller; the vendored nav reserves the phone's bottom space
- * for its floating pill. Never let the page scroll behind an open dialog. */
-body:has(dialog[open]) { overflow: hidden; }
-
+ * for its floating pill. */
 /* Each tab's pane stacks its cards at the page's own gap. */
 .pane { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gutter); }
 
@@ -154,20 +152,6 @@ body:has(dialog[open]) { overflow: hidden; }
 .head-readout:disabled { cursor: progress; }
 .home-head .head-readout + .home-toggle { margin-left: 0; }
 
-.icon-btn {
-  width: 44px; height: 44px; flex: none; padding: 0;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: transparent; color: var(--fg-muted);
-  border: 0; border-radius: var(--r-md);
-  cursor: pointer;
-}
-/* Invisible hit-area expansion lifts a compact control to the 44px touch floor
- * without changing the visual: 34+2×5=44 for the dialog close, 36+2×4=44 for a
- * labelled control (the vendored switch carries its own). The header icon buttons are real 44px, so side-by-side
- * targets never overlap. */
-.dialog-close::before { content: ""; position: absolute; inset: -5px; }
-.icon-btn svg { width: 18px; height: 18px; }
-.icon-btn:hover { color: var(--fg); }
 [data-theme="dark"] .glyph-moon { display: none; }
 [data-theme="light"] .glyph-moon { display: block; }
 [data-theme="dark"] .glyph-sun { display: block; }
@@ -291,29 +275,10 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .export-row { display: flex; align-items: center; padding: 4px 4px 0; }
 
 /* ---- dialogs ----
- * The session, context and requests sheets are the vendored modal; this base still draws the
- * Settings sheets until they move over. A content-heavy sheet widens past the modal's 440px,
+ * Every sheet is the vendored modal. A content-heavy sheet widens past the modal's 440px,
  * and a long title wraps inside its header instead of pushing the close button out. */
 .detail-dialog.sheet-wide { width: min(680px, 92vw); }
 .detail-header h2 { min-width: 0; overflow-wrap: anywhere; }
-dialog {
-  background: var(--card); color: var(--fg);
-  border: 1px solid var(--border); border-radius: var(--r-lg);
-  padding: 16px; width: min(680px, calc(100vw - 2 * var(--gutter)));
-  max-height: min(85vh, 100dvh - 32px);
-  overflow-y: auto;
-}
-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
-.dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
-.dialog-head h2 { font-size: var(--font-heading-lg); font-weight: 700; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dialog-close {
-  position: relative;
-  width: 34px; height: 34px; flex: none; padding: 0;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: transparent; color: var(--fg-muted);
-  border: 0; border-radius: var(--r-md); cursor: pointer;
-}
-.dialog-close svg { width: 18px; height: 18px; }
 .dialog-meta { font-size: var(--font-label); color: var(--fg-muted); margin-bottom: 10px; }
 
 /* ---- settings ----
@@ -341,7 +306,8 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .mdl-name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mdl-sub { margin: 2px 0 0; font-size: var(--font-label); overflow-wrap: anywhere; }
 .mdl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px var(--gutter); margin-top: 10px; }
-.rq-field:disabled { color: var(--fg-muted); cursor: default; }
+.mdl-grid .select-native { width: 100%; min-width: 0; }
+.mdl-grid .select-native:disabled { color: var(--fg-muted); cursor: default; }
 
 /* The vendored toast is a manual popover here, so it can sit above an open dialog; the UA's
  * popover box (inset: 0, auto margins) would otherwise pull it to the top of the screen. */
@@ -357,13 +323,6 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .rq-intro { margin: 0 0 4px; }
 .rq-period { margin: 8px 0 12px; width: 100%; }
 .rq-control { width: 100%; min-width: 0; }
-/* The Models sheet's selects. */
-.rq-field {
-  width: 100%; min-width: 0; height: 44px; padding: 0 10px;
-  background: var(--input-bg); color: var(--fg);
-  border: 1px solid var(--control-border); border-radius: var(--r-md);
-  font: inherit; font-size: var(--font-body);
-}
 .rq-search { margin-bottom: 12px; }
 .rq-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px var(--gutter); }
 @media (min-width: 560px) { .rq-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
@@ -432,5 +391,11 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .trend-nav .button-surface { min-width: 72px; }
 .chart-wrap canvas { cursor: pointer; }
 
-/* ---- settings: the start date ---- */
-.settings-row-date { width: auto; min-width: 9.5em; text-align: left; -moz-appearance: auto; }
+/* ---- inline form controls ----
+ * An input or select has no ::before to grow its hit area, and the vendored recipes reach the
+ * 44px floor on touch only, so every pointer gets real 44px geometry. */
+.input-native, .select-native, .settings-row-input { height: var(--hit-min); }
+/* The start date shrinks to the room its label leaves, up to 12em: WebKit draws a native date field
+ * wider than a phone row, so it has to be told to shrink. */
+.settings-row-number-date { flex: 0 1 auto; min-width: 0; }
+.settings-row-date { width: 100%; max-width: 12em; min-width: 0; text-align: left; -moz-appearance: auto; }

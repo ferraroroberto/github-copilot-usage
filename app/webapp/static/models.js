@@ -121,7 +121,7 @@ function mergeField(view, m, aliases, isTarget) {
   if (aliases[m.key] && !byKey.has(aliases[m.key])) options.push(optionHtml(view, aliases[m.key], aliases[m.key], true));
   return `
     <label class="rq-label"><span>Merge into</span>
-      <select data-track="model-merge" class="rq-field" data-key="${view.esc(m.key)}" data-field="merge"${isTarget ? ' disabled' : ''}>${options.join('')}</select>
+      <select data-track="model-merge" class="select-native" data-key="${view.esc(m.key)}" data-field="merge"${isTarget ? ' disabled' : ''}>${options.join('')}</select>
     </label>`;
 }
 
@@ -135,10 +135,10 @@ function colourFields(view, m, override) {
     optionHtml(view, o === 1 ? '' : String(o), Math.round(o * 100) + '%', (override.opacity ?? 1) === o));
   return `
     <label class="rq-label"><span>Colour family</span>
-      <select data-track="model-family" class="rq-field" data-key="${view.esc(m.key)}" data-field="family">${familyOptions.join('')}</select>
+      <select data-track="model-family" class="select-native" data-key="${view.esc(m.key)}" data-field="family">${familyOptions.join('')}</select>
     </label>
     <label class="rq-label"><span>Opacity</span>
-      <select data-track="model-opacity" class="rq-field" data-key="${view.esc(m.key)}" data-field="opacity">${opacityOptions.join('')}</select>
+      <select data-track="model-opacity" class="select-native" data-key="${view.esc(m.key)}" data-field="opacity">${opacityOptions.join('')}</select>
     </label>`;
 }
 

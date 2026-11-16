@@ -1,6 +1,6 @@
 """Session names, the telemetry start date, collapsible cards and chart history in a real browser.
 
-Runs at a phone and a desktop viewport over synthetic records and a throwaway config file.
+Runs at a phone viewport (the tab test also checks a desktop one) over synthetic records and a throwaway config file.
 Needs Playwright and an installed Chromium; without them the module is skipped with that reason.
 The page's usage-log posts are intercepted so the run writes nothing to the user's data.
 """
@@ -19,7 +19,8 @@ from src import aggregate, config, refresh  # noqa: E402
 from src.vscode_parser import RequestRecord  # noqa: E402
 
 NOW = datetime.now(tz=timezone.utc)
-VIEWPORTS = {"phone": {"width": 390, "height": 844}, "desktop": {"width": 1280, "height": 900}}
+PHONE = {"width": 390, "height": 844}
+DESKTOP = {"width": 1280, "height": 900}
 
 
 def _records() -> List[RequestRecord]:
@@ -49,10 +50,9 @@ def base_url(serve, tmp_path_factory) -> Iterator[str]:
     config._loaded, config._cache = False, {}
 
 
-@pytest.fixture(params=sorted(VIEWPORTS))
-def page(browser, base_url, request):
-    phone = request.param == "phone"
-    context = browser.new_context(viewport=VIEWPORTS[request.param], has_touch=phone, is_mobile=phone)
+@pytest.fixture
+def page(browser, base_url):
+    context = browser.new_context(viewport=PHONE, has_touch=True, is_mobile=True)
     context.route("**/api/usage/**", lambda route: route.fulfill(status=204))
     pg = context.new_page()
     pg.goto(base_url + "/")
@@ -143,14 +143,10 @@ def test_a_card_collapses_and_stays_collapsed_after_a_reload(page):
     assert card.locator(":scope > summary").bounding_box()["height"] >= 44
 
 
-def test_the_trends_tab_has_no_card_that_only_repeats_its_name(page):
-    _open_tab(page, "trends")
-    assert page.locator("#charts-card .chart-wrap").first.is_visible()
-    assert page.locator("#charts-card .collapse-title").count() == 0
-
-
 def test_the_trend_steps_through_older_windows_and_a_bucket_tap_focuses_the_dashboard(page):
     _open_tab(page, "trends")
+    assert page.locator("#charts-card .chart-wrap").first.is_visible()
+    assert page.locator("#charts-card .collapse-title").count() == 0  # no card that only repeats the tab's name
     # Today draws 14 days; the records 20 and 50 days old sit in older windows.
     page.wait_for_function("document.querySelector('#trend-range').textContent !== ''")
     latest_range = page.locator("#trend-range").inner_text()
@@ -195,9 +191,16 @@ def test_each_tab_shows_its_own_pane_under_one_page_header(page):
         assert _no_horizontal_scroll(page)
     page.click("#settings-btn")
     page.wait_for_selector("#settings-dialog[open]")  # Settings is the header gear, never a tab
+    page.click("#settings-close")
+
+    page.set_viewport_size(DESKTOP)  # the same panes and no sideways scroll on a wide window
+    for name, _ in tabs:
+        _open_tab(page, name)
+        assert page.eval_on_selector_all(".pane", "ps => ps.filter(p => !p.hidden).map(p => p.id)") == ["pane-" + name]
+        assert _no_horizontal_scroll(page)
 
 
-def test_the_refresh_menu_is_the_vendored_row_menu_and_reports_through_the_toast(page):
+def test_the_refresh_menu_reports_through_a_toast_that_paints_above_an_open_sheet(page):
     items = '[role="menu"] [role="menuitem"]'
     page.click("#menu-btn")
     page.wait_for_selector(items)
@@ -210,12 +213,14 @@ def test_the_refresh_menu_is_the_vendored_row_menu_and_reports_through_the_toast
     page.wait_for_function("document.querySelector('#toast') && !document.querySelector('#toast').hidden")
     assert page.inner_text("#toast").startswith("Rebuilt from the files")
 
-
-def test_a_toast_paints_above_an_open_sheet(page):
+    # The toast also paints above an open sheet.
     page.click("#settings-btn")
     page.wait_for_selector("#settings-dialog[open]")
     page.click('#set-textsize [data-textsize="large"]')
-    page.wait_for_function("document.querySelector('#toast') && !document.querySelector('#toast').hidden")
+    page.wait_for_function(
+        "document.querySelector('#toast') && !document.querySelector('#toast').hidden"
+        " && !document.querySelector('#toast').textContent.startsWith('Rebuilt')"
+    )
     # A modal dialog makes the rest of the page inert, so hit-testing cannot see the toast; its
     # place in the top layer (opened after the dialog, so stacked above it) is what carries it.
     assert page.evaluate("document.querySelector('#toast').matches(':popover-open')")

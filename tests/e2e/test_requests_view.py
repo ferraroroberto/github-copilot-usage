@@ -7,7 +7,7 @@ The page's usage-log posts are intercepted so the run writes nothing to the user
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Iterator, List
 
 import pytest
@@ -16,8 +16,8 @@ sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not 
 
 from src import aggregate  # noqa: E402
 from src.vscode_parser import RequestRecord  # noqa: E402
+from tests.conftest import TODAY_NOON  # noqa: E402
 
-NOW = datetime.now(tz=timezone.utc)
 PHONE = {"width": 390, "height": 844}
 
 
@@ -34,7 +34,7 @@ def _records() -> List[RequestRecord]:
             session_id="sess-beta" if beta else "sess-alpha",
             session_title="Beta session" if beta else "Alpha session",
             request_id="req-%02d" % n,
-            ts=NOW - timedelta(minutes=n),
+            ts=TODAY_NOON - timedelta(minutes=n),
             message="synthetic prompt %02d" % n,
             mode="agent" if n % 2 else "ask",
             model_requested="m",
@@ -112,17 +112,6 @@ def test_filters_sort_and_url_state_survive_a_reload(page, base_url):
     assert page.locator("#rq-list").inner_text() == shown
 
 
-def test_pagination_walks_the_pages(page, base_url):
-    _open(page, base_url)
-    assert page.inner_text("#rq-page") == "Page 1 of 2"
-    assert page.is_disabled("#rq-prev")
-    page.click("#rq-next")
-    page.wait_for_function("document.querySelectorAll('#rq-list li').length === 5")
-    assert page.inner_text("#rq-page") == "Page 2 of 2"
-    assert "page=2" in page.url
-    assert page.is_disabled("#rq-next")
-
-
 def test_unbilled_rows_show_without_a_credit_range_and_a_row_opens_its_session(page, base_url):
     _open(page, base_url, "?view=requests&period=week&q=prompt 05")
     page.wait_for_function("document.querySelectorAll('#rq-list li').length === 1")
@@ -135,8 +124,15 @@ def test_unbilled_rows_show_without_a_credit_range_and_a_row_opens_its_session(p
     assert page.inner_text("#sd-title") in ("Alpha session", "Beta session")
 
 
-def test_phone_layout_does_not_overflow_and_empty_state_reads(page, base_url):
+def test_pagination_walks_the_pages_and_the_phone_layout_does_not_overflow_and_empty_state_reads(page, base_url):
     _open(page, base_url)
+    assert page.inner_text("#rq-page") == "Page 1 of 2"
+    assert page.is_disabled("#rq-prev")
+    page.click("#rq-next")
+    page.wait_for_function("document.querySelectorAll('#rq-list li').length === 5")
+    assert page.inner_text("#rq-page") == "Page 2 of 2"
+    assert "page=2" in page.url
+    assert page.is_disabled("#rq-next")
     for target in ("document.documentElement", "document.querySelector('#requests-dialog')"):
         assert page.evaluate("t => t.scrollWidth <= t.clientWidth + 1", page.evaluate_handle(target))
     page.fill("#rq-q", "nothing matches this text")

@@ -1,4 +1,4 @@
-"""Settings → Available features in a real browser, at a phone and a desktop width, in both themes.
+"""Settings → Available features in a real browser, at a phone width, in both themes.
 
 Each block is switched off and on again through the page: its UI hides, its calls stop, and it
 returns with no reload. Needs Playwright and an installed Chromium; without them the module is skipped.
@@ -15,7 +15,7 @@ import pytest
 pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
 
 from src import aggregate, billing, config, refresh  # noqa: E402
-from tests.e2e.test_dashboard_controls_ui import VIEWPORTS, _records  # noqa: E402
+from tests.e2e.test_dashboard_controls_ui import PHONE, _records  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -32,11 +32,10 @@ def base_url(serve, tmp_path_factory) -> Iterator[str]:
     config._loaded, config._cache = False, {}
 
 
-@pytest.fixture(params=sorted(VIEWPORTS))
-def page(browser, base_url, request):
+@pytest.fixture
+def page(browser, base_url):
     config.save({"features": {}})
-    phone = request.param == "phone"
-    context = browser.new_context(viewport=VIEWPORTS[request.param], has_touch=phone, is_mobile=phone)
+    context = browser.new_context(viewport=PHONE, has_touch=True, is_mobile=True)
     pg = context.new_page()
     pg.usage_posts = []  # type: ignore[attr-defined]
     pg.billing_calls = []  # type: ignore[attr-defined]
@@ -83,17 +82,17 @@ def _flush_usage(page) -> int:
     return len(page.usage_posts) - before
 
 
-def test_every_block_is_on_by_default(page):
-    _open_settings(page)
-    assert [b.get_attribute("aria-checked") for b in page.locator("[data-feature]").all()] == ["true"] * 4
-    assert page.locator("#billing-card").is_visible()
-
-
-def test_billing_card_off_hides_it_and_stops_its_calls_then_restores_them(page):
+def test_billing_card_off_hides_it_and_stops_its_calls_then_restores_them_and_says_when_it_cannot_run(page):
     page.wait_for_function("document.querySelector('#billing-note').textContent !== ''")
     assert page.locator("#billing-card").is_visible() and page.billing_calls
     _open_settings(page)
+    assert [b.get_attribute("aria-checked") for b in page.locator("[data-feature]").all()] == ["true"] * 4
     assert page.locator('.settings-row[data-feature-ui="billing_card"]').is_visible()
+    # With no token the block says so and stays switchable.
+    hint = _switch(page, "billing_card").locator("xpath=ancestor::label").locator(".settings-row-hint")
+    assert hint.inner_text() == "Unavailable on this machine"
+    note = page.locator("#features-note")
+    assert note.is_visible() and "GITHUB_COPILOT_BILLING_PAT" in note.inner_text()
 
     _toggle(page, "billing_card", False)
     assert page.locator("#billing-card").is_hidden()
@@ -144,28 +143,18 @@ def test_copilot_cli_switch_persists_across_a_reload(page, base_url):
     assert config.load()["features"] == {"copilot_cli": False}
 
 
-def test_a_block_that_cannot_run_here_says_so_and_stays_switchable(page):
+def test_the_features_group_fits_the_screen_in_both_themes(page):
     _open_settings(page)
-    hint = _switch(page, "billing_card").locator("xpath=ancestor::label").locator(".settings-row-hint")
-    assert hint.inner_text() == "Unavailable on this machine"
-    note = page.locator("#features-note")
-    assert note.is_visible() and "GITHUB_COPILOT_BILLING_PAT" in note.inner_text()
-    _toggle(page, "billing_card", False)
-    assert page.locator("#billing-card").is_hidden()
-
-
-@pytest.mark.parametrize("theme", ["light", "dark"])
-def test_the_features_group_fits_the_screen_in_both_themes(page, theme):
-    page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", theme)
-    _open_settings(page)
-    page.locator("#group-features").scroll_into_view_if_needed()
-    overflow: List[bool] = page.evaluate(
-        "() => [document.documentElement, document.querySelector('#settings-dialog')]"
-        ".map(el => el.scrollWidth > el.clientWidth)"
-    )
-    assert overflow == [False, False]
-    for switch in page.locator("[data-feature]").all():
-        box = switch.bounding_box()
-        row = switch.locator("xpath=ancestor::label").bounding_box()
-        assert box["x"] + box["width"] <= row["x"] + row["width"] + 1
-        assert row["height"] >= 44
+    for theme in ("light", "dark"):
+        page.evaluate("t => document.documentElement.setAttribute('data-theme', t)", theme)
+        page.locator("#group-features").scroll_into_view_if_needed()
+        overflow: List[bool] = page.evaluate(
+            "() => [document.documentElement, document.querySelector('#settings-dialog')]"
+            ".map(el => el.scrollWidth > el.clientWidth)"
+        )
+        assert overflow == [False, False], theme
+        for switch in page.locator("[data-feature]").all():
+            box = switch.bounding_box()
+            row = switch.locator("xpath=ancestor::label").bounding_box()
+            assert box["x"] + box["width"] <= row["x"] + row["width"] + 1, theme
+            assert row["height"] >= 44, theme

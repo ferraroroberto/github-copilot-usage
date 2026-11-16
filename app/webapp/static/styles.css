@@ -2,84 +2,104 @@
  * Light theme is the default token set; [data-theme="dark"] overrides. */
 
 :root {
-  --canvas: #ffffff;
+  /* Colour, radius and spacing values live under the fleet's token names (design.md),
+   * which the vendored components read; the app's older names below alias them. */
+  --bg: #ffffff;
   --canvas-subtle: #f6f8fa;
   --card: #ffffff;
-  --border: #d1d9e0;
-  --border-muted: #d8dee4;
-  --fg: #1f2328;
-  --fg-muted: #656d76;
-  --muted: var(--fg-muted);
+  --line: #d1d9e0;
+  --line-muted: #d8dee4;
+  --ink: #1f2328;
+  --muted: #656d76;
   --accent: #0969da;
   --accent-fill: #0969da;
   --accent-fg: #ffffff;
   --control-border: #818b98;
-  --neutral-soft: color-mix(in srgb, var(--fg-muted) 16%, transparent);
+  --neutral-soft: color-mix(in srgb, var(--muted) 16%, transparent);
   --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
   --accent-border-soft: color-mix(in srgb, var(--accent) 24%, transparent);
   --success: #1a7f37;
-  --danger: #cf222e;
+  --deficit: #cf222e;
   --attention: #9a6700;
-  --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-pill: 9999px;
-  --gutter: 12px;
-  /* spacing — design.md `spacing` roles, read by the vendored page-foot */
+  --accent-text: #0550ae;
+  --attention-text: #7d4e00;
+  --danger-text: #a40e26;
+  --card-2: var(--canvas-subtle);
+  --input-bg: var(--canvas-subtle);
+  --toggle-knob: #ffffff;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius: 16px;
+  --radius-pill: 9999px;
+  --radius-nav: 30px;
+  /* spacing — design.md `spacing` and `rows` roles */
   --space-xs: 4px;
+  --space-sm: 8px;
   --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --gap: 12px;
+  --row-sm: 44px;
+  --row-md: 52px;
+  --row-lg: 60px;
+  --hit-min: 44px;
   /* typography scale — design.md `typography` roles (theme-independent) */
   --font-heading-xl: 2rem;
   --font-heading-lg: 1.5rem;
   --font-body: 1rem;
+  --font-body-sm: 0.875rem;
   --font-label: 0.875rem;
   --font-caption: 0.75rem;
   /* shared inline-control height — design.md `components.control.height` */
   --control-h: 36px;
-  /* The vendored components (card, switch, settings-group) read the fleet's token
-   * names; these map them onto this app's own names so neither side is renamed. */
-  --ink: var(--fg);
-  --line: var(--border);
-  --line-muted: var(--border-muted);
-  --card-2: var(--canvas-subtle);
-  --input-bg: var(--canvas-subtle);
-  --toggle-knob: #ffffff;
-  --accent-text: #0550ae;
-  --attention-text: #7d4e00;
-  --danger-text: #a40e26;
-  --radius: var(--r-lg);
-  --radius-md: var(--r-md);
-  --radius-pill: var(--r-pill);
-  --space-sm: 8px;
-  --gap: 12px;
-  --font-body-sm: 0.875rem;
-  --row-sm: 44px;
-  --row-md: 52px;
-  --icon-title: 18px;
   --icon-inline: 16px;
+  --icon-title: 18px;
+  --icon-feature: 24px;
+  /* the floating tab bar's clear glass — design.md "Navigation" */
+  --tabbar-bg: rgba(255, 255, 255, 0.62);
+  --tabbar-border: rgba(0, 0, 0, 0.08);
+  --tabbar-pill: rgba(0, 0, 0, 0.07);
+  --tabbar-shadow: 0 8px 28px -6px rgba(20, 24, 40, 0.2), 0 1px 4px rgba(20, 24, 40, 0.06);
+  /* the app's own names for the same values */
+  --canvas: var(--bg);
+  --border: var(--line);
+  --border-muted: var(--line-muted);
+  --fg: var(--ink);
+  --fg-muted: var(--muted);
+  --danger: var(--deficit);
+  --r-sm: var(--radius-sm);
+  --r-md: var(--radius-md);
+  --r-lg: var(--radius);
+  --r-pill: var(--radius-pill);
+  --gutter: var(--gap);
 }
 
 [data-theme="dark"] {
-  --card-2: var(--border-muted);
-  --input-bg: var(--border-muted);
-  --accent-text: #58a6ff;
-  --attention-text: #e3b341;
-  --danger-text: #ff7b72;
-  --canvas: #0d1117;
+  --bg: #0d1117;
   --canvas-subtle: #010409;
   --card: #161b22;
-  --border: #30363d;
-  --border-muted: #21262d;
-  --fg: #e6edf3;
-  --fg-muted: #7d8590;
+  --line: #30363d;
+  --line-muted: #21262d;
+  --ink: #e6edf3;
+  --muted: #7d8590;
   --accent: #2f81f7;
   --accent-fill: #1f6feb;
   --control-border: #6e7681;
   --success: #3fb950;
-  --danger: #f85149;
+  --deficit: #f85149;
   --attention: #d29922;
+  --accent-text: #58a6ff;
+  --attention-text: #e3b341;
+  --danger-text: #ff7b72;
+  --card-2: var(--line-muted);
+  --input-bg: var(--line-muted);
+  --tabbar-bg: rgba(42, 45, 52, 0.55);
+  --tabbar-border: rgba(255, 255, 255, 0.14);
+  --tabbar-pill: rgba(255, 255, 255, 0.14);
+  --tabbar-shadow: 0 10px 30px -6px rgba(0, 0, 0, 0.6);
 }
 
 * { box-sizing: border-box; }
-/* Form controls inherit the page font and color (the UA default is Arial/buttontext). */
-button, input, select, textarea { font: inherit; color: inherit; }
 [hidden] { display: none !important; }
 html, body { margin: 0; padding: 0; }
 /* Text size (Settings): the pre-paint stamp in index.html sets html[data-textsize];
@@ -107,20 +127,28 @@ body {
 }
 
 /* ---- installed-PWA shell ----
- * The window is the scroller (a fixed-inset `.app` scroller is the superseded
- * shell). Single-view dashboard: no bottom-tab nav, so no `_vendored/nav/`.
- * Never let the page scroll behind an open dialog. */
+ * The window is the scroller; the vendored nav reserves the phone's bottom space
+ * for its floating pill. Never let the page scroll behind an open dialog. */
 body:has(dialog[open]) { overflow: hidden; }
+
+/* Each tab's pane stacks its cards at the page's own gap. */
+.pane { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gutter); }
 
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* ---- top bar ---- */
-.topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.topbar-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.topbar-title h1 { font-size: var(--font-heading-lg); font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; margin: 0; }
-.logo { width: 24px; height: 24px; color: var(--accent); flex: none; }
-.topbar-actions { display: flex; align-items: center; gap: 0; }
-.freshness { font-size: var(--font-caption); font-weight: 600; color: var(--fg-muted); margin-right: 8px; }
+/* ---- page header ----
+ * The freshness readout is the header's one status readout: a short live value
+ * that opens the refresh menu, at the 44px target via an invisible expansion. */
+.head-readout {
+  position: relative; flex: none; height: 34px; padding: 0 4px;
+  border: 0; background: transparent; cursor: pointer;
+  color: var(--fg-muted); font-size: var(--font-body-sm); font-variant-numeric: tabular-nums;
+  border-radius: var(--r-sm);
+}
+.head-readout::before { content: ""; position: absolute; inset: -5px 0; }
+.head-readout:hover { color: var(--fg); }
+.head-readout:disabled { cursor: progress; }
+.home-head .head-readout + .home-toggle { margin-left: 0; }
 
 .icon-btn {
   width: 44px; height: 44px; flex: none; padding: 0;
@@ -134,7 +162,7 @@ body:has(dialog[open]) { overflow: hidden; }
  * labelled control (the vendored switch carries its own). The header icon buttons are real 44px, so side-by-side
  * targets never overlap. */
 .dialog-close::before { content: ""; position: absolute; inset: -5px; }
-.btn-surface::before, .seg button::before { content: ""; position: absolute; inset: -4px 0; }
+.btn-surface::before { content: ""; position: absolute; inset: -4px 0; }
 .icon-btn svg { width: 18px; height: 18px; }
 .icon-btn:hover { color: var(--fg); }
 [data-theme="dark"] .glyph-moon { display: none; }
@@ -142,22 +170,10 @@ body:has(dialog[open]) { overflow: hidden; }
 [data-theme="dark"] .glyph-sun { display: block; }
 [data-theme="light"] .glyph-sun { display: none; }
 
-/* ---- segmented control ---- */
-.seg {
-  display: flex; gap: 0; padding: 3px;
-  background: var(--neutral-soft);
-  border-radius: var(--r-md);
-  width: fit-content;
-}
-.seg button {
-  position: relative; min-width: 44px; height: var(--control-h);
-  border: 0; background: transparent; color: var(--fg);
-  font: inherit; font-size: var(--font-label); font-weight: 600;
-  padding: 0 14px; border-radius: var(--r-sm); cursor: pointer;
-}
-.seg button.active { background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
-.seg-mini { margin-left: auto; }
-.seg-mini button { padding: 0 10px; }
+/* ---- segmented controls (vendored segmented.css) ----
+ * A compact one sizes to its labels instead of filling the row. */
+.seg-mini { margin-left: auto; width: fit-content; flex: none; }
+.seg-mini .segmented-item { padding: 0 10px; }
 
 /* ---- stat tiles ---- */
 .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); }
@@ -314,7 +330,6 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
   stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
   vertical-align: -0.15em;
 }
-.settings-row > .seg { flex: none; }
 .roots-field { display: block; margin: 8px 0 6px; font-size: var(--font-label); font-weight: 600; }
 #set-roots {
   display: block; width: 100%;
@@ -360,7 +375,6 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
  * filters are the whole point of this view and a phone is where it is used. */
 .rq-intro { margin: 0 0 4px; }
 .rq-period { margin: 8px 0 12px; width: 100%; }
-.rq-period button { flex: 1 1 0; min-width: 0; padding: 0 4px; }
 .rq-field {
   width: 100%; min-width: 0; height: 44px; padding: 0 10px;
   background: var(--input-bg); color: var(--fg);

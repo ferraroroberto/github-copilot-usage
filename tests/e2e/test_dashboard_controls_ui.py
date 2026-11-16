@@ -56,10 +56,16 @@ def page(browser, base_url, request):
     context.route("**/api/usage/**", lambda route: route.fulfill(status=204))
     pg = context.new_page()
     pg.goto(base_url + "/")
-    pg.wait_for_selector("#session-list li")
+    pg.wait_for_selector("#session-list li", state="attached")
     yield pg
     context.close()
     config.save({"telemetry_start_date": "", "session_names": {}})
+
+
+def _open_tab(page, name: str) -> None:
+    """Open one tab of the bottom-tab nav; the chosen tab is remembered across a reload."""
+    page.click(f'.tabs .tab[data-tab="{name}"]')
+    page.wait_for_selector(f"#pane-{name}:not([hidden])")
 
 
 def _no_horizontal_scroll(page) -> bool:
@@ -67,6 +73,7 @@ def _no_horizontal_scroll(page) -> bool:
 
 
 def test_a_session_can_be_renamed_and_restored(page):
+    _open_tab(page, "sessions")
     page.click("#session-list li")
     page.wait_for_selector("#session-dialog[open]")
     assert page.locator("#sd-name-clear").is_hidden()
@@ -114,6 +121,7 @@ def test_the_start_date_leaves_earlier_records_out_and_labels_the_coverage(page)
 
 
 def test_a_card_collapses_and_stays_collapsed_after_a_reload(page):
+    _open_tab(page, "trends")
     body = page.locator("#charts-card .chart-wrap").first
     assert body.is_visible()
     button = page.locator("#charts-card .collapse-btn")
@@ -123,14 +131,16 @@ def test_a_card_collapses_and_stays_collapsed_after_a_reload(page):
     assert page.locator("#charts-card .card-head h2").is_visible()  # the heading stays to unfold it by
 
     page.reload()
-    page.wait_for_selector("#session-list li")
+    page.wait_for_selector("#session-list li", state="attached")
+    assert page.locator("#pane-trends").is_visible()  # the open tab survives the reload
     assert page.locator("#charts-card .chart-wrap").first.is_hidden()
     page.locator("#charts-card .collapse-btn").click()
     assert page.locator("#charts-card .chart-wrap").first.is_visible()
-    assert page.locator(".collapse-btn").first.bounding_box()["height"] >= 44
+    assert page.locator("#charts-card .collapse-btn").bounding_box()["height"] >= 44
 
 
 def test_the_trend_steps_through_older_windows_and_a_bucket_tap_focuses_the_dashboard(page):
+    _open_tab(page, "trends")
     # Today draws 14 days; the records 20 and 50 days old sit in older windows.
     page.wait_for_function("document.querySelector('#trend-range').textContent !== ''")
     latest_range = page.locator("#trend-range").inner_text()
@@ -151,13 +161,27 @@ def test_the_trend_steps_through_older_windows_and_a_bucket_tap_focuses_the_dash
     )
     page.mouse.click(x, y)
     page.wait_for_selector("#focus-bar:not([hidden])")
-    assert page.locator("#period-seg button.active").count() == 0
+    assert page.locator('#period-seg [aria-pressed="true"]').count() == 0
     assert "Focused on" in page.locator("#focus-label").inner_text()
     assert page.locator("#trend-nav").is_hidden()
     page.wait_for_function("document.querySelector('#t-requests').textContent !== '—'")
 
     page.click("#focus-clear")
     page.wait_for_selector("#focus-bar", state="hidden")
-    assert page.locator("#period-seg button.active").inner_text() == "Today"
+    assert page.locator('#period-seg [aria-pressed="true"]').inner_text() == "Today"
     assert page.locator("#trend-nav").is_visible()
     assert _no_horizontal_scroll(page)
+
+
+def test_each_tab_shows_its_own_pane_under_one_page_header(page):
+    tabs = page.eval_on_selector_all(".tabs .tab", "ts => ts.map(t => [t.dataset.tab, t.textContent.trim()])")
+    assert [name for name, _ in tabs] == ["overview", "trends", "breakdown", "sessions"]
+    for name, label in tabs:
+        _open_tab(page, name)
+        shown = page.eval_on_selector_all(".pane", "ps => ps.filter(p => !p.hidden).map(p => p.id)")
+        assert shown == ["pane-" + name]
+        assert page.inner_text("#head-title") == label  # the header names the open tab
+        assert page.locator("#theme-toggle").is_visible() and page.locator("#settings-btn").is_visible()
+        assert _no_horizontal_scroll(page)
+    page.click("#settings-btn")
+    page.wait_for_selector("#settings-dialog[open]")  # Settings is the header gear, never a tab

@@ -2,16 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=auto">
   <title>Copilot Usage</title>
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d1117">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="icon" href="favicon.ico" sizes="48x48">
   <link rel="apple-touch-icon" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="_vendored/base/base.css">
   <link rel="stylesheet" href="_vendored/card/card.css">
+  <link rel="stylesheet" href="_vendored/icon-button/icon-button.css">
+  <link rel="stylesheet" href="_vendored/home-head/home-head.css">
+  <link rel="stylesheet" href="_vendored/segmented/segmented.css">
+  <link rel="stylesheet" href="_vendored/nav/nav-tabs.css">
   <link rel="stylesheet" href="_vendored/switch/switch.css">
   <link rel="stylesheet" href="_vendored/settings-group/settings-group.css">
   <link rel="stylesheet" href="styles.css">
@@ -35,7 +40,7 @@
   </script>
 </head>
 <body>
-<!-- Lucide sprite, trimmed to the glyphs the Settings pane uses (inline: iOS Safari does not
+<!-- Lucide sprite, trimmed to the glyphs the header, menu and Settings pane use (inline: iOS Safari does not
      resolve an external <use>). Symbols are verbatim from _vendored/icons/icons-sprite.html. -->
 <svg width="0" height="0" aria-hidden="true" focusable="false"
      style="position:absolute;width:0;height:0;overflow:hidden">
@@ -112,38 +117,107 @@
     <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
     <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
   </symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24" fill="none">
+    <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
+  </symbol>
+  <symbol id="i-layout-grid" viewBox="0 0 24 24" fill="none">
+    <rect width="7" height="7" x="3" y="3" rx="1" />
+    <rect width="7" height="7" x="14" y="3" rx="1" />
+    <rect width="7" height="7" x="14" y="14" rx="1" />
+    <rect width="7" height="7" x="3" y="14" rx="1" />
+  </symbol>
+  <symbol id="i-messages-square" viewBox="0 0 24 24" fill="none">
+    <path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    <path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1" />
+  </symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2" />
+    <path d="M12 20v2" />
+    <path d="m4.93 4.93 1.41 1.41" />
+    <path d="m17.66 17.66 1.41 1.41" />
+    <path d="M2 12h2" />
+    <path d="M20 12h2" />
+    <path d="m6.34 17.66-1.41 1.41" />
+    <path d="m19.07 4.93-1.41 1.41" />
+  </symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24" fill="none">
+    <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" />
+  </symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24" fill="none">
+    <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" />
+    <circle cx="12" cy="12" r="3" />
+  </symbol>
   <symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none">
     <path d="m9 18 6-6-6-6" />
   </symbol>
 </svg>
-<main class="app">
-  <header class="topbar">
-    <div class="topbar-title">
-      <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
-      <h1>Copilot Usage</h1>
-    </div>
-    <div class="topbar-actions">
-      <span id="freshness" class="freshness"></span>
-      <button data-track="menu-open" id="menu-btn" class="icon-btn" type="button" aria-label="More actions" aria-haspopup="menu" aria-expanded="false" popovertarget="topmenu">
-        <svg class="icon" aria-hidden="true"><use href="#i-ellipsis-vertical"></use></svg>
-      </button>
-      <button data-track="theme-toggle" id="theme-toggle" class="icon-btn" type="button" aria-label="Toggle theme">
-        <svg class="glyph-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
-        <svg class="glyph-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-      </button>
-      <button data-track="settings-open" id="settings-btn" class="icon-btn" type="button" aria-label="Settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-      </button>
-    </div>
-  </header>
+<!-- Primary navigation: the vendored floating bottom-tab pill on a phone, the segmented
+     control on desktop. A direct <body> child, sibling to <main class="app">. -->
+<nav class="tabs" role="tablist" aria-label="Sections" data-active-tab="overview">
+  <button id="tab-overview" type="button" class="tab active" data-tab="overview" data-track="tab-overview"
+          role="tab" aria-selected="true" aria-controls="pane-overview">
+    <svg class="tab-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+      <path d="m12 14 4-4" />
+      <path d="M3.34 19a10 10 0 1 1 17.32 0" />
+    </svg>
+    <span class="tab-label">Overview</span>
+  </button>
+  <button id="tab-trends" type="button" class="tab" data-tab="trends" data-track="tab-trends"
+          role="tab" aria-selected="false" aria-controls="pane-trends" tabindex="-1">
+    <svg class="tab-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+      <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
+    </svg>
+    <span class="tab-label">Trends</span>
+  </button>
+  <button id="tab-breakdown" type="button" class="tab" data-tab="breakdown" data-track="tab-breakdown"
+          role="tab" aria-selected="false" aria-controls="pane-breakdown" tabindex="-1">
+    <svg class="tab-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+      <rect width="7" height="7" x="3" y="3" rx="1" />
+      <rect width="7" height="7" x="14" y="3" rx="1" />
+      <rect width="7" height="7" x="14" y="14" rx="1" />
+      <rect width="7" height="7" x="3" y="14" rx="1" />
+    </svg>
+    <span class="tab-label">Breakdown</span>
+  </button>
+  <button id="tab-sessions" type="button" class="tab" data-tab="sessions" data-track="tab-sessions"
+          role="tab" aria-selected="false" aria-controls="pane-sessions" tabindex="-1">
+    <svg class="tab-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+      <path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+      <path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1" />
+    </svg>
+    <span class="tab-label">Sessions</span>
+  </button>
+</nav>
 
-  <nav class="seg" id="period-seg" aria-label="Period">
-    <button data-track="period-today" data-period="today" class="active" type="button">Today</button>
-    <button data-track="period-week" data-period="week" type="button">Week</button>
-    <button data-track="period-month" data-period="month" type="button">Month</button>
-    <button data-track="period-cycle" data-period="cycle" type="button">Cycle</button>
-    <button data-track="period-all" data-period="all" type="button">All</button>
-  </nav>
+<main class="app">
+  <!-- The page header (vendored home-head): the tab's title, the live context line, the
+       freshness readout that opens the refresh menu, then the theme toggle and the Settings gear. -->
+  <div class="card home-head">
+    <span class="home-title">
+      <svg class="icon" aria-hidden="true"><use id="head-icon" href="#i-gauge"></use></svg>
+      <span id="head-title">Overview</span>
+    </span>
+    <span class="status" id="head-status"></span>
+    <button data-track="menu-open" id="menu-btn" class="head-readout" type="button" aria-label="Refresh options" aria-haspopup="menu" aria-expanded="false" popovertarget="topmenu">
+      <span id="freshness">—</span>
+    </button>
+    <button data-track="theme-toggle" id="theme-toggle" class="icon-button home-toggle" type="button" aria-label="Toggle theme" title="Toggle theme">
+      <svg class="icon glyph-sun" aria-hidden="true"><use href="#i-sun"></use></svg>
+      <svg class="icon glyph-moon" aria-hidden="true"><use href="#i-moon"></use></svg>
+    </button>
+    <button data-track="settings-open" id="settings-btn" class="icon-button home-toggle home-settings" type="button" aria-label="Settings" title="Settings">
+      <svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg>
+    </button>
+  </div>
+
+  <div class="segmented period-seg" id="period-seg" role="group" aria-label="Period">
+    <button data-track="period-today" data-period="today" class="segmented-item" aria-pressed="true" type="button">Today</button>
+    <button data-track="period-week" data-period="week" class="segmented-item" aria-pressed="false" type="button">Week</button>
+    <button data-track="period-month" data-period="month" class="segmented-item" aria-pressed="false" type="button">Month</button>
+    <button data-track="period-cycle" data-period="cycle" class="segmented-item" aria-pressed="false" type="button">Cycle</button>
+    <button data-track="period-all" data-period="all" class="segmented-item" aria-pressed="false" type="button">All</button>
+  </div>
 
   <!-- A tapped chart bucket focuses every figure on its dates; this bar names them and undoes it -->
   <div class="focus-bar" id="focus-bar" hidden>
@@ -152,6 +226,7 @@
   </div>
   <p class="coverage-note" id="coverage-note" role="status" hidden></p>
 
+  <section id="pane-overview" class="pane" role="tabpanel" aria-labelledby="tab-overview" aria-label="Overview">
   <!-- Stat tiles -->
   <section class="tiles">
     <div class="tile tile-hero">
@@ -206,6 +281,35 @@
     <p class="footnote">Worked out on this machine from your own logs, with fixed rules and no model call. Figures from prompt composition are estimates, not per-tool billing.</p>
   </section>
 
+  <!-- Official billing (optional PAT) -->
+  <section class="card" id="billing-card">
+    <div class="card-head">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+      <h2>Official GitHub billing</h2>
+      <span class="card-meta" id="billing-asof"></span>
+    </div>
+    <div class="table-wrap" id="billing-wrap">
+      <table id="billing-table">
+        <thead><tr><th>Date</th><th>Model</th><th class="num">Credits</th><th class="num">USD</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="footnote" id="billing-note"></p>
+  </section>
+
+  <!-- Data sources -->
+  <section class="card">
+    <div class="card-head">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+      <h2>Data sources</h2>
+    </div>
+    <ul class="source-list" id="source-list"></ul>
+    <p class="footnote">Every VS Code build on this machine is discovered automatically. Using a company-branded editor stored somewhere unusual? Add its path under Settings → extra roots.</p>
+  </section>
+
+  </section>
+
+  <section id="pane-trends" class="pane" role="tabpanel" aria-labelledby="tab-trends" aria-label="Trends" hidden>
   <!-- Charts -->
   <section class="card" id="charts-card">
     <div class="card-head">
@@ -236,6 +340,9 @@
     <p class="footnote">Composition of what is actually sent to the model, weighted by prompt size — from VS Code's own per-request breakdown. Select a row to see which projects, models, sessions and requests carry it. High "Tool Definitions"? Disable unused tools/MCP servers to shrink every request.</p>
   </section>
 
+  </section>
+
+  <section id="pane-breakdown" class="pane" role="tabpanel" aria-labelledby="tab-breakdown" aria-label="Breakdown" hidden>
   <!-- Breakdown tables -->
   <section class="card">
     <div class="card-head">
@@ -272,15 +379,22 @@
     </div>
   </section>
 
+  <div class="export-row">
+    <a data-track="export-csv" class="btn-surface" id="export-link" href="/api/export.csv?period=all" download>Export CSV</a>
+  </div>
+
+  </section>
+
+  <section id="pane-sessions" class="pane" role="tabpanel" aria-labelledby="tab-sessions" aria-label="Sessions" hidden>
   <!-- Sessions -->
   <section class="card">
     <div class="card-head">
       <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></svg>
       <h2>Sessions</h2>
       <span class="badge" id="sessions-count">0</span>
-      <div class="seg seg-mini" id="sessions-sort">
-        <button data-track="sessions-sort-cost" data-sort="credits" class="active" type="button">Cost</button>
-        <button data-track="sessions-sort-recent" data-sort="recent" type="button">Recent</button>
+      <div class="segmented seg-mini" id="sessions-sort" role="group" aria-label="Sort sessions">
+        <button data-track="sessions-sort-cost" data-sort="credits" class="segmented-item" aria-pressed="true" type="button">Cost</button>
+        <button data-track="sessions-sort-recent" data-sort="recent" class="segmented-item" aria-pressed="false" type="button">Recent</button>
       </div>
     </div>
     <ul class="session-list" id="session-list"></ul>
@@ -301,35 +415,7 @@
     <button data-track="requests-open" class="btn-surface" id="requests-open" type="button" aria-haspopup="dialog">Search requests</button>
   </section>
 
-  <!-- Official billing (optional PAT) -->
-  <section class="card" id="billing-card">
-    <div class="card-head">
-      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-      <h2>Official GitHub billing</h2>
-      <span class="card-meta" id="billing-asof"></span>
-    </div>
-    <div class="table-wrap" id="billing-wrap">
-      <table id="billing-table">
-        <thead><tr><th>Date</th><th>Model</th><th class="num">Credits</th><th class="num">USD</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-    <p class="footnote" id="billing-note"></p>
   </section>
-
-  <!-- Data sources -->
-  <section class="card">
-    <div class="card-head">
-      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
-      <h2>Data sources</h2>
-    </div>
-    <ul class="source-list" id="source-list"></ul>
-    <p class="footnote">Every VS Code build on this machine is discovered automatically. Using a company-branded editor stored somewhere unusual? Add its path under Settings → extra roots.</p>
-  </section>
-
-  <div class="export-row">
-    <a data-track="export-csv" class="btn-surface" id="export-link" href="/api/export.csv?period=all" download>Export CSV</a>
-  </div>
 
   <footer class="page-foot">
     <p id="buildReadout"></p>
@@ -409,12 +495,12 @@
     </button>
   </div>
 
-  <div class="seg rq-period" id="rq-period" role="group" aria-label="Period">
-    <button data-track="requests-period-today" data-period="today" type="button">Today</button>
-    <button data-track="requests-period-week" data-period="week" type="button">Week</button>
-    <button data-track="requests-period-month" data-period="month" type="button">Month</button>
-    <button data-track="requests-period-cycle" data-period="cycle" type="button">Cycle</button>
-    <button data-track="requests-period-all" data-period="all" type="button">All</button>
+  <div class="segmented rq-period" id="rq-period" role="group" aria-label="Period">
+    <button data-track="requests-period-today" data-period="today" class="segmented-item" aria-pressed="false" type="button">Today</button>
+    <button data-track="requests-period-week" data-period="week" class="segmented-item" aria-pressed="false" type="button">Week</button>
+    <button data-track="requests-period-month" data-period="month" class="segmented-item" aria-pressed="false" type="button">Month</button>
+    <button data-track="requests-period-cycle" data-period="cycle" class="segmented-item" aria-pressed="false" type="button">Cycle</button>
+    <button data-track="requests-period-all" data-period="all" class="segmented-item" aria-pressed="false" type="button">All</button>
   </div>
 
   <input data-track="requests-search" class="rq-field rq-search" id="rq-q" type="search" placeholder="Search prompts and sessions" aria-label="Search prompts and sessions" autocomplete="off">
@@ -490,10 +576,10 @@
     <div class="settings-row">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-sliders-horizontal"></use></svg>
       <span class="settings-row-label" id="set-textsize-label">Text size</span>
-      <div class="seg seg-mini" id="set-textsize" role="group" aria-labelledby="set-textsize-label">
-        <button data-track="textsize-small" type="button" data-textsize="small">Small</button>
-        <button data-track="textsize-default" type="button" data-textsize="default">Default</button>
-        <button data-track="textsize-large" type="button" data-textsize="large">Large</button>
+      <div class="segmented seg-mini" id="set-textsize" role="group" aria-labelledby="set-textsize-label">
+        <button data-track="textsize-small" class="segmented-item" aria-pressed="false" type="button" data-textsize="small">Small</button>
+        <button data-track="textsize-default" class="segmented-item" aria-pressed="false" type="button" data-textsize="default">Default</button>
+        <button data-track="textsize-large" class="segmented-item" aria-pressed="false" type="button" data-textsize="large">Large</button>
       </div>
     </div>
   </section>

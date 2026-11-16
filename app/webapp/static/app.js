@@ -12,6 +12,8 @@
 import { buildReadoutText } from './_vendored/page-foot/page-foot.js';
 import { initUsageLog } from './_vendored/usage-log/usage-log.js';
 import { setSwitch } from './_vendored/switch/switch.js';
+import { initNavTabs } from './_vendored/nav/nav-tabs.js';
+import { renderHeadStatus } from './_vendored/home-head/home-head.js';
 import { initRequests } from './requests.js';
 import { flagChips, initInsights, refreshInsights, renderDiagnostics } from './insights.js';
 import { createModelColors, initModelSettings, summarizeModelSettings } from './models.js';
@@ -22,8 +24,6 @@ import { fetchTrend, initTimeline, render as renderTimeline } from './timeline.j
 
 // Local-only usage log (views, taps, device class); same-origin, no content recorded.
 const usage = initUsageLog();
-// Single-view page: the base view the dialogs return to when they close.
-usage.trackView('dashboard');
 
 const POLL_MS = 30_000;
 // Billing changes server-side at most every 5 min (src/billing.py caches today),
@@ -70,7 +70,6 @@ function paintTextSize() {
   const size = document.documentElement.dataset.textsize || 'default';
   document.querySelectorAll('#set-textsize [data-textsize]').forEach((btn) => {
     const on = btn.dataset.textsize === size;
-    btn.classList.toggle('active', on);
     btn.setAttribute('aria-pressed', String(on));
   });
 }
@@ -177,6 +176,31 @@ async function jsonApi(url, opts) {
   return resp.json();
 }
 
+// ---------------------------------------------------------------------------
+// Page header: the tab's title, the live context line and the freshness readout
+// ---------------------------------------------------------------------------
+
+const TAB_ICONS = { overview: 'i-gauge', trends: 'i-activity', breakdown: 'i-layout-grid', sessions: 'i-messages-square' };
+const PERIOD_NAMES = { today: 'Today', week: 'This week', month: 'This month', cycle: 'This billing cycle', all: 'All time' };
+
+function paintHeader(tab) {
+  const button = document.querySelector(`.tabs .tab[data-tab="${tab}"]`);
+  $('head-title').textContent = button ? button.textContent.trim() : '';
+  $('head-icon').setAttribute('href', '#' + (TAB_ICONS[tab] || 'i-gauge'));
+}
+
+// The context line names the period on show; a failed read keeps the last figures and says so.
+function paintHeadStatus(failed) {
+  const fallback = PERIOD_NAMES[state.period] || $('focus-label').textContent;
+  renderHeadStatus($('head-status'), failed ? [{ text: 'Live data unavailable', tone: 'danger' }] : [], fallback);
+}
+
+function paintFreshness(at) {
+  const time = at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  $('freshness').textContent = time;
+  $('menu-btn').setAttribute('aria-label', 'Updated ' + time + '. Refresh options');
+}
+
 async function refresh() {
   const period = encodeURIComponent(state.period);
   const offset = state.trendOffset;
@@ -190,9 +214,10 @@ async function refresh() {
     state.sessions = sessions.sessions || [];
     if (offset === state.trendOffset) state.trend = trend;
     render();
-    $('freshness').textContent = 'updated ' + new Date().toLocaleTimeString();
+    paintFreshness(new Date());
+    paintHeadStatus(false);
   } catch (exc) {
-    $('freshness').textContent = 'error fetching data';
+    paintHeadStatus(true);
     console.error(exc);
   }
   refreshInsights();
@@ -424,7 +449,7 @@ $('sessions-sort').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-sort]');
   if (!btn) return;
   state.sessionsSort = btn.dataset.sort;
-  $('sessions-sort').querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
+  $('sessions-sort').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
   renderSessions();
 });
 
@@ -549,7 +574,7 @@ function setPeriod(period) {
   state.sessionsExpanded = false;
   state.trendOffset = 0;
   state.trend = null;
-  $('period-seg').querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.period === period));
+  $('period-seg').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === period)));
   refresh();
 }
 
@@ -790,6 +815,11 @@ fetch('/api/version').then((r) => r.json()).then((v) => {
   $('buildReadout').textContent = buildReadoutText(v.git_sha || 'unknown', v.built_at || '');
 }).catch(() => {});
 
+initNavTabs({
+  storageKey: 'copilot-usage.tab',
+  // dynamic-id-exempt: the nav only ever passes one of the four constant data-tab names
+  onChange: (tab) => { paintHeader(tab); usage.trackView(tab); },
+});
 initSections(document.querySelector('main.app'));
 const showSessionName = initSessionName({ jsonApi, showToast, reopen: openSession, refresh });
 initTimeline({ state, jsonApi, setPeriod, renderCharts, showToast });

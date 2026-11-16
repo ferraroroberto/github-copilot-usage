@@ -40,6 +40,11 @@ settings-group = { src = "app/webapp/static/_vendored/settings-group", sha = "f2
 card = { src = "app/webapp/static/_vendored/card", sha = "8f15c49560adbc076d24a8a63dd671868ffa7a4e", dest = "app/webapp/static/_vendored/card" }
 switch = { src = "app/webapp/static/_vendored/switch", sha = "8f15c49560adbc076d24a8a63dd671868ffa7a4e", dest = "app/webapp/static/_vendored/switch" }
 icons = { src = "app/webapp/static/_vendored/icons", sha = "4d75f1ebfae5c9d8462c55a90edd56f8b09157d4", dest = "app/webapp/static/_vendored/icons" }
+base = { src = "app/webapp/static/_vendored/base", sha = "90ac7687bf9bc756d73a3b0f4e64cd692d88617e", dest = "app/webapp/static/_vendored/base" }
+nav = { src = "app/webapp/static/_vendored/nav", sha = "cb9fff9130453c781146f2cdf5083d83fb43b0df", dest = "app/webapp/static/_vendored/nav" }
+home-head = { src = "app/webapp/static/_vendored/home-head", sha = "da2e9350daee6ab9d25d399daca21663aa509030", dest = "app/webapp/static/_vendored/home-head" }
+icon-button = { src = "app/webapp/static/_vendored/icon-button", sha = "4d75f1ebfae5c9d8462c55a90edd56f8b09157d4", dest = "app/webapp/static/_vendored/icon-button" }
+segmented = { src = "app/webapp/static/_vendored/segmented", sha = "4d75f1ebfae5c9d8462c55a90edd56f8b09157d4", dest = "app/webapp/static/_vendored/segmented" }
 
 # [structure_ratchet] -- baseline-and-ratchet layout stage. scripts/verify-before-ship.ps1
 # runs scripts/structure_ratchet.py, which fails when a new file passes 1,000 lines, a
@@ -169,13 +174,6 @@ baseline = ".runtime-write-ratchet-baseline.json"
 enabled  = true
 baseline = ".usage-track-ratchet-baseline.json"
 rules    = ["untracked-control", "untracked-sheet", "dynamic-id", "usage-log-wired"]
-
-# [[design.accepted]] -- a design_lint finding that is accurate but whose proposed fix is wrong
-# for this repo, recorded once so /design-sync does not re-file it.
-[[design.accepted]]
-check  = "nav-contract"
-detail = "nav contract partially present — missing: standalone 100lvh bar anchor (.tabs, bottom: auto)"
-reason = "single-view dashboard: the only <nav> is the period segmented control, so there is no bottom-tab bar to anchor; _vendored/nav/ is adopted if a second top-level view appears"
 
 # [[state_machines]] -- a lifecycle declared in one module with one derive function; the
 # conventions ratchet's state rules never report the owner module. Mechanism:

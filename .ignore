@@ -1,5 +1,22 @@
 # BEGIN vendored-copies (generated from .fleet.toml [vendored]; edit the manifest, not this block)
+/app/webapp/static/_vendored/action-row
+/app/webapp/static/_vendored/base
+/app/webapp/static/_vendored/button
+/app/webapp/static/_vendored/card
+/app/webapp/static/_vendored/disclosure
+/app/webapp/static/_vendored/empty-state
+/app/webapp/static/_vendored/home-head
+/app/webapp/static/_vendored/icon-button
+/app/webapp/static/_vendored/icons
+/app/webapp/static/_vendored/modal
+/app/webapp/static/_vendored/nav
 /app/webapp/static/_vendored/page-foot
+/app/webapp/static/_vendored/row-menu
+/app/webapp/static/_vendored/segmented
+/app/webapp/static/_vendored/select-native
+/app/webapp/static/_vendored/settings-group
+/app/webapp/static/_vendored/switch
+/app/webapp/static/_vendored/toast
 /app/webapp/static/_vendored/usage-log
 /scripts/box_lock_gate.ps1
 /scripts/comment_ratchet.py
@@ -21,5 +38,6 @@
 /scripts/usage_track_ratchet.py
 /scripts/usage_track_scan.py
 /src/runtime_data.py
+/src/shell_etag.py
 /src/usage_log.py
 # END vendored-copies

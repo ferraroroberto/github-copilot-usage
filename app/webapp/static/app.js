@@ -14,6 +14,9 @@ import { initUsageLog } from './_vendored/usage-log/usage-log.js';
 import { setSwitch } from './_vendored/switch/switch.js';
 import { initNavTabs } from './_vendored/nav/nav-tabs.js';
 import { renderHeadStatus } from './_vendored/home-head/home-head.js';
+import { showToast as showFleetToast } from './_vendored/toast/toast.js';
+import { createRowMenu } from './_vendored/row-menu/row-menu.js';
+import { actionRowHtml, esc, splitMeta } from './rows.js';
 import { initRequests } from './requests.js';
 import { flagChips, initInsights, refreshInsights, renderDiagnostics } from './insights.js';
 import { createModelColors, initModelSettings, summarizeModelSettings } from './models.js';
@@ -80,7 +83,7 @@ $('set-textsize').addEventListener('click', (e) => {
   document.documentElement.dataset.textsize = btn.dataset.textsize;
   try { localStorage.setItem('copilot-usage.textsize', btn.dataset.textsize); } catch { /* applies for this view only */ }
   paintTextSize();
-  showToast('Text size: ' + btn.textContent.trim().toLowerCase());
+  toast('Text size: ' + btn.textContent.trim().toLowerCase());
 });
 paintTextSize();
 
@@ -139,12 +142,6 @@ function fmtDay(iso) {
   try {
     return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' });
   } catch { return ''; }
-}
-
-function esc(s) {
-  return String(s ?? '')
-    .replaceAll('&', '&amp;').replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 }
 
 // A status line can name an environment variable (the server's own reason text);
@@ -425,6 +422,13 @@ function sortedSessions() {
   return rows;
 }
 
+// "9:42 PM–10:03 PM", or one time when the session began and ended in the same minute.
+function sessionSpan(s) {
+  const first = fmtTime(s.first_ts);
+  const last = fmtTime(s.last_ts);
+  return first === last ? first : first + '–' + last;
+}
+
 function renderSessions() {
   const rows = sortedSessions();
   $('sessions-count').textContent = rows.length;
@@ -434,17 +438,18 @@ function renderSessions() {
   $('sessions-more').textContent = state.sessionsExpanded
     ? 'Show fewer' : 'Show all ' + rows.length;
 
-  $('session-list').innerHTML = shown.map((s) => `
-    <li data-track="session-open" data-sid="${esc(s.session_id)}" tabindex="0" role="button" aria-label="Open session detail">
-      <span class="sess-title">${esc(s.title)}</span>
-      <span class="sess-credits">${fmtCredits(s.credits)} cr</span>
-      <span class="sess-meta">
-        ${esc(s.project)} · ${esc(s.ide)} · ${fmtDay(s.last_ts)} ${fmtTime(s.first_ts)}–${fmtTime(s.last_ts)}
-        · ${fmtNum(s.requests)} req · ${fmtTok(s.prompt_tokens)}<svg class="inline-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="in"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg> ${fmtTok(s.completion_tokens)}<svg class="inline-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="out"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
-        · ${esc((s.models || []).join(', '))}${s.estimated_requests ? ' · estimated' : ''}
-        ${flagChips(s.flags)}
-      </span>
-    </li>`).join('');
+  $('session-list').innerHTML = shown.map((s) => actionRowHtml({
+    track: 'session-open',
+    data: { sid: s.session_id },
+    title: s.title,
+    // Most telling words first: a phone width cuts the line from the right.
+    meta: splitMeta(
+      s.project + ' · ' + fmtDay(s.last_ts) + ' ' + sessionSpan(s) + ' · ' + fmtNum(s.requests) + ' req · ' + s.ide
+        + (s.estimated_requests ? ' · estimated' : ''),
+      fmtCredits(s.credits) + ' cr',
+      flagChips(s.flags),
+    ),
+  })).join('');
 }
 
 $('sessions-sort').addEventListener('click', (e) => {
@@ -460,14 +465,10 @@ $('sessions-more').addEventListener('click', () => {
   renderSessions();
 });
 
+// The rows are real buttons, so Enter and Space already arrive as a click.
 $('session-list').addEventListener('click', (e) => {
-  const li = e.target.closest('li[data-sid]');
-  if (li) openSession(li.dataset.sid);
-});
-$('session-list').addEventListener('keydown', (e) => {
-  if (e.key !== 'Enter' && e.key !== ' ') return;
-  const li = e.target.closest('li[data-sid]');
-  if (li) { e.preventDefault(); openSession(li.dataset.sid); }
+  const row = e.target.closest('button[data-sid]');
+  if (row) openSession(row.dataset.sid);
 });
 
 async function openSession(sid) {
@@ -596,21 +597,15 @@ document.querySelectorAll('[data-show-all]').forEach((btn) => btn.addEventListen
 // Settings
 // ---------------------------------------------------------------------------
 
-let toastTimer = null;
-// The toast is a manual popover so it paints above an open modal dialog; where
-// popovers are missing the .show class alone still displays it.
-function showToast(message, isError = false) {
-  const el = $('toast');
-  el.textContent = message;
-  if (isError) el.dataset.tone = 'danger'; else delete el.dataset.tone;
-  el.setAttribute('aria-live', isError ? 'assertive' : 'polite');
-  el.classList.add('show');
-  try { if (el.showPopover && !el.matches(':popover-open')) el.showPopover(); } catch { /* shown by the class */ }
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    el.classList.remove('show');
-    try { if (el.hidePopover && el.matches(':popover-open')) el.hidePopover(); } catch { /* already hidden */ }
-  }, 2600);
+// The toast element is a manual popover, so it paints in the top layer above an open modal
+// dialog. Each call re-stacks it on top: a popover shown before a dialog opened sits under it.
+// Where popovers are missing the vendored toast still shows by its own `hidden` state.
+function toast(message, kind) {
+  const el = showFleetToast(message, kind);
+  try {
+    if (el.matches(':popover-open')) el.hidePopover();
+    el.showPopover();
+  } catch { /* shown without the top layer */ }
 }
 
 // Persist one setting. Resolves to the server's config, or null (and an error
@@ -623,13 +618,13 @@ async function saveSetting(key, value, message) {
       body: JSON.stringify({ [key]: value }),
     });
     settings = { ...settings, ...saved };
-    showToast(message);
+    toast(message);
     refresh();
     $('set-models-value').textContent = summarizeModelSettings(settings);
     return saved;
   } catch (exc) {
     console.error(exc);
-    showToast('Could not save that setting. Try again.', true);
+    toast('Could not save that setting. Try again.', 'error');
     return null;
   }
 }
@@ -739,9 +734,9 @@ $('roots-dialog').addEventListener('close', saveRoots);
 $('alert-test').addEventListener('click', async () => {
   try {
     const res = await jsonApi('/api/alerts/test', { method: 'POST' });
-    showToast(res.ok ? 'Test message sent. Check Telegram.' : 'Not sent: ' + res.reason, !res.ok);
+    toast(res.ok ? 'Test message sent. Check Telegram.' : 'Not sent: ' + res.reason, res.ok ? undefined : 'error');
   } catch (exc) {
-    showToast('Not sent: ' + exc.message, true);
+    toast('Not sent: ' + exc.message, 'error');
   }
 });
 
@@ -749,22 +744,7 @@ $('alert-test').addEventListener('click', async () => {
 // Refresh and clear cache
 // ---------------------------------------------------------------------------
 
-const menu = $('topmenu');
 const menuBtn = $('menu-btn');
-
-// The popover is in the top layer, so it is anchored to the button by hand.
-menu.addEventListener('beforetoggle', (e) => {
-  if (e.newState !== 'open') return;
-  const rect = menuBtn.getBoundingClientRect();
-  menu.style.top = Math.round(rect.bottom + 4) + 'px';
-  menu.style.right = Math.max(8, Math.round(window.innerWidth - rect.right)) + 'px';
-  menu.style.left = 'auto';
-});
-menu.addEventListener('toggle', (e) => menuBtn.setAttribute('aria-expanded', String(e.newState === 'open')));
-
-function closeMenu() {
-  try { if (menu.hidePopover && menu.matches(':popover-open')) menu.hidePopover(); } catch { /* already closed */ }
-}
 
 function refreshToast(res, force) {
   const n = fmtNum(res.requests) + ' request' + (res.requests === 1 ? '' : 's');
@@ -778,20 +758,19 @@ let refreshing = false;
 async function runRefresh(force) {
   if (refreshing) return;
   refreshing = true;
-  closeMenu();
   menuBtn.setAttribute('aria-busy', 'true');
   menuBtn.disabled = true;
   try {
     const res = await jsonApi('/api/refresh' + (force ? '?force=true' : ''), { method: 'POST' });
     if (!res.ok) {
-      showToast('Refresh failed: ' + res.reason, true);
+      toast('Refresh failed: ' + res.reason, 'error');
       return;
     }
-    showToast(refreshToast(res, force));
+    toast(refreshToast(res, force));
     await refresh();
   } catch (exc) {
     console.error(exc);
-    showToast('Refresh failed: ' + exc.message, true);
+    toast('Refresh failed: ' + exc.message, 'error');
   } finally {
     refreshing = false;
     menuBtn.disabled = false;
@@ -799,18 +778,21 @@ async function runRefresh(force) {
   }
 }
 
-$('menu-refresh').addEventListener('click', () => runRefresh(false));
-$('menu-force').addEventListener('click', () => runRefresh(true));
+// The freshness readout is the anchor of a one-list floating menu (vendored row-menu).
+createRowMenu().attach('refresh', menuBtn, [
+  { label: 'Refresh', glyph: 'refresh-cw', dataset: { track: 'refresh' }, onTap: () => runRefresh(false) },
+  { label: 'Force refresh', glyph: 'rotate-cw', dataset: { track: 'refresh-force' }, onTap: () => runRefresh(true) },
+]);
 
 $('cache-clear').addEventListener('click', async () => {
   try {
     const res = await jsonApi('/api/cache/clear', { method: 'POST' });
     if (!res.ok) throw new Error('refused');
-    showToast('Cache cleared. Rebuilding from the files.');
+    toast('Cache cleared. Rebuilding from the files.');
     await refresh();
   } catch (exc) {
     console.error(exc);
-    showToast('Could not clear the cache: ' + exc.message, true);
+    toast('Could not clear the cache: ' + exc.message, 'error');
   }
 });
 
@@ -828,22 +810,22 @@ initNavTabs({
   onChange: (tab) => { paintHeader(tab); usage.trackView(tab); },
 });
 initSections(document.querySelector('main.app'));
-const showSessionName = initSessionName({ jsonApi, showToast, reopen: openSession, refresh });
-initTimeline({ state, jsonApi, setPeriod, renderCharts, showToast });
+const showSessionName = initSessionName({ jsonApi, showToast: toast, reopen: openSession, refresh });
+initTimeline({ state, jsonApi, setPeriod, renderCharts, showToast: toast });
 
 const requests = initRequests({
-  jsonApi, esc, fmtCredits, fmtTok, fmtNum, fmtDay, fmtTime, openSession,
+  jsonApi, fmtCredits, fmtTok, fmtNum, fmtDay, fmtTime, openSession,
   getPeriod: () => state.period,
 });
 
 initInsights({
-  jsonApi, esc, fmtTok, fmtNum, fmtDay, fmtTime, openSession,
+  jsonApi, fmtTok, fmtNum, fmtDay, fmtTime, openSession,
   openRequests: requests.open,
   getPeriod: () => state.period,
 });
 
 initModelSettings({
-  $, jsonApi, esc, fmtNum, saveSetting, showToast, colors,
+  $, jsonApi, esc, fmtNum, saveSetting, showToast: toast, colors,
   getSettings: () => settings,
 });
 

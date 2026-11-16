@@ -53,7 +53,7 @@ async function stepTo(state, offset) {
   } catch (exc) {
     console.error(exc);
     state.trendOffset = before;
-    deps.showToast('Could not load that window. Try again.', true);
+    deps.showToast('Could not load that window. Try again.', 'error');
     return;
   }
   deps.renderCharts();

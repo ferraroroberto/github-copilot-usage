@@ -61,6 +61,8 @@
   --tabbar-border: rgba(0, 0, 0, 0.08);
   --tabbar-pill: rgba(0, 0, 0, 0.07);
   --tabbar-shadow: 0 8px 28px -6px rgba(20, 24, 40, 0.2), 0 1px 4px rgba(20, 24, 40, 0.06);
+  /* the raised surfaces' shadow: the Refresh menu and the toast */
+  --shadow: 0 8px 24px rgba(31, 35, 40, 0.12);
   /* the app's own names for the same values */
   --canvas: var(--bg);
   --border: var(--line);
@@ -98,6 +100,7 @@
   --tabbar-border: rgba(255, 255, 255, 0.14);
   --tabbar-pill: rgba(255, 255, 255, 0.14);
   --tabbar-shadow: 0 10px 30px -6px rgba(0, 0, 0, 0.6);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
 * { box-sizing: border-box; }
@@ -265,17 +268,14 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .td-trunc { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .model-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 7px; vertical-align: baseline; }
 
-/* ---- sessions list ---- */
-.session-list { list-style: none; margin: 0; padding: 0; }
-.session-list li {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px;
-  padding: 12px 0; cursor: pointer;
-}
-.session-list li + li { border-top: 1px solid var(--border-muted); }
-.session-list li:hover .sess-title { color: var(--accent); }
-.sess-title { font-weight: 600; font-size: var(--font-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sess-credits { font-weight: 700; font-size: var(--font-label); text-align: right; font-variant-numeric: tabular-nums; }
-.sess-meta { grid-column: 1 / -1; font-size: var(--font-label); color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* ---- rows (vendored action-row) ----
+ * A list directly in a card body runs edge to edge, past the body's 14px padding; a list in a
+ * sheet sits in its own card. An empty one draws nothing, so a drill-down with no requests
+ * shows its heading alone. */
+.collapse-body > .action-rows { margin-inline: -14px; }
+.action-list:has(> .action-rows:empty) { display: none; }
+.action-row-meta .sev { align-self: auto; }
+.insight-static { padding: 12px 14px; font-size: var(--font-label); color: var(--fg-muted); }
 /* Standalone actions under a card body's content sit a row below it. */
 .collapse-body > .button-surface, .collapse-body > .button-tint { margin-top: 10px; }
 .button-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
@@ -290,7 +290,12 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 /* ---- export row (the build footer is the vendored page-foot) ---- */
 .export-row { display: flex; align-items: center; padding: 4px 4px 0; }
 
-/* ---- dialogs ---- */
+/* ---- dialogs ----
+ * The session, context and requests sheets are the vendored modal; this base still draws the
+ * Settings sheets until they move over. A content-heavy sheet widens past the modal's 440px,
+ * and a long title wraps inside its header instead of pushing the close button out. */
+.detail-dialog.sheet-wide { width: min(680px, 92vw); }
+.detail-header h2 { min-width: 0; overflow-wrap: anywhere; }
 dialog {
   background: var(--card); color: var(--fg);
   border: 1px solid var(--border); border-radius: var(--r-lg);
@@ -338,34 +343,21 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .mdl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px var(--gutter); margin-top: 10px; }
 .rq-field:disabled { color: var(--fg-muted); cursor: default; }
 
-/* Neutral frosted toast: the card's glass, centred near the bottom; only an error
- * tints. It is a manual popover so it sits above an open modal dialog. */
-.toast {
-  position: fixed; inset: auto; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom));
-  transform: translateX(-50%); margin: 0; display: none;
-  width: max-content; max-width: min(calc(100vw - 24px), 560px);
-  padding: 12px 18px; text-align: center; text-wrap: balance;
-  font-size: var(--font-label); font-weight: 700; line-height: 1.5;
-  color: var(--fg); background: color-mix(in srgb, var(--card) 80%, transparent);
-  border: 1px solid var(--border); border-radius: var(--r-md);
-  -webkit-backdrop-filter: blur(20px) saturate(1.25); backdrop-filter: blur(20px) saturate(1.25);
-  box-shadow: 0 8px 24px rgba(31, 35, 40, 0.12);
-}
-.toast.show { display: block; }
-.toast[data-tone="danger"] {
-  color: var(--accent-fg); border-color: var(--danger);
-  background: color-mix(in srgb, var(--danger) 75%, transparent);
-}
+/* The vendored toast is a manual popover here, so it can sit above an open dialog; the UA's
+ * popover box (inset: 0, auto margins) would otherwise pull it to the top of the screen. */
+.toast[popover] { top: auto; right: auto; margin: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
 
 /* ---- request explorer ----
- * The rows reuse the session list; the fields sit at the 44px touch floor because the
- * filters are the whole point of this view and a phone is where it is used. */
+ * The fields are the vendored select-native / input-native, which grow to the 44px touch
+ * floor on a phone; the filters are the whole point of this view. */
 .rq-intro { margin: 0 0 4px; }
 .rq-period { margin: 8px 0 12px; width: 100%; }
+.rq-control { width: 100%; min-width: 0; }
+/* The Models sheet's selects. */
 .rq-field {
   width: 100%; min-width: 0; height: 44px; padding: 0 10px;
   background: var(--input-bg); color: var(--fg);
@@ -378,7 +370,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .rq-label { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); }
 .rq-toolbar { display: flex; flex-wrap: wrap; gap: var(--gutter); margin-top: 4px; }
 .rq-summary { margin: 14px 0 4px; font-weight: 600; }
-.rq-list { margin-top: 4px; }
+#rq-list { margin-top: 4px; }
 .rq-pager { display: flex; align-items: center; justify-content: space-between; gap: var(--gutter); margin-top: 8px; }
 .rq-page { font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); }
 .rq-sortbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--gutter); margin-bottom: 4px; }
@@ -392,16 +384,9 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .rq-chevron { width: 16px; height: 16px; margin-left: auto; color: var(--fg-muted); transition: transform 0.15s ease; }
 .rq-filter-box[open] > summary .rq-chevron { transform: rotate(90deg); }
 .rq-filter-box[open] > summary { border-bottom: 1px solid var(--border-muted); margin-bottom: 10px; }
-.rq-list .sess-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
-.rq-list .sess-meta { white-space: normal; }
 
 /* ---- insights and the context drill-down ----
- * The rows reuse the session list. A severity or flag is always spelled out as text, never
- * left to its colour alone. */
-.insight-list li { align-items: start; }
-.insight-list .sess-title { white-space: normal; }
-.insight-list li.insight-static { cursor: default; }
-.insight-list li.insight-static:hover .sess-title { color: inherit; }
+ * A severity or flag is always spelled out as text, never left to its colour alone. */
 .insight-quiet { margin: 0; font-size: var(--font-label); color: var(--fg-muted); }
 .sev {
   align-self: start; white-space: nowrap;
@@ -425,25 +410,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 }
 .chip::before { content: ""; position: absolute; inset: -4px 0; }
 .chip.active { color: var(--accent-text); background: var(--accent-soft); border-color: var(--accent-border-soft); }
-.cx-bar { grid-column: 1 / -1; margin-top: 4px; }
-
-/* ---- overflow menu ----
- * A popover is in the top layer, so it is placed from the button's rectangle in app.js
- * and its items sit at the 44px touch floor. */
-.menu {
-  position: fixed; inset: auto; margin: 0; padding: 4px; min-width: 200px;
-  background: var(--card); color: var(--fg);
-  border: 1px solid var(--border); border-radius: var(--r-md);
-  box-shadow: 0 8px 24px rgba(31, 35, 40, 0.12);
-}
-.menu-item {
-  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px;
-  background: transparent; color: var(--fg); border: 0; border-radius: var(--r-sm);
-  font: inherit; font-size: var(--font-body); text-align: left; cursor: pointer;
-}
-.menu-item:hover { background: color-mix(in srgb, var(--fg) 8%, transparent); }
-.menu-item:disabled { color: var(--fg-muted); cursor: default; }
-.menu-item .icon { color: var(--fg-muted); }
+.cx-bar { margin-top: 4px; }
 
 /* ---- focused range and coverage ---- */
 .focus-bar {
@@ -464,10 +431,6 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .trend-nav { display: flex; flex-wrap: wrap; gap: var(--gutter); }
 .trend-nav .button-surface { min-width: 72px; }
 .chart-wrap canvas { cursor: pointer; }
-
-/* ---- session rename ---- */
-.rename-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
-.rename-row .rq-field { flex: 1 1 180px; width: auto; }
 
 /* ---- settings: the start date ---- */
 .settings-row-date { width: auto; min-width: 9.5em; text-align: left; -moz-appearance: auto; }

@@ -93,13 +93,13 @@ def test_filters_sort_and_url_state_survive_a_reload(page, base_url):
     page.wait_for_function("location.search.includes('min=3')")
     # claude-sonnet rows are n % 4 == 0; credits are n % 7, so a minimum of 3 drops some of the 8
     page.wait_for_function("document.querySelectorAll('#rq-list li').length < 8")
-    assert page.locator("#rq-list li .sess-credits", has_text="unbilled").count() == 0
+    assert page.locator("#rq-list li .action-row-meta-tail", has_text="unbilled").count() == 0
     assert page.locator("#rq-list li").count() == 4
 
     page.select_option("#rq-sort", "credits")
     page.wait_for_function("document.querySelector('#rq-order').textContent === 'Most credits first'")
-    first = page.locator("#rq-list li .sess-credits").first.inner_text()
-    last = page.locator("#rq-list li .sess-credits").last.inner_text()
+    first = page.locator("#rq-list li .action-row-meta-tail").first.inner_text()
+    last = page.locator("#rq-list li .action-row-meta-tail").last.inner_text()
     assert float(first.split()[0]) >= float(last.split()[0])
 
     shown, url = page.locator("#rq-list").inner_text(), page.url

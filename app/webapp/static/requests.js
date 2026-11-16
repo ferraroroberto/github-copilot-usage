@@ -6,6 +6,8 @@
  * paging and the facet counts; this module only draws them.
  */
 
+import { actionRowHtml, esc, splitMeta } from './rows.js';
+
 const DEFAULTS = {
   period: 'week', project: '', model: '', mode: '', ide: '', result: '',
   min: '', max: '', q: '', sort: 'ts', order: 'desc', page: 1,
@@ -28,7 +30,6 @@ const API_PARAMS = {
 };
 const WIDE_QUERY = '(min-width: 560px)';
 const SEARCH_DEBOUNCE_MS = 300;
-const WARN_GLYPH = '<svg class="inline-glyph glyph-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="errored"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
 
 const $ = (id) => document.getElementById(id);
 
@@ -84,7 +85,7 @@ function setState(name) {
 }
 
 function renderFacets(facets) {
-  const { esc, fmtNum } = deps;
+  const { fmtNum } = deps;
   for (const dim of FACETS) {
     const select = $('rq-' + dim);
     const options = (facets[dim] || []).map((o) => {
@@ -96,19 +97,23 @@ function renderFacets(facets) {
   }
 }
 
-function rowHtml(r) {
-  const { esc, fmtCredits, fmtTok, fmtDay, fmtTime } = deps;
-  const credits = r.credits === null ? '<span class="muted">unbilled</span>' : fmtCredits(r.credits) + ' cr';
+function requestRow(r) {
+  const { fmtCredits, fmtTok, fmtDay, fmtTime } = deps;
   const took = r.elapsed_ms === null ? '' : ' · ' + (r.elapsed_ms / 1000).toFixed(1) + 's';
-  return `
-    <li data-track="request-open" data-sid="${esc(r.session_id)}" tabindex="0" role="button" aria-label="Open the session of this request">
-      <span class="sess-title">${esc(r.message) || '<span class="muted">(no prompt text)</span>'}${r.error ? ' ' + WARN_GLYPH : ''}</span>
-      <span class="sess-credits">${credits}</span>
-      <span class="sess-meta">
-        ${fmtDay(r.ts)} ${fmtTime(r.ts)} · ${esc(r.project)} · <span title="${esc(r.model)}">${esc(r.model_label || r.model)}</span>${r.mode ? ' · ' + esc(r.mode) : ''}
-        · ${fmtTok(r.prompt_tokens)} in / ${fmtTok(r.completion_tokens)} out${took}${r.usage_estimated ? ' · estimated' : ''}
-      </span>
-    </li>`;
+  return actionRowHtml({
+    track: 'request-open',
+    data: { sid: r.session_id },
+    title: r.message,
+    blank: '(no prompt text)',
+    meta: splitMeta(
+      fmtDay(r.ts) + ' ' + fmtTime(r.ts) + ' · ' + r.project + ' · ' + (r.model_label || r.model)
+        + (r.mode ? ' · ' + r.mode : '')
+        + ' · ' + fmtTok(r.prompt_tokens) + ' in / ' + fmtTok(r.completion_tokens) + ' out' + took
+        + (r.usage_estimated ? ' · estimated' : ''),
+      r.credits === null ? 'unbilled' : fmtCredits(r.credits) + ' cr',
+      r.error ? '<span class="sev sev-critical">Errored</span>' : '',
+    ),
+  });
 }
 
 function renderSummary(body) {
@@ -129,7 +134,7 @@ function render(body) {
   writeUrl();
   renderFacets(body.facets);
   renderSummary(body);
-  $('rq-list').innerHTML = body.rows.map(rowHtml).join('');
+  $('rq-rows').innerHTML = body.rows.map(requestRow).join('');
   setState(body.rows.length ? 'ready' : 'empty');
 }
 
@@ -215,14 +220,10 @@ function bindPagingAndRows() {
   $('rq-prev').addEventListener('click', () => { filters.page = Math.max(filters.page - 1, 1); load(); });
   $('rq-next').addEventListener('click', () => { filters.page += 1; load(); });
   const list = $('rq-list');
+  // The rows are real buttons, so Enter and Space already arrive as a click.
   list.addEventListener('click', (e) => {
-    const li = e.target.closest('li[data-sid]');
-    if (li) deps.openSession(li.dataset.sid);
-  });
-  list.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    const li = e.target.closest('li[data-sid]');
-    if (li) { e.preventDefault(); deps.openSession(li.dataset.sid); }
+    const row = e.target.closest('button[data-sid]');
+    if (row) deps.openSession(row.dataset.sid);
   });
 }
 

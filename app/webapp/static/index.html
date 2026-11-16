@@ -22,6 +22,11 @@
   <link rel="stylesheet" href="_vendored/nav/nav-tabs.css">
   <link rel="stylesheet" href="_vendored/switch/switch.css">
   <link rel="stylesheet" href="_vendored/settings-group/settings-group.css">
+  <link rel="stylesheet" href="_vendored/select-native/select-native.css">
+  <link rel="stylesheet" href="_vendored/modal/modal.css">
+  <link rel="stylesheet" href="_vendored/action-row/action-row.css">
+  <link rel="stylesheet" href="_vendored/toast/toast.css">
+  <link rel="stylesheet" href="_vendored/row-menu/row-menu.css">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="_vendored/page-foot/page-foot.css">
   <script>
@@ -43,7 +48,7 @@
   </script>
 </head>
 <body>
-<!-- Lucide sprite, trimmed to the glyphs the header, menu and Settings pane use (inline: iOS Safari does not
+<!-- Lucide sprite, trimmed to the glyphs the header, menu, sheets and Settings pane use (inline: iOS Safari does not
      resolve an external <use>). Symbols are verbatim from _vendored/icons/icons-sprite.html. -->
 <svg width="0" height="0" aria-hidden="true" focusable="false"
      style="position:absolute;width:0;height:0;overflow:hidden">
@@ -154,6 +159,19 @@
   <symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none">
     <path d="m9 18 6-6-6-6" />
   </symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none">
+    <path d="M18 6 6 18" />
+    <path d="m6 6 12 12" />
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none">
+    <path d="m21 21-4.34-4.34" />
+    <circle cx="11" cy="11" r="8" />
+  </symbol>
+  <symbol id="i-triangle-alert" viewBox="0 0 24 24" fill="none">
+    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+    <path d="M12 9v4" />
+    <path d="M12 17h.01" />
+  </symbol>
 </svg>
 <!-- Primary navigation: the vendored floating bottom-tab pill on a phone, the segmented
      control on desktop. A direct <body> child, sibling to <main class="app">. -->
@@ -202,7 +220,7 @@
       <span id="head-title">Overview</span>
     </span>
     <span class="status" id="head-status"></span>
-    <button data-track="menu-open" id="menu-btn" class="head-readout" type="button" aria-label="Refresh options" aria-haspopup="menu" aria-expanded="false" popovertarget="topmenu">
+    <button data-track="menu-open" id="menu-btn" class="head-readout" type="button" aria-label="Refresh options" aria-haspopup="menu" aria-expanded="false">
       <span id="freshness">—</span>
     </button>
     <button data-track="theme-toggle" id="theme-toggle" class="icon-button home-toggle" type="button" aria-label="Toggle theme" title="Toggle theme">
@@ -288,7 +306,7 @@
       <span class="collapse-chevron" aria-hidden="true">›</span>
     </summary>
     <div class="collapse-body">
-      <ul class="session-list insight-list" id="insight-list"></ul>
+      <ul class="action-rows" id="insight-list"></ul>
       <p class="insight-quiet" id="insight-quiet" hidden>Nothing stands out in this period.</p>
       <p class="footnote">Worked out on this machine from your own logs, with fixed rules and no model call. Figures from prompt composition are estimates, not per-tool billing.</p>
     </div>
@@ -384,7 +402,7 @@
         </table>
       </div>
       <div class="empty-state" id="model-empty" hidden>
-        <svg class="icon empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-search"></use></svg>
         <p class="empty-state-message">No Copilot usage in this period.</p>
         <button data-track="empty-show-all" class="empty-state-action" type="button" data-show-all>Show all time</button>
       </div>
@@ -408,7 +426,7 @@
         </table>
       </div>
       <div class="empty-state" id="project-empty" hidden>
-        <svg class="icon empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-search"></use></svg>
         <p class="empty-state-message">No Copilot usage in this period.</p>
         <button data-track="empty-show-all" class="empty-state-action" type="button" data-show-all>Show all time</button>
       </div>
@@ -437,9 +455,9 @@
         <button data-track="sessions-sort-cost" data-sort="credits" class="segmented-item" aria-pressed="true" type="button">Cost</button>
         <button data-track="sessions-sort-recent" data-sort="recent" class="segmented-item" aria-pressed="false" type="button">Recent</button>
       </div>
-      <ul class="session-list" id="session-list"></ul>
+      <ul class="action-rows" id="session-list"></ul>
       <div class="empty-state" id="sessions-empty" hidden>
-        <svg class="icon empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-search"></use></svg>
         <p class="empty-state-message">No sessions in this period.</p>
         <button data-track="empty-show-all" class="empty-state-action" type="button" data-show-all>Show all time</button>
       </div>
@@ -468,144 +486,145 @@
     <p id="buildReadout"></p>
   </footer>
 </main>
-<!-- Overflow menu: a popover, so it light-dismisses and closes on Esc without script. -->
-<div class="menu" id="topmenu" popover role="menu" aria-label="More actions">
-  <button data-track="refresh" id="menu-refresh" class="menu-item" type="button" role="menuitem">
-    <svg class="icon" aria-hidden="true"><use href="#i-refresh-cw"></use></svg>
-    <span>Refresh</span>
-  </button>
-  <button data-track="refresh-force" id="menu-force" class="menu-item" type="button" role="menuitem">
-    <svg class="icon" aria-hidden="true"><use href="#i-rotate-cw"></use></svg>
-    <span>Force refresh</span>
-  </button>
-</div>
-
-
-<!-- Session detail modal -->
-<dialog data-track-view="session-detail" id="session-dialog">
-  <div class="dialog-head">
-    <h2 id="sd-title">Session</h2>
-    <button data-track="session-close" class="dialog-close" id="sd-close" type="button" aria-label="Close">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-    </button>
-  </div>
-  <div class="dialog-meta" id="sd-meta"></div>
-  <form class="rename-row" id="sd-rename" autocomplete="off">
-    <input class="rq-field" id="sd-name" type="text" maxlength="120" placeholder="Custom name" aria-label="Custom session name" enterkeyhint="done">
-    <button data-track="session-rename-save" class="button-primary" type="submit">Save name</button>
-    <button data-track="session-rename-clear" class="button-ghost" id="sd-name-clear" type="button">Restore title</button>
-  </form>
-  <div id="sd-diagnostics" hidden></div>
-  <div id="sd-mix"></div>
-  <div class="table-wrap">
-    <table id="sd-table">
-      <thead><tr><th>Time</th><th>Prompt</th><th>Mode</th><th>Model</th><th class="num">In</th><th class="num">Out</th><th class="num">Credits</th><th class="num">Took</th></tr></thead>
-      <tbody></tbody>
-    </table>
+<!-- Session sheet: the vendored modal. Save name is its one primary action, awake only once the name changes. -->
+<dialog data-track-view="session-detail" id="session-dialog" class="detail-dialog sheet-wide">
+  <div class="detail-card">
+    <div class="detail-header">
+      <h2 id="sd-title" tabindex="-1" autofocus>Session</h2>
+      <button data-track="session-close" class="icon-button detail-close" id="sd-close" type="button" aria-label="Close">
+        <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+      </button>
+    </div>
+    <div class="dialog-meta" id="sd-meta"></div>
+    <form id="sd-rename" autocomplete="off">
+      <div class="row">
+        <span>Name</span>
+        <input class="input-native" id="sd-name" type="text" maxlength="120" placeholder="Custom name" aria-label="Custom session name" enterkeyhint="done">
+      </div>
+      <div class="row" id="sd-name-restore" hidden>
+        <span>Original title</span>
+        <button data-track="session-rename-clear" class="button-ghost" id="sd-name-clear" type="button">Restore title</button>
+      </div>
+    </form>
+    <div id="sd-diagnostics" hidden></div>
+    <div id="sd-mix"></div>
+    <div class="table-wrap">
+      <table id="sd-table">
+        <thead><tr><th>Time</th><th>Prompt</th><th>Mode</th><th>Model</th><th class="num">In</th><th class="num">Out</th><th class="num">Credits</th><th class="num">Took</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="detail-actions">
+      <button data-track="session-rename-save" id="sd-save" class="button-primary detail-save-btn" type="submit" form="sd-rename" disabled>Save name</button>
+    </div>
   </div>
 </dialog>
 
 <!-- Context drill-down: who drives the prompt tokens (all of them, or one composition label) -->
-<dialog data-track-view="context" id="context-dialog">
-  <div class="dialog-head">
-    <h2 id="cx-title">Prompt context</h2>
-    <button data-track="context-close" class="dialog-close" id="cx-close" type="button" aria-label="Close">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-    </button>
+<dialog data-track-view="context" id="context-dialog" class="detail-dialog sheet-wide">
+  <div class="detail-card">
+    <div class="detail-header">
+      <h2 id="cx-title" tabindex="-1" autofocus>Prompt context</h2>
+      <button data-track="context-close" class="icon-button detail-close" id="cx-close" type="button" aria-label="Close">
+        <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+      </button>
+    </div>
+    <div class="dialog-meta" id="cx-meta"></div>
+    <div class="chip-row" id="cx-labels" role="group" aria-label="Composition label"></div>
+    <div class="dialog-meta" id="cx-coverage"></div>
+    <div class="empty-state" id="cx-empty" hidden>
+      <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-search"></use></svg>
+      <p class="empty-state-message" id="cx-empty-text"></p>
+    </div>
+    <div id="cx-body">
+      <h3 class="chart-title">Projects</h3>
+      <div class="card action-list"><ul class="action-rows" id="cx-projects"></ul></div>
+      <h3 class="chart-title">Models</h3>
+      <div class="card action-list"><ul class="action-rows" id="cx-models"></ul></div>
+      <h3 class="chart-title">Sessions</h3>
+      <div class="card action-list"><ul class="action-rows" id="cx-sessions"></ul></div>
+      <h3 class="chart-title">Requests</h3>
+      <div class="card action-list"><ul class="action-rows" id="cx-requests"></ul></div>
+    </div>
+    <p class="footnote" id="cx-note"></p>
   </div>
-  <div class="dialog-meta" id="cx-meta"></div>
-  <div class="chip-row" id="cx-labels" role="group" aria-label="Composition label"></div>
-  <div class="dialog-meta" id="cx-coverage"></div>
-  <div class="empty-state" id="cx-empty" hidden>
-    <svg class="icon empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-    <p class="empty-state-message" id="cx-empty-text"></p>
-  </div>
-  <div id="cx-body">
-    <h3 class="chart-title">Projects</h3>
-    <ul class="session-list" id="cx-projects"></ul>
-    <h3 class="chart-title">Models</h3>
-    <ul class="session-list" id="cx-models"></ul>
-    <h3 class="chart-title">Sessions</h3>
-    <ul class="session-list" id="cx-sessions"></ul>
-    <h3 class="chart-title">Requests</h3>
-    <ul class="session-list" id="cx-requests"></ul>
-  </div>
-  <p class="footnote" id="cx-note"></p>
 </dialog>
 
 <!-- Request explorer: filters, sort and page live in the URL (?view=requests&...) -->
-<dialog data-track-view="requests" id="requests-dialog" class="requests-dialog">
-  <div class="dialog-head">
-    <h2>Requests</h2>
-    <button data-track="requests-close" class="dialog-close" id="rq-close" type="button" aria-label="Close">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-    </button>
-  </div>
-
-  <div class="segmented rq-period" id="rq-period" role="group" aria-label="Period">
-    <button data-track="requests-period-today" data-period="today" class="segmented-item" aria-pressed="false" type="button">Today</button>
-    <button data-track="requests-period-week" data-period="week" class="segmented-item" aria-pressed="false" type="button">Week</button>
-    <button data-track="requests-period-month" data-period="month" class="segmented-item" aria-pressed="false" type="button">Month</button>
-    <button data-track="requests-period-cycle" data-period="cycle" class="segmented-item" aria-pressed="false" type="button">Cycle</button>
-    <button data-track="requests-period-all" data-period="all" class="segmented-item" aria-pressed="false" type="button">All</button>
-  </div>
-
-  <input data-track="requests-search" class="rq-field rq-search" id="rq-q" type="search" placeholder="Search prompts and sessions" aria-label="Search prompts and sessions" autocomplete="off">
-
-  <div class="rq-sortbar">
-    <label class="rq-label">Sort by
-      <select data-track="requests-sort" class="rq-field" id="rq-sort">
-        <option value="ts">Time</option>
-        <option value="credits">Credits</option>
-        <option value="tokens">Tokens</option>
-        <option value="elapsed">Time taken</option>
-      </select>
-    </label>
-    <button data-track="requests-order" class="button-surface rq-order" id="rq-order" type="button">Newest first</button>
-  </div>
-
-  <details class="rq-filter-box" id="rq-filter-box">
-    <summary data-track="requests-filters-toggle">
-      <span>Filters</span><span class="badge" id="rq-filter-count" hidden></span>
-      <svg class="rq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-    </summary>
-  <div class="rq-filters">
-    <label class="rq-label">Project<select data-track="requests-filter-project" class="rq-field" id="rq-project"></select></label>
-    <label class="rq-label">Model<select data-track="requests-filter-model" class="rq-field" id="rq-model"></select></label>
-    <label class="rq-label">Mode<select data-track="requests-filter-mode" class="rq-field" id="rq-mode"></select></label>
-    <label class="rq-label">Editor<select data-track="requests-filter-ide" class="rq-field" id="rq-ide"></select></label>
-    <label class="rq-label">Result<select data-track="requests-filter-result" class="rq-field" id="rq-result"></select></label>
-    <label class="rq-label">Min credits<input data-track="requests-min-credits" class="rq-field" id="rq-min" type="number" inputmode="decimal" min="0" step="any" placeholder="Any"></label>
-    <label class="rq-label">Max credits<input data-track="requests-max-credits" class="rq-field" id="rq-max" type="number" inputmode="decimal" min="0" step="any" placeholder="Any"></label>
-  </div>
-  <div class="rq-toolbar">
-    <button data-track="requests-clear" class="button-surface" id="rq-clear" type="button" hidden>Clear filters</button>
-  </div>
-  </details>
-
-  <p class="dialog-meta rq-summary" id="rq-summary" role="status" aria-live="polite"></p>
-
-  <div id="rq-body" data-state="loading">
-    <div class="empty-state" id="rq-loading">
-      <svg class="icon empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      <p class="empty-state-message">Reading requests…</p>
+<dialog data-track-view="requests" id="requests-dialog" class="detail-dialog sheet-wide">
+  <div class="detail-card">
+    <div class="detail-header">
+      <h2 tabindex="-1" autofocus>Requests</h2>
+      <button data-track="requests-close" class="icon-button detail-close" id="rq-close" type="button" aria-label="Close">
+        <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+      </button>
     </div>
-    <div class="empty-state" id="rq-empty" hidden>
-      <svg class="icon empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      <p class="empty-state-message">No requests match these filters.</p>
-    </div>
-    <div class="empty-state" id="rq-error" hidden>
-      <svg class="icon empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-      <p class="empty-state-message">Could not load requests.</p>
-      <button data-track="requests-retry" class="empty-state-action" id="rq-retry" type="button">Retry</button>
-    </div>
-    <ul class="session-list rq-list" id="rq-list" hidden></ul>
-  </div>
 
-  <div class="rq-pager" id="rq-pager" hidden>
-    <button data-track="requests-prev" class="button-surface" id="rq-prev" type="button">Previous</button>
-    <span class="rq-page" id="rq-page"></span>
-    <button data-track="requests-next" class="button-surface" id="rq-next" type="button">Next</button>
+    <div class="segmented rq-period" id="rq-period" role="group" aria-label="Period">
+      <button data-track="requests-period-today" data-period="today" class="segmented-item" aria-pressed="false" type="button">Today</button>
+      <button data-track="requests-period-week" data-period="week" class="segmented-item" aria-pressed="false" type="button">Week</button>
+      <button data-track="requests-period-month" data-period="month" class="segmented-item" aria-pressed="false" type="button">Month</button>
+      <button data-track="requests-period-cycle" data-period="cycle" class="segmented-item" aria-pressed="false" type="button">Cycle</button>
+      <button data-track="requests-period-all" data-period="all" class="segmented-item" aria-pressed="false" type="button">All</button>
+    </div>
+
+    <input data-track="requests-search" class="input-native rq-control rq-search" id="rq-q" type="search" placeholder="Search prompts and sessions" aria-label="Search prompts and sessions" autocomplete="off">
+
+    <div class="rq-sortbar">
+      <label class="rq-label">Sort by
+        <select data-track="requests-sort" class="select-native rq-control" id="rq-sort">
+          <option value="ts">Time</option>
+          <option value="credits">Credits</option>
+          <option value="tokens">Tokens</option>
+          <option value="elapsed">Time taken</option>
+        </select>
+      </label>
+      <button data-track="requests-order" class="button-surface rq-order" id="rq-order" type="button">Newest first</button>
+    </div>
+
+    <details class="rq-filter-box" id="rq-filter-box">
+      <summary data-track="requests-filters-toggle">
+        <span>Filters</span><span class="badge" id="rq-filter-count" hidden></span>
+        <svg class="icon rq-chevron" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+      </summary>
+    <div class="rq-filters">
+      <label class="rq-label">Project<select data-track="requests-filter-project" class="select-native rq-control" id="rq-project"></select></label>
+      <label class="rq-label">Model<select data-track="requests-filter-model" class="select-native rq-control" id="rq-model"></select></label>
+      <label class="rq-label">Mode<select data-track="requests-filter-mode" class="select-native rq-control" id="rq-mode"></select></label>
+      <label class="rq-label">Editor<select data-track="requests-filter-ide" class="select-native rq-control" id="rq-ide"></select></label>
+      <label class="rq-label">Result<select data-track="requests-filter-result" class="select-native rq-control" id="rq-result"></select></label>
+      <label class="rq-label">Min credits<input data-track="requests-min-credits" class="input-native rq-control" id="rq-min" type="number" inputmode="decimal" min="0" step="any" placeholder="Any"></label>
+      <label class="rq-label">Max credits<input data-track="requests-max-credits" class="input-native rq-control" id="rq-max" type="number" inputmode="decimal" min="0" step="any" placeholder="Any"></label>
+    </div>
+    <div class="rq-toolbar">
+      <button data-track="requests-clear" class="button-surface" id="rq-clear" type="button" hidden>Clear filters</button>
+    </div>
+    </details>
+
+    <p class="dialog-meta rq-summary" id="rq-summary" role="status" aria-live="polite"></p>
+
+    <div id="rq-body" data-state="loading">
+      <div class="empty-state" id="rq-loading">
+        <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-search"></use></svg>
+        <p class="empty-state-message">Reading requests…</p>
+      </div>
+      <div class="empty-state" id="rq-empty" hidden>
+        <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-search"></use></svg>
+        <p class="empty-state-message">No requests match these filters.</p>
+      </div>
+      <div class="empty-state" id="rq-error" hidden>
+        <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-triangle-alert"></use></svg>
+        <p class="empty-state-message">Could not load requests.</p>
+        <button data-track="requests-retry" class="empty-state-action" id="rq-retry" type="button">Retry</button>
+      </div>
+      <div class="card action-list" id="rq-list" hidden><ul class="action-rows" id="rq-rows"></ul></div>
+    </div>
+
+    <div class="rq-pager" id="rq-pager" hidden>
+      <button data-track="requests-prev" class="button-surface" id="rq-prev" type="button">Previous</button>
+      <span class="rq-page" id="rq-page"></span>
+      <button data-track="requests-next" class="button-surface" id="rq-next" type="button">Next</button>
+    </div>
   </div>
 </dialog>
 
@@ -738,7 +757,7 @@
   <ul class="mdl-list" id="mdl-list"></ul>
 </dialog>
 
-<div class="toast" id="toast" role="status" aria-live="polite" popover="manual"></div>
+<div class="toast" id="toast" role="status" aria-live="polite" popover="manual" hidden></div>
 
 <script src="vendor/chart.umd.min.js"></script>
 <script type="module" src="app.js"></script>

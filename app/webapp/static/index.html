@@ -772,15 +772,15 @@
     <label class="settings-row" data-tailnet-row>
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-globe"></use></svg>
       <span class="settings-row-text">
-        <span class="settings-row-label">Open from other devices on my Tailscale network</span>
-        <span class="settings-row-hint" id="tailnet-hint">Off: this machine answers on 127.0.0.1 only</span>
+        <span class="settings-row-label" title="Open from other devices on my Tailscale network">Tailscale access</span>
+        <span class="settings-row-hint" id="tailnet-hint">Off</span>
       </span>
       <button data-track="feature-tailnet" id="tailnet-switch" class="toggle" type="button" role="switch" aria-checked="false" aria-label="Open from other devices on my Tailscale network"><span class="knob"></span><span class="toggle-label">OFF</span></button>
     </label>
   </section>
   <p class="settings-footnote">Each switch is for this machine only and applies at once, except the Tailscale one, which applies when the server restarts. A block that is off hides its part of the page and stops its work.</p>
   <p class="settings-footnote" id="features-note" hidden></p>
-  <p class="settings-footnote" id="tailnet-note" hidden></p>
+  <p class="settings-footnote" id="tailnet-note"></p>
   </div>
   </div>
 </dialog>

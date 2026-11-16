@@ -10,19 +10,21 @@ import { setSwitch } from './_vendored/switch/switch.js';
 
 const $ = (id) => document.getElementById(id);
 
-const OFF_HINT = 'Off: this machine answers on 127.0.0.1 only';
+// The row's hint is one truncated line on a phone, so it only says the state; the footnote wraps and
+// carries the sentence and the address.
+const WHAT = 'Open the dashboard from other devices on your Tailscale network.';
 
 export function tailnetStatus(state) {
   if (!state.enabled) {
     return state.live
-      ? { hint: 'Off after the next restart', note: '' }
-      : { hint: OFF_HINT, note: '' };
+      ? { hint: 'Off after restart', note: WHAT + ' Off after the next restart.' }
+      : { hint: 'Off', note: WHAT + ' Off: this machine answers on 127.0.0.1 only.' };
   }
-  if (state.live) return { hint: 'On: ' + state.url, note: '' };
-  if (state.restart_needed) return { hint: 'On after the server restarts', note: '' };
+  if (state.live) return { hint: 'On', note: WHAT + ' Open ' + state.url };
+  if (state.restart_needed) return { hint: 'On after restart', note: WHAT + ' Takes effect when the server restarts.' };
   return {
-    hint: 'On, but not available: staying on 127.0.0.1',
-    note: 'Open from other devices: ' + (state.reason || 'no reason was reported') + '.',
+    hint: 'Unavailable here',
+    note: WHAT + ' Not available, staying on 127.0.0.1: ' + (state.reason || 'no reason was reported') + '.',
   };
 }
 
@@ -36,7 +38,6 @@ export function initTailnet({ jsonApi, showToast }) {
     setSwitch(btn, state.enabled);
     $('tailnet-hint').textContent = hint;
     $('tailnet-note').textContent = note;
-    $('tailnet-note').hidden = !note;
   }
 
   async function load() {

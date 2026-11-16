@@ -9,10 +9,11 @@ github-copilot-usage/
 │   ├── build_info.py          # short commit + process start time for the footer
 │   ├── version.py             # single source of the version reported by /health
 │   └── webapp/
-│       └── static/            # the vanilla-JS SPA: index.html (the four tab panes under one page header), app.js, rows.js (the one list-row renderer: sessions, insights, requests and the drill-down all draw the vendored action-row through it), requests.js (the request explorer view), insights.js (the insights card, session diagnostics and the context drill-down), models.js (model colours by provider family and the Settings sheet that merges models and overrides a colour), charts.js (the two trend charts), timeline.js (trend windows, the focused date range and the coverage note), sections.js (collapsible cards), session-name.js (the rename row of the session sheet), styles.css, PWA manifest + icons, vendored Chart.js
+│       └── static/            # the vanilla-JS SPA: index.html (the four tab panes under one page header), app.js, rows.js (the one list-row renderer: sessions, insights, requests and the drill-down all draw the vendored action-row through it), requests.js (the request explorer view), insights.js (the insights card, session diagnostics and the context drill-down), features.js (Settings → Available features: the switches and what hides while a block is off), models.js (model colours by provider family and the Settings sheet that merges models and overrides a colour), charts.js (the two trend charts), timeline.js (trend windows, the focused date range and the coverage note), sections.js (collapsible cards), session-name.js (the rename row of the session sheet), styles.css, PWA manifest + icons, vendored Chart.js
 │
 ├── src/                       # logic layer (never imports `app`)
 │   ├── config.py              # config.json + env loading, thread-safe settings
+│   ├── features.py            # the feature blocks switched per machine: their ids, what each needs here, the switch
 │   ├── discovery.py           # finds Copilot's session-log folders per editor variant and OS
 │   ├── vscode_parser.py       # read-only, mtime-cached parser for VS Code chat session logs
 │   ├── cli_parser.py          # read-only, mtime-cached parser for Copilot CLI session logs
@@ -48,7 +49,7 @@ github-copilot-usage/
 │   ├── conventions_readers.py # vendored byte-for-byte; the syntax-tree and line readers conventions_ratchet loads
 │   ├── gen_icons.py           # regenerates the PWA icon family under app/webapp/static/
 │   └── tray_lifecycle.ps1     # detect / stop / start / verify the tray, called by `tray.bat`
-└── docs/                      # durable reference (this file)
+└── docs/                      # durable reference (this file; setup-and-migration.md for a new machine and what to copy)
 ```
 
 Root files: `start.bat` (foreground launch on Windows; `scripts/start.sh` is the macOS / Linux equivalent), `tray.bat` (resident Windows tray, self-bootstrapping), `requirements*.txt`, `config.example.json`, `.env.example`, `.fleet.toml` (shape and vendored manifest), `.structure-ratchet-baseline.json`.

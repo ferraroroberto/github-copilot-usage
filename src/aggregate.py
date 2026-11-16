@@ -89,7 +89,7 @@ def gather_records() -> Tuple[List[RequestRecord], List[dict]]:
             "last_activity": _iso_or_none(last_mtime),
         })
 
-    if config.load().get("include_copilot_cli", True):
+    if config.feature_enabled("copilot_cli"):
         cli_dir = discovery.copilot_cli_dir()
         if cli_dir is not None:
             cli_records, cli_usage = cli_parser.all_records(cli_dir)

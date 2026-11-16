@@ -14,7 +14,6 @@ from __future__ import annotations
 import io
 import os
 import sys
-import threading
 import webbrowser
 
 # Under pythonw.exe there is no console: sys.stdout/stderr are None, and
@@ -32,15 +31,8 @@ except ImportError:
     print("❌ tray extras missing — run: pip install -r requirements-tray.txt")
     sys.exit(1)
 
-import uvicorn
-
+from app.listeners import Listeners
 from src import config
-
-# How long a restart waits for uvicorn's graceful shutdown; a stated guess that
-# is generous for an idle local server. On expiry the old thread is abandoned
-# (it is a daemon) and the restart rebinds anyway, which fails only if the
-# port is still held.
-_SERVER_STOP_JOIN_SECS = 5
 
 
 def _make_icon_image() -> "Image.Image":
@@ -54,36 +46,19 @@ def _make_icon_image() -> "Image.Image":
     return img
 
 
-class _Server:
-    def __init__(self, port: int) -> None:
-        self.port = port
-        self._server: uvicorn.Server = None  # type: ignore[assignment]
-        self._thread: threading.Thread = None  # type: ignore[assignment]
-
-    def start(self) -> None:
-        cfg = uvicorn.Config("app.server:app", host="127.0.0.1", port=self.port, log_level="warning")
-        self._server = uvicorn.Server(cfg)
-        self._thread = threading.Thread(target=self._server.run, daemon=True)
-        self._thread.start()
-
-    def stop(self) -> None:
-        if self._server is not None:
-            self._server.should_exit = True
-        if self._thread is not None:
-            self._thread.join(timeout=_SERVER_STOP_JOIN_SECS)
-
-
 def main() -> None:
     port = int(config.load().get("port", 8377))
-    url = "http://127.0.0.1:" + str(port) + "/"
-    server = _Server(port)
+    server = Listeners(port)
     server.start()
+    url = server.loopback_url
 
     def on_open(icon, item) -> None:  # noqa: ANN001 - pystray callback shape
         webbrowser.open(url)
 
     def on_restart(icon, item) -> None:  # noqa: ANN001
+        nonlocal server
         server.stop()
+        server = Listeners(port)
         server.start()
 
     def on_quit(icon, item) -> None:  # noqa: ANN001

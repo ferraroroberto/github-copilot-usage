@@ -6,7 +6,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from src import config, pace_alert, usage_store
+from src import config, pace_alert, tailnet, usage_store
 
 ROOT = Path(__file__).resolve().parent.parent
 DOC = (ROOT / "docs" / "setup-and-migration.md").read_text(encoding="utf-8")
@@ -25,5 +25,5 @@ def test_every_env_key_is_named() -> None:
 
 
 def test_every_data_file_is_named() -> None:
-    missing = [n for n in (usage_store.DB_FILENAME, pace_alert.STATE_FILENAME) if "`%s`" % n not in DOC]
+    missing = [n for n in (usage_store.DB_FILENAME, pace_alert.STATE_FILENAME, tailnet.CERT_FILENAME, tailnet.KEY_FILENAME) if "`%s`" % n not in DOC]
     assert not missing, "data files missing from the setup doc: %s" % missing

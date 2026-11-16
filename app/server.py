@@ -1,8 +1,9 @@
 """FastAPI app: JSON API + the static dashboard.
 
-Binds to 127.0.0.1 only — this is a personal, local tool; nothing is exposed
-on the network. All endpoints are read-only over Copilot's own log files
-except POST /api/config, PUT /api/sessions/{id}/name and PUT /api/features/{id} (all write config.json); the
+This is a personal, local tool: app/listeners.py serves it on 127.0.0.1, and on the machine's Tailscale
+address only when the owner turns that on; it is never bound to 0.0.0.0. All endpoints are read-only over
+Copilot's own log files except POST /api/config, PUT /api/sessions/{id}/name, PUT /api/features/{id} and
+PUT /api/tailnet (all write config.json); the
 refresh and cache-clear endpoints only change this process's in-memory state.
 """
 
@@ -31,6 +32,7 @@ from src import (
     pace_alert,
     refresh,
     request_explorer,
+    tailnet,
 )
 from src.shell_etag import shell_response
 from src.static_versioning import CachingStaticFiles, StaticVersion
@@ -309,6 +311,26 @@ async def api_features_put(block_id: str, body: dict) -> dict:
         raise HTTPException(status_code=400, detail=str(exc))
     _sync_pace_alert()
     return {"blocks": features.describe()}
+
+
+@app.get("/api/tailnet")
+async def api_tailnet_get() -> dict:
+    """The tailnet option: its switch, whether this server is serving it, the URL, or why not."""
+    return tailnet.describe()
+
+
+@app.put("/api/tailnet")
+async def api_tailnet_put(body: dict) -> dict:
+    """Switch the tailnet option; the bind is made at server start, so it applies after a restart."""
+    enabled = (body or {}).get("enabled")
+    if not isinstance(enabled, bool):
+        raise HTTPException(status_code=400, detail="enabled: must be true or false")
+    try:
+        config.save({"tailnet_access": enabled})
+    except config.ConfigError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    _log.info("ℹ️ tailnet access: %s in config, applies at the next server start", "on" if enabled else "off")
+    return tailnet.describe()
 
 
 @app.get("/api/models")

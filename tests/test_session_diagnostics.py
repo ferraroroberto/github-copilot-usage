@@ -39,19 +39,69 @@ def test_growing_prompt_needs_enough_requests_ratio_and_rise(rec):
     assert _types(session_diagnostics.diagnose(flat)) == []
 
 
-def test_high_non_user_share_needs_composition_on_enough_requests(rec):
+def _population(rec, user_pcts, days_ago: int = 0) -> list:
+    """One three-request session per entry of ``user_pcts``, each with that user-context share."""
+    return [
+        rec(i, session_id="s%02d" % n, days_ago=days_ago, prompt_details=_details(user))
+        for n, user in enumerate(user_pcts) for i in range(3)
+    ]
+
+
+def test_non_user_share_is_reported_but_not_flagged_without_a_population_cut(rec):
     heavy = [rec(i, prompt_details=_details(3)) for i in range(3)]
     diag = session_diagnostics.diagnose(heavy)
-    assert _types(diag) == ["high_non_user_share"]
     assert diag["non_user_pct"] == 97.0
+    assert diag["flags"] == []
 
     balanced = [rec(i, prompt_details=_details(30)) for i in range(3)]
-    assert _types(session_diagnostics.diagnose(balanced)) == []
-    assert session_diagnostics.diagnose(balanced)["non_user_pct"] == 70.0
+    assert session_diagnostics.diagnose(balanced, 50.0)["non_user_pct"] == 70.0
 
     thin = [rec(i, prompt_details=_details(3)) for i in range(2)]
-    unknown = session_diagnostics.diagnose(thin)
+    unknown = session_diagnostics.diagnose(thin, 50.0)
     assert unknown["non_user_pct"] is None and unknown["flags"] == []
+
+
+def test_high_non_user_share_flags_only_the_top_of_the_machines_own_distribution(rec):
+    records = _population(rec, [10, 9, 8, 7, 6, 5, 4, 3, 2, 1])   # non-user 90% .. 99%
+    cut = session_diagnostics.non_user_cut(records)
+    assert cut == 98.0
+    flagged = session_diagnostics.flags_by_session(records)
+    assert sorted(k[1] for k in flagged) == ["s09"]
+    assert [f["type"] for f in flagged[("Code", "s09")]] == ["high_non_user_share"]
+
+
+def test_a_uniformly_heavy_population_flags_nothing(rec):
+    records = _population(rec, [3] * 12)                            # every session at 97%
+    assert session_diagnostics.non_user_cut(records) == 97.0
+    assert session_diagnostics.flags_by_session(records) == {}
+
+
+def test_the_top_of_a_light_population_is_not_high_overhead(rec):
+    records = _population(rec, [60, 59, 58, 57, 56, 55, 54, 53, 52, 40])   # non-user 40% .. 60%
+    assert session_diagnostics.flags_by_session(records) == {}
+
+
+def test_too_few_sessions_give_no_cut(rec):
+    records = _population(rec, [10, 9, 8, 7, 6, 5, 4, 3, 2])        # one short of the minimum
+    assert session_diagnostics.non_user_cut(records) is None
+    assert session_diagnostics.flags_by_session(records) == {}
+
+
+def test_flag_share_is_bounded_by_the_top_share(rec):
+    records = _population(rec, list(range(40, 0, -1)))              # 40 distinct shares
+    flagged = session_diagnostics.flags_by_session(records)
+    assert len(flagged) <= session_diagnostics.NON_USER_TOP_SHARE * 40
+
+
+def test_the_cut_does_not_move_with_the_period(rec):
+    old = _population(rec, [10, 9, 8, 7, 6, 5, 4, 3, 2, 1], days_ago=400)          # 90% .. 99%
+    recent = [rec(i, session_id="new", prompt_details=_details(0)) for i in range(3)]   # 100%
+    everything = old + recent
+    # Alone, this week has one session and no cut; only the all-time spread can flag it.
+    rows = {r["session_id"]: r for r in aggregate.get_sessions(everything, "week")}
+    assert [f["type"] for f in rows["new"]["flags"]] == ["high_non_user_share"]
+    detail = aggregate.get_session_detail(everything, "new")
+    assert [f["type"] for f in detail["diagnostics"]["flags"]] == ["high_non_user_share"]
 
 
 def test_requests_without_composition_never_flag_non_user_share(rec):

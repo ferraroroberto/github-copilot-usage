@@ -8,23 +8,36 @@ left out of the size checks, because an even spread says nothing about any one p
 
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
 
 from src import prompt_composition
 from src.vscode_parser import RequestRecord
 
-# A prompt this big is a long context that every later turn re-sends; typical chat
-# prompts sit well below it, and common context windows start around 128k.
+# Absolute because a context window is absolute: a prompt this big re-sends a long context
+# every later turn and is well short of the common 128k windows. On a local sample of 46
+# sessions the largest prompt per session had its median near 21k and its 95th percentile
+# near 53k, so this cut flags the long-context tail (6.5% there), not the typical session.
 LARGE_PROMPT_TOKENS = 50_000
-# Growth needs enough turns to be a trend rather than one big attachment.
+# Growth needs enough turns to be a trend rather than one big attachment. The same local
+# sample had no session with this many sized requests, so the check fired on none of them;
+# the three growth cuts stay conservative until multi-turn data says otherwise.
 MIN_GROWTH_REQUESTS = 4
 GROWTH_RATIO = 2.0
 # Below this absolute rise a doubling is just a small prompt getting a bit bigger.
 GROWTH_MIN_RISE_TOKENS = 20_000
-# VS Code files only the user's own text and attachments as "User Context"; at 95% or
-# more overhead the session is mostly resending instructions and tool definitions.
-HIGH_NON_USER_PCT = 95.0
+# VS Code files only the user's own text and attachments as "User Context", so system and
+# tool overhead is the bulk of nearly every prompt and its level depends on each machine's
+# tools and instructions. A fixed cut flags most sessions on one machine and none on
+# another, so the flag is relative: a session is flagged when its share is above the
+# NON_USER_TOP_SHARE quantile of every session on this machine.
+NON_USER_TOP_SHARE = 0.10
+# Below this many sessions with a composition a quantile is noise, so the share is shown
+# but never flagged.
+MIN_SESSIONS_FOR_CUT = 10
+# The relative cut only means "high overhead" when the session really is mostly overhead.
+HIGH_NON_USER_FLOOR_PCT = 90.0
 MIN_COVERED_REQUESTS = 3
 
 SessionKey = Tuple[str, str]
@@ -53,8 +66,27 @@ def _non_user_pct(records: List[RequestRecord]) -> Optional[float]:
     return round(100.0 * (1.0 - user / total), 1)
 
 
-def diagnose(session_records: List[RequestRecord]) -> Dict[str, Any]:
-    """Diagnostics and flags for the requests of one session."""
+def non_user_cut(records: List[RequestRecord]) -> Optional[float]:
+    """The non-user share a session must exceed to be flagged, or None with too few sessions.
+
+    Nearest-rank quantile over every session that has a composition, so "strictly above"
+    flags at most ``NON_USER_TOP_SHARE`` of them, ties included.
+    """
+    shares = sorted(
+        pct for pct in (_non_user_pct(g) for g in _by_session(records).values()) if pct is not None
+    )
+    if len(shares) < MIN_SESSIONS_FOR_CUT:
+        return None
+    rank = math.ceil((1.0 - NON_USER_TOP_SHARE) * len(shares))
+    return shares[rank - 1]
+
+
+def diagnose(session_records: List[RequestRecord], high_non_user_cut: Optional[float] = None) -> Dict[str, Any]:
+    """Diagnostics and flags for the requests of one session.
+
+    ``high_non_user_cut`` is ``non_user_cut`` over all sessions; without it the non-user
+    share is reported but never flagged.
+    """
     ordered = sorted(session_records, key=lambda r: (r.ts, r.request_id))
     sized = [r for r in ordered if not r.usage_estimated and r.prompt_tokens > 0]
     flags: List[Dict[str, str]] = []
@@ -82,11 +114,14 @@ def diagnose(session_records: List[RequestRecord]) -> Dict[str, Any]:
         })
 
     non_user = _non_user_pct(ordered)
-    if non_user is not None and non_user >= HIGH_NON_USER_PCT:
+    if (
+        non_user is not None and high_non_user_cut is not None
+        and non_user > high_non_user_cut and non_user >= HIGH_NON_USER_FLOOR_PCT
+    ):
         flags.append({
             "type": "high_non_user_share",
             "text": "About %d%% of the prompt is system and tool overhead rather than your own "
-                    "context (heuristic)." % round(non_user),
+                    "context, among the highest of your sessions (heuristic)." % round(non_user),
         })
 
     return {
@@ -108,19 +143,27 @@ def _by_session(records: List[RequestRecord]) -> Dict[SessionKey, List[RequestRe
     return groups
 
 
-def flags_by_session(records: List[RequestRecord]) -> Dict[SessionKey, List[Dict[str, str]]]:
-    """``(ide, session_id)`` to its flags; sessions with none are left out."""
+def flags_by_session(
+    records: List[RequestRecord], population: Optional[List[RequestRecord]] = None,
+) -> Dict[SessionKey, List[Dict[str, str]]]:
+    """``(ide, session_id)`` to its flags; sessions with none are left out.
+
+    ``population`` is every record, so the relative cut does not move with the period.
+    """
     out: Dict[SessionKey, List[Dict[str, str]]] = {}
+    cut = non_user_cut(population if population is not None else records)
     for key, group in _by_session(records).items():
-        flags = diagnose(group)["flags"]
+        flags = diagnose(group, cut)["flags"]
         if flags:
             out[key] = flags
     return out
 
 
-def attach_flags(rows: List[dict], records: List[RequestRecord]) -> List[dict]:
+def attach_flags(
+    rows: List[dict], records: List[RequestRecord], population: Optional[List[RequestRecord]] = None,
+) -> List[dict]:
     """Add ``flags`` to each session row, from the same records the rows were built from."""
-    flags = flags_by_session(records)
+    flags = flags_by_session(records, population)
     for row in rows:
         row["flags"] = flags.get((row["ide"], row["session_id"]), [])
     return rows

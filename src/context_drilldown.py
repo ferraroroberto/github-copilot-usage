@@ -125,7 +125,7 @@ def drilldown(records: List[RequestRecord], period: str, label: str = "") -> Dic
     if not total:
         return _empty(period, label, cov, 'No request in this period carries the label "%s".' % label, labels)
 
-    flags = session_diagnostics.flags_by_session(in_period)
+    flags = session_diagnostics.flags_by_session(in_period, records)
     sessions = _group(
         contributions, lambda r: (r.ide, r.session_id),
         lambda r: {

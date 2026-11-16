@@ -2,16 +2,17 @@
 
 Binds to 127.0.0.1 only — this is a personal, local tool; nothing is exposed
 on the network. All endpoints are read-only over Copilot's own log files
-except POST /api/config (writes config.json); the refresh and cache-clear
-endpoints only change this process's in-memory state.
+except POST /api/config and PUT /api/sessions/{id}/name (both write config.json); the
+refresh and cache-clear endpoints only change this process's in-memory state.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.gzip import GZipMiddleware
@@ -32,6 +33,7 @@ from src import (
 )
 from src.static_versioning import CachingStaticFiles, StaticVersion
 from src.usage_store import usage_db_path
+from src.vscode_parser import RequestRecord
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 _log = logging.getLogger(__name__)
@@ -61,8 +63,7 @@ async def _pace_alert_loop() -> None:
     while True:
         try:
             if pace_alert.channel_reason() is None:
-                records = (await refresh.store.snapshot()).records
-                await pace_alert.check(aggregate.budget_status(records))
+                await pace_alert.check(aggregate.budget_status(await _records()))
         except Exception as exc:  # the optional alert must never stop the loop or the server
             _log.warning("⚠️ pace alert check failed: %s", exc)
         await asyncio.sleep(pace_alert.CHECK_INTERVAL_SECS)
@@ -92,6 +93,15 @@ async def _shutdown() -> None:
 # ---------------------------------------------------------------------------
 
 
+async def _records() -> List[RequestRecord]:
+    """The parsed records as the dashboard may see them: after the start date, sessions renamed."""
+    return aggregate.visible((await refresh.store.snapshot()).records)
+
+
+def _summary_of(records: List[RequestRecord], period: str) -> dict:
+    return aggregate.get_summary(aggregate.visible(records), period)
+
+
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok", "version": VERSION}
@@ -104,29 +114,57 @@ async def api_version() -> dict:
 
 @app.get("/api/summary")
 async def api_summary(
-    period: str = Query("today", description="today | week | month | cycle | all"),
+    period: str = Query("today", description="today | week | month | cycle | all | range:YYYY-MM-DD..YYYY-MM-DD"),
 ) -> dict:
     snap = await refresh.store.snapshot()
-    body = refresh.store.summary(snap, period, aggregate.get_summary)
+    body = refresh.store.summary(snap, period, _summary_of)
     body["sources"] = snap.sources
     return body
 
 
+@app.get("/api/trends")
+async def api_trends(
+    period: str = Query("week", description="today | week | month | cycle | all | range:YYYY-MM-DD..YYYY-MM-DD"),
+    offset: int = Query(0, ge=0, le=520, description="how many whole windows before the latest"),
+) -> dict:
+    return aggregate.get_trends(await _records(), period, offset)
+
+
 @app.get("/api/sessions")
 async def api_sessions(
-    period: str = Query("all", description="today | week | month | cycle | all"),
+    period: str = Query("all", description="today | week | month | cycle | all | range:YYYY-MM-DD..YYYY-MM-DD"),
 ) -> dict:
-    records = (await refresh.store.snapshot()).records
-    return {"period": period, "sessions": aggregate.get_sessions(records, period)}
+    return {"period": period, "sessions": aggregate.get_sessions(await _records(), period)}
 
 
 @app.get("/api/sessions/{session_id}")
 async def api_session_detail(session_id: str) -> dict:
-    records = (await refresh.store.snapshot()).records
-    detail = aggregate.get_session_detail(records, session_id)
+    detail = aggregate.get_session_detail(await _records(), session_id)
     if detail is None:
         return {"error": "session not found", "session_id": session_id}
     return detail
+
+
+@app.put("/api/sessions/{session_id}/name")
+async def api_session_name(session_id: str, body: dict) -> dict:
+    """Set a session's custom name, or clear it (empty or null) to restore the parsed title."""
+    try:
+        name = config.clean_session_name((body or {}).get("name"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="name: %s" % exc)
+    names = dict(config.load().get("session_names") or {})
+    if name:
+        if not any(r.session_id == session_id for r in await _records()):
+            raise HTTPException(status_code=404, detail="session not found")
+        names[session_id] = name
+    else:
+        names.pop(session_id, None)
+    try:
+        config.save({"session_names": names})
+    except config.ConfigError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    _log.info("ℹ️ session %s: %s", session_id[:8], "renamed" if name else "name cleared")
+    return {"session_id": session_id, "name": name or None}
 
 
 @app.get("/api/requests")
@@ -145,7 +183,7 @@ async def api_requests(
     page: int = Query(1, ge=1),
     page_size: int = Query(request_explorer.DEFAULT_PAGE_SIZE, ge=1, le=request_explorer.MAX_PAGE_SIZE),
 ) -> dict:
-    records = (await refresh.store.snapshot()).records
+    records = await _records()
     query = request_explorer.Query.build(
         period=period, project=project, model=model, mode=mode, ide=ide, result=result,
         min_credits=min_credits, max_credits=max_credits, q=q, sort=sort, order=order,
@@ -158,8 +196,7 @@ async def api_requests(
 async def api_insights(
     period: str = Query("week", description="today | week | month | cycle | all"),
 ) -> dict:
-    records = (await refresh.store.snapshot()).records
-    return insights.build_insights(records, period)
+    return insights.build_insights(await _records(), period)
 
 
 @app.get("/api/context")
@@ -167,22 +204,21 @@ async def api_context(
     period: str = Query("week", description="today | week | month | cycle | all"),
     label: str = Query("", description="a prompt-composition label; empty means the whole prompt"),
 ) -> dict:
-    records = (await refresh.store.snapshot()).records
-    return context_drilldown.drilldown(records, period, label)
+    return context_drilldown.drilldown(await _records(), period, label)
 
 
 @app.get("/api/export.csv")
 async def api_export(
     period: str = Query("all", description="today | week | month | cycle | all"),
 ) -> PlainTextResponse:
-    records = (await refresh.store.snapshot()).records
-    csv_text = aggregate.export_csv(records, period)
+    period = aggregate.normalize_period(period, "all")
+    csv_text = aggregate.export_csv(await _records(), period)
     return PlainTextResponse(
         csv_text,
         media_type="text/csv",
         headers={
             "Content-Disposition":
-                'attachment; filename="copilot-usage-' + period + '.csv"'
+                'attachment; filename="copilot-usage-' + re.sub(r"[^A-Za-z0-9-]+", "_", period) + '.csv"'
         },
     )
 
@@ -231,7 +267,10 @@ async def api_config_post(updates: dict) -> dict:
 
 @app.get("/api/models")
 async def api_models() -> dict:
-    """Every model in the local history as spelled before any alias, for the Settings choices."""
+    """Every model in the local history as spelled before any alias, for the Settings choices.
+
+    Read before the start date applies, so an alias stays editable whatever date is set.
+    """
     records = (await refresh.store.snapshot()).records
     return {"families": model_labels.family_options(), "models": aggregate.labels_for(records).catalog()}
 

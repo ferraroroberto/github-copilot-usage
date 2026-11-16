@@ -15,6 +15,20 @@ const FLAG_LABEL = {
 const PERIOD_LABEL = {
   today: 'Today', week: 'Last 7 days', month: 'Last 30 days', cycle: 'This billing cycle', all: 'All time',
 };
+const RANGE = /^range:(\d{4})-(\d{2})-(\d{2})\.\.(\d{4})-(\d{2})-(\d{2})$/;
+
+// A period's name for a heading: a fixed period, or the days of a focused range.
+export function periodLabel(period) {
+  if (PERIOD_LABEL[period]) return PERIOD_LABEL[period];
+  const m = RANGE.exec(period || '');
+  if (!m) return period || '';
+  const day = (y, mo, d) => new Date(Number(y), Number(mo) - 1, Number(d))
+    .toLocaleDateString([], { month: 'short', day: 'numeric' });
+  const first = day(m[1], m[2], m[3]);
+  const last = day(m[4], m[5], m[6]);
+  return first === last ? first : first + ' – ' + last;
+}
+
 // Placeholders explain an empty or sparse period; there is no view behind them.
 const STATIC_TYPES = new Set(['no_data', 'insufficient_evidence']);
 
@@ -165,7 +179,7 @@ function coverageText(cov) {
 
 function renderContext(body) {
   $('cx-title').textContent = body.label || 'Prompt context';
-  $('cx-meta').textContent = PERIOD_LABEL[body.period] || body.period;
+  $('cx-meta').textContent = periodLabel(body.period);
   renderChips(body.labels || []);
   $('cx-coverage').textContent = coverageText(body.coverage);
   $('cx-note').textContent = body.note || '';
@@ -179,7 +193,7 @@ function renderContext(body) {
 async function loadContext() {
   const seq = ++ctxSeq;
   $('cx-title').textContent = ctx.label || 'Prompt context';
-  $('cx-meta').textContent = (PERIOD_LABEL[ctx.period] || ctx.period) + ' · loading…';
+  $('cx-meta').textContent = periodLabel(ctx.period) + ' · loading…';
   try {
     const body = await deps.jsonApi('/api/context?period=' + encodeURIComponent(ctx.period)
       + '&label=' + encodeURIComponent(ctx.label));

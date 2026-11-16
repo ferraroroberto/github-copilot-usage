@@ -9,14 +9,16 @@
  * the secondary encoding.
  */
 
-/* global Chart */
-
 import { buildReadoutText } from './_vendored/page-foot/page-foot.js';
 import { initUsageLog } from './_vendored/usage-log/usage-log.js';
 import { setSwitch } from './_vendored/switch/switch.js';
 import { initRequests } from './requests.js';
 import { flagChips, initInsights, refreshInsights, renderDiagnostics } from './insights.js';
-import { createModelColors, initModelSettings, seriesColor, summarizeModelSettings } from './models.js';
+import { createModelColors, initModelSettings, summarizeModelSettings } from './models.js';
+import { createCharts } from './charts.js';
+import { initSections } from './sections.js';
+import { initSessionName } from './session-name.js';
+import { fetchTrend, initTimeline, render as renderTimeline } from './timeline.js';
 
 // Local-only usage log (views, taps, device class); same-origin, no content recorded.
 const usage = initUsageLog();
@@ -36,6 +38,9 @@ const state = {
   sessions: [],
   sessionsSort: 'credits',
   sessionsExpanded: false,
+  trendOffset: 0,       // how many trend windows back the charts are stepped
+  trend: null,          // the older window fetched for that offset; null while the latest is open
+  returnPeriod: null,   // the period a focused date range goes back to
 };
 
 const $ = (id) => document.getElementById(id);
@@ -52,7 +57,7 @@ $('theme-toggle').addEventListener('click', () => {
   const next = currentTheme() === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('copilot-usage.theme', next);
-  if (state.summary) renderCharts(state.summary);   // re-resolve palette + axis colors
+  if (state.summary) renderCharts();   // re-resolve palette + axis colors
 });
 
 // ---------------------------------------------------------------------------
@@ -173,13 +178,17 @@ async function jsonApi(url, opts) {
 }
 
 async function refresh() {
+  const period = encodeURIComponent(state.period);
+  const offset = state.trendOffset;
   try {
-    const [summary, sessions] = await Promise.all([
-      jsonApi('/api/summary?period=' + state.period),
-      jsonApi('/api/sessions?period=' + state.period),
+    const [summary, sessions, trend] = await Promise.all([
+      jsonApi('/api/summary?period=' + period),
+      jsonApi('/api/sessions?period=' + period),
+      fetchTrend(state),
     ]);
     state.summary = summary;
     state.sessions = sessions.sessions || [];
+    if (offset === state.trendOffset) state.trend = trend;
     render();
     $('freshness').textContent = 'updated ' + new Date().toLocaleTimeString();
   } catch (exc) {
@@ -219,17 +228,31 @@ function render() {
   colors.setMeta(s.model_meta);
   colors.seed(s.by_model || []);
   renderTiles(s);
-  renderBudget(s.budget);
-  renderCharts(s);
+  renderBudget(s.budget, s.coverage);
+  renderCharts();
+  renderTimeline(state);
   renderMix(s.prompt_mix || [], $('mix-card'), $('mix-bars'));
   renderModelTable(s.by_model || []);
   renderProjectTable(s.by_project || [], s.by_mode || []);
   renderSessions();
   renderSources(s.sources || []);
-  $('export-link').href = '/api/export.csv?period=' + state.period;
+  $('export-link').href = '/api/export.csv?period=' + encodeURIComponent(state.period);
+}
+
+const TILE_VALUES = ['t-credits', 't-requests', 't-in', 't-out'];
+const TILE_NOTES = ['t-usd', 't-avg', 't-in-sub', 't-out-sub'];
+
+// A period the telemetry start date does not reach has no figures, which is not the same as zero.
+function blankTiles() {
+  TILE_VALUES.forEach((id) => { $(id).textContent = '—'; });
+  TILE_NOTES.forEach((id) => { $(id).textContent = ''; });
+  $('t-in').title = '';
+  $('d-credits').hidden = true;
+  $('d-requests').hidden = true;
 }
 
 function renderTiles(s) {
+  if (s.coverage && s.coverage.state === 'none') { blankTiles(); return; }
   const t = s.totals || {};
   $('t-credits').textContent = fmtCredits(t.credits);
   $('t-usd').textContent = t.credits ? '≈ ' + fmtUsd(t.usd) : '';
@@ -273,9 +296,21 @@ function renderDelta(el, curr, prev) {
 
 // ---- budget ----
 
-function renderBudget(b) {
+function budgetNote(b, startDate) {
+  const note = $('budget-note');
+  if (!note.dataset.base) note.dataset.base = note.textContent;
+  const from = startDate ? fmtDay(startDate + 'T00:00:00') : '';
+  if (b.coverage === 'none') return 'No telemetry counted this cycle: it ends before your telemetry start date, ' + from + '.';
+  if (b.coverage === 'partial') {
+    return note.dataset.base + ' Partial coverage: counting from ' + from + '; earlier requests in this cycle are left out.';
+  }
+  return note.dataset.base;
+}
+
+function renderBudget(b, coverage) {
   if (!b) { $('budget-card').hidden = true; return; }
   $('budget-card').hidden = false;
+  $('budget-note').textContent = budgetNote(b, coverage && coverage.start_date);
   $('budget-range').textContent = fmtDay(b.cycle_start) + ' – ' + fmtDay(b.cycle_end)
     + ' · day ' + b.days_elapsed + '/' + b.days_total;
 
@@ -297,134 +332,7 @@ function renderBudget(b) {
 
 // ---- charts ----
 
-let _chartCredits = null;
-let _chartTokens = null;
-
-function axisOptions(isTok) {
-  const grid = cssVar('--border-muted');
-  const tick = cssVar('--fg-muted');
-  return {
-    x: {
-      stacked: true,
-      grid: { display: false },
-      ticks: { color: tick, font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
-    },
-    y: {
-      stacked: true,
-      beginAtZero: true,
-      grid: { color: grid },
-      ticks: { color: tick, font: { size: 11 }, callback: isTok ? (v) => fmtTok(v) : undefined },
-    },
-  };
-}
-
-function legendOptions() {
-  return {
-    position: 'bottom',
-    labels: { color: cssVar('--fg'), boxWidth: 10, boxHeight: 10, padding: 12, font: { size: 11 }, usePointStyle: true },
-  };
-}
-
-function renderCharts(s) {
-  const ts = s.time_series || [];
-  const card = $('charts-card');
-  if (!ts.length) { card.hidden = true; return; }
-  card.hidden = false;
-
-  const labels = ts.map((b) => b.label);
-  const surface = cssVar('--card');
-
-  // Model set across the window, family by family in stable rank order.
-  const models = colors.stackOrder([...new Set(ts.flatMap((b) => Object.keys(b.models || {})))]);
-
-  const creditDatasets = models
-    .map((m) => ({
-      label: m,
-      data: ts.map((b) => (b.models?.[m]?.credits) || 0),
-      backgroundColor: colors.colorOf(m),
-      borderColor: surface,          // 2px surface gap between stacked segments
-      borderWidth: 1,
-      borderRadius: 3,
-      maxBarThickness: 34,
-    }))
-    .filter((d) => d.data.some((v) => v > 0));
-
-  if (_chartCredits) _chartCredits.destroy();
-  _chartCredits = new Chart($('chart-credits'), {
-    type: 'bar',
-    data: { labels, datasets: creditDatasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      scales: axisOptions(false),
-      plugins: {
-        legend: legendOptions(),
-        tooltip: {
-          callbacks: {
-            label: (ctx) => ' ' + ctx.dataset.label + ': ' + fmtCredits(ctx.parsed.y) + ' cr',
-          },
-        },
-      },
-    },
-  });
-
-  renderTokenChart(ts, labels);
-}
-
-function renderTokenChart(ts, labels) {
-  const theme = currentTheme();
-  const inColor = seriesColor(theme, 0);
-  const outColor = seriesColor(theme, 1);
-  const cacheColor = seriesColor(theme, 2);
-  const sumField = (b, f) => Object.values(b.models || {}).reduce((acc, m) => acc + (m[f] || 0), 0);
-
-  if (_chartTokens) _chartTokens.destroy();
-  _chartTokens = new Chart($('chart-tokens'), {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Tokens in',
-          data: ts.map((b) => sumField(b, 'prompt_tokens')),
-          borderColor: inColor,
-          backgroundColor: inColor + '2e',
-          fill: true, tension: 0.3, borderWidth: 2,
-          pointRadius: labels.length > 10 ? 0 : 3, pointHoverRadius: 4,
-        },
-        {
-          label: 'Tokens out',
-          data: ts.map((b) => sumField(b, 'completion_tokens')),
-          borderColor: outColor,
-          backgroundColor: outColor + '2e',
-          fill: true, tension: 0.3, borderWidth: 2,
-          pointRadius: labels.length > 10 ? 0 : 3, pointHoverRadius: 4,
-        },
-        {
-          label: 'Cache read (not in tokens in)',
-          data: ts.map((b) => sumField(b, 'cache_read_tokens')),
-          borderColor: cacheColor,
-          borderDash: [5, 4],
-          fill: false, tension: 0.3, borderWidth: 2,
-          pointRadius: labels.length > 10 ? 0 : 3, pointHoverRadius: 4,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      scales: (() => { const o = axisOptions(true); o.x.stacked = false; o.y.stacked = false; return o; })(),
-      plugins: {
-        legend: legendOptions(),
-        tooltip: {
-          callbacks: { label: (ctx) => ' ' + ctx.dataset.label + ': ' + fmtTok(ctx.parsed.y) },
-        },
-      },
-    },
-  });
-}
+const renderCharts = createCharts({ $, state, colors, currentTheme, cssVar, fmtCredits, fmtTok });
 
 // ---- prompt mix ----
 
@@ -542,6 +450,7 @@ async function openSession(sid) {
   } catch { return; }
   if (detail.error) return;
 
+  showSessionName(sid, detail);
   $('sd-title').textContent = detail.title || sid;
   $('sd-meta').textContent =
     detail.project + ' · ' + detail.ide
@@ -577,7 +486,7 @@ async function openSession(sid) {
     </tr>`;
   }).join('');
 
-  $('session-dialog').showModal();
+  if (!$('session-dialog').open) $('session-dialog').showModal();
 }
 
 $('sd-close').addEventListener('click', () => $('session-dialog').close());
@@ -633,13 +542,22 @@ function renderSources(sources) {
 // Period switching
 // ---------------------------------------------------------------------------
 
+// Also the way a tapped chart bucket focuses the dashboard: the period is then a date range, which
+// lights no button of the segmented control.
+function setPeriod(period) {
+  state.period = period;
+  state.sessionsExpanded = false;
+  state.trendOffset = 0;
+  state.trend = null;
+  $('period-seg').querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.period === period));
+  refresh();
+}
+
 $('period-seg').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-period]');
   if (!btn || btn.dataset.period === state.period) return;
-  state.period = btn.dataset.period;
-  state.sessionsExpanded = false;
-  $('period-seg').querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
-  refresh();
+  state.returnPeriod = null;
+  setPeriod(btn.dataset.period);
 });
 
 // ---------------------------------------------------------------------------
@@ -693,6 +611,7 @@ function paintSettings(cfg) {
   settings = cfg;
   $('set-allowance').value = cfg.monthly_credits;
   $('set-reset').value = cfg.cycle_reset_day;
+  $('set-start').value = cfg.telemetry_start_date || '';
   setSwitch($('set-cli'), !!cfg.include_copilot_cli);
   $('set-roots-value').textContent = rootsLabel(cfg.extra_roots || []);
   $('set-models-value').textContent = summarizeModelSettings(cfg);
@@ -737,6 +656,20 @@ function bindNumberSetting(id, key, min, max, label) {
 }
 bindNumberSetting('set-allowance', 'monthly_credits', 0, 1_000_000, 'Allowance');
 bindNumberSetting('set-reset', 'cycle_reset_day', 1, 28, 'Reset day');
+
+// An empty value counts every record again; the server refuses a date it cannot read.
+$('set-start').addEventListener('change', async () => {
+  const el = $('set-start');
+  const before = settings.telemetry_start_date || '';
+  if (el.value === before) return;
+  const saved = await saveSetting('telemetry_start_date', el.value,
+    el.value ? 'Counting from ' + fmtDay(el.value + 'T00:00:00') : 'Counting every record');
+  if (!saved) el.value = before;
+});
+$('set-start-clear').addEventListener('click', () => {
+  $('set-start').value = '';
+  $('set-start').dispatchEvent(new Event('change'));
+});
 
 $('set-cli').addEventListener('click', async () => {
   const el = $('set-cli');
@@ -856,6 +789,10 @@ $('cache-clear').addEventListener('click', async () => {
 fetch('/api/version').then((r) => r.json()).then((v) => {
   $('buildReadout').textContent = buildReadoutText(v.git_sha || 'unknown', v.built_at || '');
 }).catch(() => {});
+
+initSections(document.querySelector('main.app'));
+const showSessionName = initSessionName({ jsonApi, showToast, reopen: openSession, refresh });
+initTimeline({ state, jsonApi, setPeriod, renderCharts, showToast });
 
 const requests = initRequests({
   jsonApi, esc, fmtCredits, fmtTok, fmtNum, fmtDay, fmtTime, openSession,

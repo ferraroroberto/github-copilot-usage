@@ -5,5 +5,7 @@
   "extra_roots": [],
   "include_copilot_cli": true,
   "model_aliases": {},
-  "model_colors": {}
+  "model_colors": {},
+  "telemetry_start_date": "",
+  "session_names": {}
 }

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 from starlette.testclient import TestClient
@@ -24,16 +23,6 @@ DISTINCT_MODELS = [
     "claude-sonnet-4", "claude-sonnet-4.5", "claude-sonnet-4-5", "claude-opus-4", "claude-sonnet-4-thinking",
     "o3", "o3-mini", "gemini-2.5-pro", "gemini-2.5-flash",
 ]
-
-
-@pytest.fixture
-def settings_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """A throwaway config.json with the module's cache emptied before and after."""
-    path = tmp_path / "config.json"
-    monkeypatch.setattr(config, "CONFIG_PATH", path)
-    monkeypatch.setattr(config, "_loaded", False)
-    monkeypatch.setattr(config, "_cache", {})
-    return path
 
 
 def _with_aliases(monkeypatch: pytest.MonkeyPatch, aliases: dict, colors: dict = None) -> None:

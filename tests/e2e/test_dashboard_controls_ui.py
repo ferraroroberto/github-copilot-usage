@@ -1,0 +1,163 @@
+"""Session names, the telemetry start date, collapsible cards and chart history in a real browser.
+
+Runs at a phone and a desktop viewport over synthetic records and a throwaway config file.
+Needs Playwright and an installed Chromium; without them the module is skipped with that reason.
+The page's usage-log posts are intercepted so the run writes nothing to the user's data.
+"""
+
+from __future__ import annotations
+
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
+from typing import Iterator, List
+
+import pytest
+
+sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
+
+from src import aggregate, config, refresh  # noqa: E402
+from src.vscode_parser import RequestRecord  # noqa: E402
+
+NOW = datetime.now(tz=timezone.utc)
+VIEWPORTS = {"phone": {"width": 390, "height": 844}, "desktop": {"width": 1280, "height": 900}}
+
+
+def _records() -> List[RequestRecord]:
+    rows: List[RequestRecord] = []
+    for n, days_ago in enumerate([0, 0, 1, 3, 20, 50]):
+        rows.append(RequestRecord(
+            ide="Code", source="vscode", project_key="e:\\alpha", project_name="alpha", project_path=None,
+            session_id="sess-recent" if days_ago < 10 else "sess-old",
+            session_title="Recent session" if days_ago < 10 else "Old session",
+            request_id="req-%02d" % n, ts=NOW - timedelta(days=days_ago, minutes=n),
+            message="synthetic prompt %02d" % n, mode="agent", model_requested="m", model="gpt-5-mini",
+            prompt_tokens=1000 + n, completion_tokens=100, credits=1.0, elapsed_ms=500,
+        ))
+    return rows
+
+
+@pytest.fixture(scope="module")
+def base_url(serve, tmp_path_factory) -> Iterator[str]:
+    original = (aggregate.gather_records, config.CONFIG_PATH, refresh.store)
+    aggregate.gather_records = lambda: (_records(), [])  # type: ignore[assignment]
+    config.CONFIG_PATH = Path(tmp_path_factory.mktemp("cfg")) / "config.json"
+    config._loaded, config._cache = False, {}
+    refresh.store = refresh.SnapshotStore()
+    with serve() as url:
+        yield url
+    aggregate.gather_records, config.CONFIG_PATH, refresh.store = original  # type: ignore[assignment]
+    config._loaded, config._cache = False, {}
+
+
+@pytest.fixture(params=sorted(VIEWPORTS))
+def page(browser, base_url, request):
+    phone = request.param == "phone"
+    context = browser.new_context(viewport=VIEWPORTS[request.param], has_touch=phone, is_mobile=phone)
+    context.route("**/api/usage/**", lambda route: route.fulfill(status=204))
+    pg = context.new_page()
+    pg.goto(base_url + "/")
+    pg.wait_for_selector("#session-list li")
+    yield pg
+    context.close()
+    config.save({"telemetry_start_date": "", "session_names": {}})
+
+
+def _no_horizontal_scroll(page) -> bool:
+    return page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth")
+
+
+def test_a_session_can_be_renamed_and_restored(page):
+    page.click("#session-list li")
+    page.wait_for_selector("#session-dialog[open]")
+    assert page.locator("#sd-name-clear").is_hidden()
+    page.fill("#sd-name", "Billing investigation")
+    page.click("#sd-rename button[type=submit]")
+    page.wait_for_function("document.querySelector('#sd-title').textContent === 'Billing investigation'")
+    assert page.locator("#sd-name-clear").is_visible()
+    page.click("#sd-close")
+
+    page.reload()
+    page.wait_for_selector("#session-list li")
+    assert "Billing investigation" in page.locator("#session-list").inner_text()
+
+    page.locator("#session-list li", has_text="Billing investigation").click()
+    page.wait_for_selector("#session-dialog[open]")
+    page.click("#sd-name-clear")
+    page.wait_for_function("document.querySelector('#sd-title').textContent === 'Recent session'")
+    page.click("#sd-close")
+    assert "Billing investigation" not in page.locator("#session-list").inner_text()
+
+
+def test_the_start_date_leaves_earlier_records_out_and_labels_the_coverage(page):
+    page.click("#period-seg [data-period=all]")
+    page.wait_for_function("document.querySelector('#t-requests').textContent === '6'")
+    assert page.locator("#coverage-note").is_hidden()
+
+    start = (date.today() - timedelta(days=10)).isoformat()
+    page.click("#settings-btn")
+    page.fill("#set-start", start)
+    page.wait_for_function("document.querySelector('#coverage-note') && !document.querySelector('#coverage-note').hidden")
+    assert "Partial coverage" in page.locator("#coverage-note").inner_text()
+    page.click("#settings-close")
+    page.wait_for_function("document.querySelector('#t-requests').textContent === '4'")
+
+    page.click("#period-seg [data-period=today]")
+    page.wait_for_function("document.querySelector('#t-requests').textContent === '2'")
+    assert page.locator("#coverage-note").is_hidden()  # today is wholly after the start date
+
+    page.click("#settings-btn")
+    page.click("#set-start-clear")
+    page.click("#settings-close")
+    page.click("#period-seg [data-period=all]")
+    page.wait_for_function("document.querySelector('#t-requests').textContent === '6'")
+    assert _no_horizontal_scroll(page)
+
+
+def test_a_card_collapses_and_stays_collapsed_after_a_reload(page):
+    body = page.locator("#charts-card .chart-wrap").first
+    assert body.is_visible()
+    button = page.locator("#charts-card .collapse-btn")
+    assert button.get_attribute("aria-expanded") == "true"
+    button.click()
+    assert body.is_hidden() and button.get_attribute("aria-expanded") == "false"
+    assert page.locator("#charts-card .card-head h2").is_visible()  # the heading stays to unfold it by
+
+    page.reload()
+    page.wait_for_selector("#session-list li")
+    assert page.locator("#charts-card .chart-wrap").first.is_hidden()
+    page.locator("#charts-card .collapse-btn").click()
+    assert page.locator("#charts-card .chart-wrap").first.is_visible()
+    assert page.locator(".collapse-btn").first.bounding_box()["height"] >= 44
+
+
+def test_the_trend_steps_through_older_windows_and_a_bucket_tap_focuses_the_dashboard(page):
+    # Today draws 14 days; the records 20 and 50 days old sit in older windows.
+    page.wait_for_function("document.querySelector('#trend-range').textContent !== ''")
+    latest_range = page.locator("#trend-range").inner_text()
+    assert page.locator("#trend-newer").is_disabled() and page.locator("#trend-latest").is_disabled()
+
+    page.click("#trend-older")
+    page.wait_for_function("document.querySelector('#trend-latest').disabled === false")
+    assert page.locator("#trend-range").inner_text() != latest_range
+    assert page.locator("#trend-newer").is_enabled()
+    page.click("#trend-latest")
+    page.wait_for_function("document.querySelector('#trend-latest').disabled === true")
+    assert page.locator("#trend-range").inner_text() == latest_range
+
+    # Tap the newest bar: the whole dashboard narrows to that bucket's days and Back undoes it.
+    x, y = page.evaluate(
+        "(() => { const c = Chart.getChart('chart-credits'); const r = c.canvas.getBoundingClientRect();"
+        " return [r.left + c.chartArea.right - 6, r.top + (c.chartArea.top + c.chartArea.bottom) / 2]; })()"
+    )
+    page.mouse.click(x, y)
+    page.wait_for_selector("#focus-bar:not([hidden])")
+    assert page.locator("#period-seg button.active").count() == 0
+    assert "Focused on" in page.locator("#focus-label").inner_text()
+    assert page.locator("#trend-nav").is_hidden()
+    page.wait_for_function("document.querySelector('#t-requests').textContent !== '—'")
+
+    page.click("#focus-clear")
+    page.wait_for_selector("#focus-bar", state="hidden")
+    assert page.locator("#period-seg button.active").inner_text() == "Today"
+    assert page.locator("#trend-nav").is_visible()
+    assert _no_horizontal_scroll(page)

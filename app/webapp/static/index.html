@@ -145,6 +145,13 @@
     <button data-track="period-all" data-period="all" type="button">All</button>
   </nav>
 
+  <!-- A tapped chart bucket focuses every figure on its dates; this bar names them and undoes it -->
+  <div class="focus-bar" id="focus-bar" hidden>
+    <span class="focus-label" id="focus-label"></span>
+    <button data-track="focus-clear" class="btn-surface" id="focus-clear" type="button">Back</button>
+  </div>
+  <p class="coverage-note" id="coverage-note" role="status" hidden></p>
+
   <!-- Stat tiles -->
   <section class="tiles">
     <div class="tile tile-hero">
@@ -204,7 +211,14 @@
     <div class="card-head">
       <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 13l3-3 4 4 5-6"/></svg>
       <h2>Trends</h2>
+      <span class="card-meta" id="trend-range"></span>
     </div>
+    <div class="trend-nav" id="trend-nav">
+      <button data-track="trend-older" class="btn-surface" id="trend-older" type="button">Older</button>
+      <button data-track="trend-newer" class="btn-surface" id="trend-newer" type="button">Newer</button>
+      <button data-track="trend-latest" class="btn-surface" id="trend-latest" type="button">Latest</button>
+    </div>
+    <p class="footnote" id="trend-hint">Tap a bar to focus the dashboard on those dates.</p>
     <h3 class="chart-title">Credits per model</h3>
     <div class="chart-wrap"><canvas id="chart-credits"></canvas></div>
     <h3 class="chart-title">Tokens in / out</h3>
@@ -343,6 +357,11 @@
     </button>
   </div>
   <div class="dialog-meta" id="sd-meta"></div>
+  <form class="rename-row" id="sd-rename" autocomplete="off">
+    <input class="rq-field" id="sd-name" type="text" maxlength="120" placeholder="Custom name" aria-label="Custom session name" enterkeyhint="done">
+    <button data-track="session-rename-save" class="btn-surface" type="submit">Save name</button>
+    <button data-track="session-rename-clear" class="btn-surface" id="sd-name-clear" type="button">Restore title</button>
+  </form>
   <div id="sd-diagnostics" hidden></div>
   <div id="sd-mix"></div>
   <div class="table-wrap">
@@ -518,6 +537,14 @@
       <span class="settings-row-label">Copilot CLI sessions</span>
       <button data-track="setting-cli" id="set-cli" class="toggle" type="button" role="switch" aria-checked="true" aria-label="Include Copilot CLI sessions"><span class="knob"></span><span class="toggle-label">ON</span></button>
     </label>
+    <label class="settings-row">
+      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-calendar-days"></use></svg>
+      <span class="settings-row-label">Telemetry start date</span>
+      <span class="settings-row-number">
+        <input class="settings-row-input settings-row-date" data-track="setting-start-date" id="set-start" type="date">
+        <button data-track="setting-start-clear" class="btn-surface settings-row-clear" id="set-start-clear" type="button" aria-label="Count every record">Clear</button>
+      </span>
+    </label>
     <button data-track="setting-roots-open" id="roots-open" class="settings-row" type="button" aria-haspopup="dialog">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-folder"></use></svg>
       <span class="settings-row-label">Extra storage roots</span>
@@ -534,6 +561,7 @@
       <span class="settings-row-label">Clear cache</span>
     </button>
   </section>
+  <p class="settings-footnote">Records before the start date are left out of every total; leave it empty to count everything. A period it cuts into is labelled partial coverage.</p>
   <p class="settings-footnote" id="set-pat-note" hidden></p>
 
   <h3 class="settings-overline" id="group-alerts">Alerts</h3>

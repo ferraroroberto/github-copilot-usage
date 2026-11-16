@@ -23,7 +23,10 @@ That's it — the first run creates a virtual environment, installs three depend
 
 - **Premium requests (credits), tokens in/out, request counts** for Today / Week / Month / **billing Cycle** / All, with vs-previous-period deltas.
 - **Billing-cycle burn-down** — set your monthly credit allowance and see % used, a "where you should be today" pace marker, and a linear projection to cycle end. Get the right number from VS Code's own Copilot menu: it shows **"Credits X / Y used"** — enter Y (plan defaults are Business 300 / Enterprise 1000 / Pro 300 / Pro+ 1500, but org-provisioned pools can be much larger, e.g. 23,400).
-- **Credits per model over time** (stacked daily/weekly/monthly chart) and tokens in/out trends.
+- **Credits per model over time** (stacked daily/weekly/monthly chart) and tokens in/out trends. *Older* and *Newer* step the chart through earlier windows (14 days, 12 weeks or 12 months at a time) and *Latest* returns; tapping a bar focuses the whole dashboard on that bucket's dates (the totals, sessions, request list, insights and CSV export follow it, and *Back* undoes it).
+- **Custom session names** — rename a session from its detail sheet; the name replaces the title in every list, search and the CSV export, and *Restore title* brings the parsed one back. Names live in `config.json` (`session_names`), never in Copilot's files.
+- **Telemetry start date** — *Settings → Data sources* takes a first day to count; earlier records are left out of every total. A period the date only partly covers is labelled *partial coverage*, one it does not reach shows `—` rather than 0, and a comparison against a span the date cuts into is left out.
+- **Collapsible sections** — each card has a chevron that folds it away; the choice is remembered per browser.
 - **Where your prompt tokens go** — VS Code records a per-request composition breakdown (System Instructions / Tool Definitions / Messages / attachments…). The dashboard aggregates it, weighted by prompt size. If "Tool Definitions" dominates, disabling unused tools and MCP servers shrinks *every single request* you make.
 - **Session explorer** — every chat session, sortable by cost or recency; click one for the per-request drill-down: your prompt, mode (agent/ask/edit), resolved model, tokens in/out, **exact credits billed** (not an estimate — this is the number GitHub charges), and elapsed time. CLI rows spread from session totals are marked `~` as estimates.
 - **Request explorer** — the *Search requests* card opens every request of a period in one list: filter by project, model, mode, editor, result and credit range, search prompt and session text, sort by time, credits, tokens or time taken, and page through. The option lists carry counts that follow the period and the other filters. The filters live in the URL (`/?view=requests&model=…`), so a filtered view can be bookmarked and survives a reload, and a row opens its session. A credit range matches billed requests only; unbilled requests stay listed when no range is set.
@@ -90,6 +93,8 @@ Credits stay the billing measure. Cache tokens are kept in their own buckets, an
 | `include_copilot_cli` | `true` | also parse Copilot CLI sessions |
 | `model_aliases` | `{}` | models to merge, `{"<name>": "<name it merges into>"}`; names are matched exactly after normalising case, spacing, separators and a release date, and a target cannot itself be merged away |
 | `model_colors` | `{}` | per-model chart colour, `{"<name>": {"family": "openai", "opacity": 0.6}}`; `family` is `google`, `anthropic`, `xai`, `openai` or `other`, `opacity` runs 0.2 to 1, and either may be left out |
+| `telemetry_start_date` | `""` | first local day (`YYYY-MM-DD`) that counts; earlier records are left out of every total, empty counts them all |
+| `session_names` | `{}` | custom session names, `{"<session id>": "<name>"}`, set from the session sheet; at most 120 characters |
 
 A settings update with an unknown key, a malformed value or a bad colour is refused with its reason (`400`) and changes nothing; a bad value written by hand in `config.json` is ignored with a log warning.
 
@@ -122,9 +127,11 @@ The dashboard is a thin client over a JSON API you can script against (interacti
 ```
 GET /health
 GET /api/version        build identity (version, git_sha, built_at) behind the page footer
-GET /api/summary?period=today|week|month|cycle|all
+GET /api/summary?period=today|week|month|cycle|all|range:2026-11-03..2026-11-09   a range focuses every period-taking endpoint on those days
+GET /api/trends?period=...&offset=0   the trend buckets one window back per offset, with the window's dates and whether older data exists
 GET /api/sessions?period=...
 GET /api/sessions/{session_id}
+PUT /api/sessions/{session_id}/name   {"name": "..."} sets a custom name; an empty or null name restores the parsed title
 GET /api/requests?period=...&project=&model=&mode=&ide=&result=ok|error&min_credits=&max_credits=&q=&sort=ts|credits|tokens|elapsed&order=asc|desc&page=&page_size=   the request explorer: rows, totals, facet counts
 GET /api/insights?period=...   local rule-based insights: type, severity, one sentence, evidence
 GET /api/context?period=...&label=   who drives the prompt tokens: projects, models, sessions, requests, plus coverage

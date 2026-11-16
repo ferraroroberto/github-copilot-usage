@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import threading
+from datetime import date
 from pathlib import Path
 from typing import Any, Callable, Dict, List
 
@@ -50,18 +51,65 @@ DEFAULTS: Dict[str, Any] = {
     # Chart colour per model: {"<normalised name>": {"family": "openai", "opacity": 0.6}}.
     # Either field may be left out; the family defaults to the model's provider.
     "model_colors": {},
+    # First local day (YYYY-MM-DD) that counts; earlier records are left out of every total.
+    # Empty means every record counts.
+    "telemetry_start_date": "",
+    # Custom session names: {"<session id>": "<name>"}. Stored here, never in Copilot's own files.
+    "session_names": {},
 }
 
 # Editable via POST /api/config — everything else requires editing the file.
 _UI_EDITABLE_KEYS = {
     "monthly_credits", "cycle_reset_day", "extra_roots", "include_copilot_cli",
-    "model_aliases", "model_colors",
+    "model_aliases", "model_colors", "telemetry_start_date", "session_names",
 }
+
+MAX_SESSION_NAME = 120
+
+
+def validate_start_date(value: Any) -> str:
+    """``""`` or a calendar date as YYYY-MM-DD; anything else raises ValueError."""
+    text = "" if value is None else str(value).strip()
+    if not text:
+        return ""
+    try:
+        return date.fromisoformat(text).isoformat()
+    except ValueError:
+        raise ValueError("must be a date like 2026-01-31, or empty") from None
+
+
+def clean_session_name(value: Any) -> str:
+    """One custom name with its whitespace collapsed; empty means no name."""
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise ValueError("must be text")
+    name = " ".join(value.split())
+    if len(name) > MAX_SESSION_NAME:
+        raise ValueError("at most %d characters" % MAX_SESSION_NAME)
+    return name
+
+
+def validate_session_names(value: Any) -> Dict[str, str]:
+    """The ``{session id: name}`` map with empty names dropped; a malformed entry raises ValueError."""
+    if not isinstance(value, dict):
+        raise ValueError("must be an object of session id to name")
+    cleaned: Dict[str, str] = {}
+    for session_id, name in value.items():
+        if not isinstance(session_id, str) or not session_id:
+            raise ValueError("a session id must be non-empty text")
+        text = clean_session_name(name)
+        if text:
+            cleaned[session_id] = text
+    return cleaned
+
 
 # Keys whose value has a shape beyond a number or a flag; each raises ValueError when malformed.
 _VALIDATORS: Dict[str, Callable[[Any], Any]] = {
     "model_aliases": model_labels.validate_aliases,
     "model_colors": model_labels.validate_colors,
+    "telemetry_start_date": validate_start_date,
+    "session_names": validate_session_names,
 }
 
 

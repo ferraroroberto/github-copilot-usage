@@ -17,6 +17,7 @@ import io
 import logging
 from calendar import monthrange
 from collections import Counter, defaultdict
+from dataclasses import replace
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -41,9 +42,15 @@ CACHE_WEIGHT = 0.1
 
 VALID_PERIODS = ("today", "week", "month", "cycle", "all")
 
+# A focused date range travels as a period string: "range:2026-11-03..2026-11-09" (inclusive).
+RANGE_PREFIX = "range:"
+
 _MAX_DAILY_BUCKETS = 14
 _MAX_WEEK_BUCKETS = 12
 _MAX_MONTH_BUCKETS = 12
+# A focused range of up to this many days is drawn day by day; a longer one week by week.
+_MAX_RANGE_DAYS_DAILY = 62
+_MAX_RANGE_WEEKS = 52
 _TOP_SESSIONS = 8
 
 
@@ -136,6 +143,25 @@ def cycle_start(today: Optional[date] = None) -> date:
     return date(prev_y, prev_m, min(reset_day, monthrange(prev_y, prev_m)[1]))
 
 
+def parse_range(period: Any) -> Optional[Tuple[date, date]]:
+    """The inclusive (first, last) day of a ``range:`` period, or None when it is not one."""
+    if not isinstance(period, str) or not period.startswith(RANGE_PREFIX):
+        return None
+    first, sep, last = period[len(RANGE_PREFIX):].partition("..")
+    try:
+        lo, hi = date.fromisoformat(first), date.fromisoformat(last)
+    except ValueError:
+        return None
+    return (lo, hi) if sep and lo <= hi else None
+
+
+def normalize_period(period: Any, default: str) -> str:
+    """``period`` when it names a known period or a well-formed range, else ``default``."""
+    if period in VALID_PERIODS or parse_range(period) is not None:
+        return period
+    return default
+
+
 def _period_bounds(period: str, today: date) -> Tuple[Optional[date], Optional[date]]:
     """Inclusive (lo, hi) local-date bounds; (None, None) = all time."""
     if period == "today":
@@ -146,6 +172,9 @@ def _period_bounds(period: str, today: date) -> Tuple[Optional[date], Optional[d
         return today - timedelta(days=29), today
     if period == "cycle":
         return cycle_start(today), today
+    focus = parse_range(period)
+    if focus is not None:
+        return focus
     return None, None
 
 
@@ -156,11 +185,64 @@ def _prev_bounds(period: str, today: date) -> Optional[Tuple[date, date]]:
         return today - timedelta(days=13), today - timedelta(days=7)
     if period == "month":
         return today - timedelta(days=59), today - timedelta(days=30)
+    focus = parse_range(period)
+    if focus is not None:
+        span = (focus[1] - focus[0]).days + 1
+        return focus[0] - timedelta(days=span), focus[0] - timedelta(days=1)
     return None
 
 
 def _in_bounds(d: date, lo: Optional[date], hi: Optional[date]) -> bool:
     return (lo is None or d >= lo) and (hi is None or d <= hi)
+
+
+# ---------------------------------------------------------------------------
+# What the dashboard may see: the telemetry start date and custom session names
+# ---------------------------------------------------------------------------
+
+
+def telemetry_start(cfg: Optional[Dict[str, Any]] = None) -> Optional[date]:
+    """The configured first counted day, or None when every record counts."""
+    text = (cfg if cfg is not None else config.load()).get("telemetry_start_date") or ""
+    try:
+        return date.fromisoformat(text) if text else None
+    except ValueError:
+        return None
+
+
+def visible(records: List[RequestRecord]) -> List[RequestRecord]:
+    """The records every total is built from: nothing before the start date, sessions renamed.
+
+    A renamed session's records are copies whose title is the custom name and whose
+    ``parsed_title`` keeps the one the log carried; the parsed records stay untouched.
+    """
+    cfg = config.load()
+    start = telemetry_start(cfg)
+    names = cfg.get("session_names") or {}
+    if start is not None:
+        records = [r for r in records if _local_date(r) >= start]
+    if names:
+        records = [
+            replace(r, session_title=names[r.session_id], parsed_title=r.session_title)
+            if r.session_id in names else r
+            for r in records
+        ]
+    return records
+
+
+def span_coverage(lo: Optional[date], hi: Optional[date], start: Optional[date]) -> str:
+    """How much of the span ``lo``..``hi`` (None = open) the start date lets through.
+
+    ``full``: all of it; ``partial``: only its tail, from the start date; ``none``: none of it,
+    so a total of 0 there means "not counted", never "no usage".
+    """
+    if start is None:
+        return "full"
+    if hi is not None and start > hi:
+        return "none"
+    if lo is None or start > lo:
+        return "partial"
+    return "full"
 
 
 # ---------------------------------------------------------------------------
@@ -241,10 +323,10 @@ def _finish(acc: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def get_summary(records: List[RequestRecord], period: str = "today") -> dict:
-    if period not in VALID_PERIODS:
-        period = "today"
+    period = normalize_period(period, "today")
     today = date.today()
     lo, hi = _period_bounds(period, today)
+    start = telemetry_start()
     labels = labels_for(records)
 
     in_period = [r for r in records if _in_bounds(_local_date(r), lo, hi)]
@@ -258,9 +340,10 @@ def get_summary(records: List[RequestRecord], period: str = "today") -> dict:
         if totals["billed_requests"] else 0.0
     )
 
+    # A previous span the start date only partly covers would read as a collapse, or as "new".
     prev_totals: Optional[dict] = None
     prev = _prev_bounds(period, today)
-    if prev is not None:
+    if prev is not None and span_coverage(prev[0], prev[1], start) == "full":
         prev_totals = _blank()
         for r in records:
             if _in_bounds(_local_date(r), prev[0], prev[1]):
@@ -307,9 +390,14 @@ def get_summary(records: List[RequestRecord], period: str = "today") -> dict:
         reverse=True,
     )
 
+    series, window = _time_series(records, period, today, labels, 0, start)
     return {
         "period": period,
         "generated_at": datetime.now().astimezone().isoformat(),
+        "coverage": {
+            "state": span_coverage(lo, hi, start),
+            "start_date": start.isoformat() if start else None,
+        },
         "totals": totals,
         "prev_totals": prev_totals,
         "by_model": by_model,
@@ -318,10 +406,20 @@ def get_summary(records: List[RequestRecord], period: str = "today") -> dict:
         "by_project": by_project,
         "by_ide": by_ide,
         "prompt_mix": prompt_mix(in_period),
-        "time_series": _time_series(records, period, today, labels),
+        "time_series": series,
+        "trend_window": window,
         "top_sessions": build_sessions(in_period, labels)[:_TOP_SESSIONS],
         "budget": budget_status(records, today),
     }
+
+
+def get_trends(records: List[RequestRecord], period: str = "today", offset: int = 0) -> dict:
+    """The trend buckets ``offset`` windows before the latest one, with the window they cover."""
+    period = normalize_period(period, "today")
+    series, window = _time_series(
+        records, period, date.today(), labels_for(records), max(int(offset), 0), telemetry_start(),
+    )
+    return {"period": period, "time_series": series, "trend_window": window}
 
 
 def prompt_mix(records: List[RequestRecord]) -> List[dict]:
@@ -358,34 +456,75 @@ def prompt_mix(records: List[RequestRecord]) -> List[dict]:
     return rows
 
 
-def _time_series(records: List[RequestRecord], period: str, today: date, labels: ModelLabels) -> List[dict]:
-    """Oldest-first buckets with per-model credits/tokens/requests."""
-    if period in ("today", "cycle"):
-        buckets = [today - timedelta(days=i) for i in range(_MAX_DAILY_BUCKETS - 1, -1, -1)]
-        key_fn = lambda d: d  # noqa: E731
-        label_fn = lambda b: b.strftime("%b ") + str(b.day)  # noqa: E731
-    elif period == "week":
-        this_mon = today - timedelta(days=today.weekday())
-        buckets = [this_mon - timedelta(weeks=i) for i in range(_MAX_WEEK_BUCKETS - 1, -1, -1)]
-        key_fn = lambda d: d - timedelta(days=d.weekday())  # noqa: E731
-        label_fn = lambda b: b.strftime("%b ") + str(b.day)  # noqa: E731
-    else:  # month, all
-        ym: List[Tuple[int, int]] = []
-        y, m = today.year, today.month
-        for _ in range(_MAX_MONTH_BUCKETS):
-            ym.append((y, m))
-            m -= 1
-            if m == 0:
-                m, y = 12, y - 1
-        buckets = [date(yy, mm, 1) for yy, mm in reversed(ym)]
-        key_fn = lambda d: date(d.year, d.month, 1)  # noqa: E731
-        label_fn = lambda b: b.strftime("%b %Y")  # noqa: E731
+def _month_shift(first_of_month: date, months: int) -> date:
+    index = first_of_month.year * 12 + (first_of_month.month - 1) + months
+    return date(index // 12, index % 12 + 1, 1)
 
-    bucket_set = set(buckets)
+
+def _trend_plan(period: str, today: date, offset: int) -> Tuple[str, List[date]]:
+    """The bucket unit and the oldest-first bucket start dates of the window ``offset`` back."""
+    focus = parse_range(period)
+    if focus is not None:
+        lo, hi = focus
+        days = (hi - lo).days + 1
+        if days <= _MAX_RANGE_DAYS_DAILY:
+            return "day", [lo + timedelta(days=i) for i in range(days)]
+        last = hi - timedelta(days=hi.weekday())
+        weeks = min((last - (lo - timedelta(days=lo.weekday()))).days // 7 + 1, _MAX_RANGE_WEEKS)
+        return "week", [last - timedelta(weeks=i) for i in range(weeks - 1, -1, -1)]
+    if period in ("today", "cycle"):
+        end = today - timedelta(days=_MAX_DAILY_BUCKETS * offset)
+        return "day", [end - timedelta(days=i) for i in range(_MAX_DAILY_BUCKETS - 1, -1, -1)]
+    if period == "week":
+        end = today - timedelta(days=today.weekday()) - timedelta(weeks=_MAX_WEEK_BUCKETS * offset)
+        return "week", [end - timedelta(weeks=i) for i in range(_MAX_WEEK_BUCKETS - 1, -1, -1)]
+    newest = _month_shift(today.replace(day=1), -_MAX_MONTH_BUCKETS * offset)
+    return "month", [_month_shift(newest, -i) for i in range(_MAX_MONTH_BUCKETS - 1, -1, -1)]
+
+
+def _bucket_end(unit: str, start: date) -> date:
+    if unit == "day":
+        return start
+    if unit == "week":
+        return start + timedelta(days=6)
+    return _month_shift(start, 1) - timedelta(days=1)
+
+
+def _bucket_key(unit: str, d: date) -> date:
+    if unit == "day":
+        return d
+    if unit == "week":
+        return d - timedelta(days=d.weekday())
+    return date(d.year, d.month, 1)
+
+
+def _time_series(
+    records: List[RequestRecord], period: str, today: date, labels: ModelLabels,
+    offset: int, start: Optional[date],
+) -> Tuple[List[dict], dict]:
+    """Oldest-first buckets with per-model credits/tokens/requests, and the window they cover.
+
+    ``offset`` steps back one whole window per unit; a focused range is its own window. Each
+    bucket says how much of its span the start date covers, and ends no later than today (or
+    the end of the focused range), so a tap on it names the days to focus on.
+    """
+    unit, buckets = _trend_plan(period, today, offset)
+    focus = parse_range(period)
+    clip_hi = min(focus[1], today) if focus else today
+    clip_lo = focus[0] if focus else None
+    spans: Dict[date, Tuple[date, date]] = {}
+    for b in buckets:
+        first = max(b, clip_lo) if clip_lo else b
+        spans[b] = (first, min(_bucket_end(unit, b), clip_hi))
+
     bmap: Dict[date, Dict[str, dict]] = {b: {} for b in buckets}
+    earliest: Optional[date] = None
     for r in records:
-        bk = key_fn(_local_date(r))
-        if bk not in bucket_set:
+        d = _local_date(r)
+        if earliest is None or d < earliest:
+            earliest = d
+        bk = _bucket_key(unit, d)
+        if bk not in bmap or (focus and not _in_bounds(d, focus[0], focus[1])):
             continue
         label = labels.label(r.model)
         slot = bmap[bk].get(label)
@@ -402,7 +541,25 @@ def _time_series(records: List[RequestRecord], period: str, today: date, labels:
         slot["prompt_tokens"] += r.prompt_tokens
         slot["completion_tokens"] += r.completion_tokens
 
-    return [{"label": label_fn(b), "date": b.isoformat(), "models": bmap[b]} for b in buckets]
+    series = [
+        {
+            "label": b.strftime("%b %Y") if unit == "month" else b.strftime("%b ") + str(b.day),
+            "date": spans[b][0].isoformat(),
+            "end": spans[b][1].isoformat(),
+            "coverage": span_coverage(spans[b][0], spans[b][1], start),
+            "models": bmap[b],
+        }
+        for b in buckets
+    ]
+    window = {
+        "unit": unit,
+        "offset": offset,
+        "from": series[0]["date"],
+        "to": series[-1]["end"],
+        "has_older": focus is None and earliest is not None and earliest < buckets[0],
+        "has_newer": offset > 0,
+    }
+    return series, window
 
 
 # ---------------------------------------------------------------------------
@@ -445,6 +602,7 @@ def budget_status(records: List[RequestRecord], today: Optional[date] = None) ->
         "used_pct": round(100.0 * used / allowance, 1) if allowance else None,
         "projected_credits": round(projected, 1),
         "projected_pct": round(100.0 * projected / allowance, 1) if allowance else None,
+        "coverage": span_coverage(start, today, telemetry_start(cfg)),
         "note": "local data from this machine only",
     }
 
@@ -471,6 +629,8 @@ def build_sessions(records: List[RequestRecord], labels: Optional[ModelLabels] =
                 "ide": r.ide,
                 "source": r.source,
                 "title": r.session_title,
+                "parsed_title": r.parsed_title or r.session_title,
+                "custom_name": r.session_title if r.parsed_title else None,
                 "project": r.project_name,
                 "project_path": r.project_path,
                 "first_ts": r.ts.isoformat(),
@@ -501,8 +661,7 @@ def build_sessions(records: List[RequestRecord], labels: Optional[ModelLabels] =
 
 def records_in_period(records: List[RequestRecord], period: str) -> List[RequestRecord]:
     """The records whose local date falls in ``period``; an unknown period means all time."""
-    if period not in VALID_PERIODS:
-        period = "all"
+    period = normalize_period(period, "all")
     lo, hi = _period_bounds(period, date.today())
     return [r for r in records if _in_bounds(_local_date(r), lo, hi)]
 
@@ -565,8 +724,7 @@ _CSV_COLUMNS = [
 
 
 def export_csv(records: List[RequestRecord], period: str = "all") -> str:
-    if period not in VALID_PERIODS:
-        period = "all"
+    period = normalize_period(period, "all")
     lo, hi = _period_bounds(period, date.today())
     rows = sorted(
         (r for r in records if _in_bounds(_local_date(r), lo, hi)),

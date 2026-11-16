@@ -9,7 +9,7 @@ github-copilot-usage/
 │   ├── build_info.py          # short commit + process start time for the footer
 │   ├── version.py             # single source of the version reported by /health
 │   └── webapp/
-│       └── static/            # the vanilla-JS SPA: index.html, app.js, styles.css, PWA manifest + icons, vendored Chart.js
+│       └── static/            # the vanilla-JS SPA: index.html, app.js, requests.js (the request explorer view), styles.css, PWA manifest + icons, vendored Chart.js
 │
 ├── src/                       # logic layer (never imports `app`)
 │   ├── config.py              # config.json + env loading, thread-safe settings
@@ -18,6 +18,7 @@ github-copilot-usage/
 │   ├── cli_parser.py          # read-only, mtime-cached parser for Copilot CLI session logs
 │   ├── cli_session_store.py   # read-only reader for the Copilot CLI's session-store.db per-call usage
 │   ├── aggregate.py           # period bucketing, per-model and per-session rollups, CSV export
+│   ├── request_explorer.py    # the request explorer query: filters, sorting, paging and facet counts over the parsed requests
 │   ├── static_versioning.py   # content-hash cache busting: the ?v= stamp, CachingStaticFiles and the stamped index.html
 │   ├── billing.py             # optional GitHub billing API client (needs a token; absent → visible reason)
 │   ├── billing_state.py       # the billing card's declared state and its one derive function (docs/billing-state.md)
@@ -26,7 +27,7 @@ github-copilot-usage/
 │   ├── runtime_data.py        # vendored byte-for-byte; the runtime-data root and its `FLEET_DATA_ROOT` / `<APP>_DATA_DIR` overrides
 │   └── usage_store.py         # the usage database path, resolved through `runtime_data`; creates nothing
 │
-├── tests/                     # pytest suite, fixtures only — no real logs or credentials; test_python_floor.py holds the 3.9 promise
+├── tests/                     # pytest suite, fixtures only — no real logs or credentials; test_python_floor.py holds the 3.9 promise; e2e/ drives the request explorer in a phone-sized browser when Playwright is installed
 ├── scripts/
 │   ├── verify-before-ship.ps1 # the local gate: byte-compile, tests, structure, instruction, doc-refs, dead-code, static, docs, comment and conventions ratchets
 │   ├── structure_ratchet.py   # vendored byte-for-byte; see "Structure ratchet" below

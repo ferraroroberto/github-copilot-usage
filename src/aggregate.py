@@ -474,11 +474,16 @@ def build_sessions(records: List[RequestRecord]) -> List[dict]:
     return rows
 
 
-def get_sessions(records: List[RequestRecord], period: str = "all") -> List[dict]:
+def records_in_period(records: List[RequestRecord], period: str) -> List[RequestRecord]:
+    """The records whose local date falls in ``period``; an unknown period means all time."""
     if period not in VALID_PERIODS:
         period = "all"
     lo, hi = _period_bounds(period, date.today())
-    return build_sessions([r for r in records if _in_bounds(_local_date(r), lo, hi)])
+    return [r for r in records if _in_bounds(_local_date(r), lo, hi)]
+
+
+def get_sessions(records: List[RequestRecord], period: str = "all") -> List[dict]:
+    return build_sessions(records_in_period(records, period))
 
 
 def get_session_detail(records: List[RequestRecord], session_id: str) -> Optional[dict]:

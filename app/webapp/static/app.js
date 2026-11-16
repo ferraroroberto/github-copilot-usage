@@ -15,6 +15,7 @@
 import { buildReadoutText } from './_vendored/page-foot/page-foot.js';
 import { initUsageLog } from './_vendored/usage-log/usage-log.js';
 import { setSwitch } from './_vendored/switch/switch.js';
+import { initRequests } from './requests.js';
 
 // Local-only usage log (views, taps, device class); same-origin, no content recorded.
 const usage = initUsageLog();
@@ -795,6 +796,11 @@ $('alert-test').addEventListener('click', async () => {
 fetch('/api/version').then((r) => r.json()).then((v) => {
   $('buildReadout').textContent = buildReadoutText(v.git_sha || 'unknown', v.built_at || '');
 }).catch(() => {});
+
+initRequests({
+  jsonApi, esc, fmtCredits, fmtTok, fmtNum, fmtDay, fmtTime, openSession,
+  getPeriod: () => state.period,
+});
 
 refresh();
 setInterval(refresh, POLL_MS);

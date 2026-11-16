@@ -26,6 +26,7 @@ That's it — the first run creates a virtual environment, installs three depend
 - **Credits per model over time** (stacked daily/weekly/monthly chart) and tokens in/out trends.
 - **Where your prompt tokens go** — VS Code records a per-request composition breakdown (System Instructions / Tool Definitions / Messages / attachments…). The dashboard aggregates it, weighted by prompt size. If "Tool Definitions" dominates, disabling unused tools and MCP servers shrinks *every single request* you make.
 - **Session explorer** — every chat session, sortable by cost or recency; click one for the per-request drill-down: your prompt, mode (agent/ask/edit), resolved model, tokens in/out, **exact credits billed** (not an estimate — this is the number GitHub charges), and elapsed time. CLI rows spread from session totals are marked `~` as estimates.
+- **Request explorer** — the *Search requests* card opens every request of a period in one list: filter by project, model, mode, editor, result and credit range, search prompt and session text, sort by time, credits, tokens or time taken, and page through. The option lists carry counts that follow the period and the other filters. The filters live in the URL (`/?view=requests&model=…`), so a filtered view can be bookmarked and survives a reload, and a row opens its session. A credit range matches billed requests only; unbilled requests stay listed when no range is set.
 - **By model / by project / by mode breakdowns** with credit shares.
 - **CSV export** of every request for your own spreadsheets.
 - **Official GitHub billing card** (optional): add a PAT and see the account-wide per-day per-model credit spend straight from GitHub's billing API — covers usage from *all* your devices, not just this machine.
@@ -115,6 +116,7 @@ GET /api/version        build identity (version, git_sha, built_at) behind the p
 GET /api/summary?period=today|week|month|cycle|all
 GET /api/sessions?period=...
 GET /api/sessions/{session_id}
+GET /api/requests?period=...&project=&model=&mode=&ide=&result=ok|error&min_credits=&max_credits=&q=&sort=ts|credits|tokens|elapsed&order=asc|desc&page=&page_size=   the request explorer: rows, totals, facet counts
 GET /api/export.csv?period=...
 GET /api/billing
 GET /api/config          POST /api/config
@@ -129,6 +131,7 @@ GET /api/usage/time      foreground minutes: ?days=7&by=day|device|view
 ```
 .venv/Scripts/python.exe -m pip install -r requirements-dev.txt   # test + lint deps
 .venv/Scripts/python.exe -m pytest      # tests (synthetic session fixtures)
+.venv/Scripts/python.exe -m pip install playwright && .venv/Scripts/python.exe -m playwright install chromium   # optional: lets tests/e2e run (phone-viewport check of the request explorer); skipped with a reason without them
 .venv/Scripts/python.exe -m app         # run without opening a browser
 ```
 

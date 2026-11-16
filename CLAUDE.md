@@ -56,7 +56,7 @@ The structure ratchet's limits, baseline and Python requirement are in `docs/lay
   - app/webapp/static/**/*.css
   - app/webapp/static/**/*.{js,html}
 - key views:
-  - /    (single-page dashboard; session-detail and settings dialogs)
+  - /    (single-page dashboard; session-detail, requests and settings dialogs)
 
 Chart palettes are CVD-validated (fixed assignment order, model keeps its color, 8th+ series folds into gray "Other"); if you touch chart colors, re-validate for both themes before shipping.
 

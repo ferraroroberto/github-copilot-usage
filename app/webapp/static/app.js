@@ -262,6 +262,8 @@ function render() {
   renderSessions();
   renderSources(s.sources || []);
   $('export-link').href = '/api/export.csv?period=' + encodeURIComponent(state.period);
+  // An empty period offers the way forward unless it already spans every record.
+  document.querySelectorAll('[data-show-all]').forEach((b) => { b.hidden = state.period === 'all'; });
 }
 
 const TILE_VALUES = ['t-credits', 't-requests', 't-in', 't-out'];
@@ -584,6 +586,11 @@ $('period-seg').addEventListener('click', (e) => {
   state.returnPeriod = null;
   setPeriod(btn.dataset.period);
 });
+
+document.querySelectorAll('[data-show-all]').forEach((btn) => btn.addEventListener('click', () => {
+  state.returnPeriod = null;
+  setPeriod('all');
+}));
 
 // ---------------------------------------------------------------------------
 // Settings

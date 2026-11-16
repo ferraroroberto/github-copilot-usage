@@ -668,7 +668,9 @@ def records_in_period(records: List[RequestRecord], period: str) -> List[Request
 
 def get_sessions(records: List[RequestRecord], period: str = "all") -> List[dict]:
     in_period = records_in_period(records, period)
-    return session_diagnostics.attach_flags(build_sessions(in_period, labels_for(records)), in_period)
+    return session_diagnostics.attach_flags(
+        build_sessions(in_period, labels_for(records)), in_period, records,
+    )
 
 
 def get_session_detail(records: List[RequestRecord], session_id: str) -> Optional[dict]:
@@ -707,7 +709,7 @@ def get_session_detail(records: List[RequestRecord], session_id: str) -> Optiona
         for r in sess
     ]
     header["prompt_mix"] = prompt_mix(sess)
-    header["diagnostics"] = session_diagnostics.diagnose(sess)
+    header["diagnostics"] = session_diagnostics.diagnose(sess, session_diagnostics.non_user_cut(records))
     return header
 
 

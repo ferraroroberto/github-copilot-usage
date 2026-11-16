@@ -9,7 +9,7 @@ github-copilot-usage/
 │   ├── build_info.py          # short commit + process start time for the footer
 │   ├── version.py             # single source of the version reported by /health
 │   └── webapp/
-│       └── static/            # the vanilla-JS SPA: index.html, app.js, requests.js (the request explorer view), insights.js (the insights card, session diagnostics and the context drill-down), styles.css, PWA manifest + icons, vendored Chart.js
+│       └── static/            # the vanilla-JS SPA: index.html, app.js, requests.js (the request explorer view), insights.js (the insights card, session diagnostics and the context drill-down), models.js (model colours by provider family and the Settings sheet that merges models and overrides a colour), styles.css, PWA manifest + icons, vendored Chart.js
 │
 ├── src/                       # logic layer (never imports `app`)
 │   ├── config.py              # config.json + env loading, thread-safe settings
@@ -18,6 +18,7 @@ github-copilot-usage/
 │   ├── cli_parser.py          # read-only, mtime-cached parser for Copilot CLI session logs
 │   ├── cli_session_store.py   # read-only reader for the Copilot CLI's session-store.db per-call usage
 │   ├── aggregate.py           # period bucketing, per-model and per-session rollups, CSV export
+│   ├── model_labels.py        # conservative model-label grouping, exact aliases, provider families and the validation of the model settings
 │   ├── request_explorer.py    # the request explorer query: filters, sorting, paging and facet counts over the parsed requests
 │   ├── prompt_composition.py  # one reading of a request's logged composition: label, category and estimated tokens
 │   ├── context_drilldown.py   # who carries the prompt tokens: top projects, models, sessions and requests, with coverage

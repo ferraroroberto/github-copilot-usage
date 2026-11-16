@@ -85,6 +85,13 @@
     <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
   </symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24" fill="none">
+    <path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z" />
+    <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
+    <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
+    <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
+    <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
+  </symbol>
   <symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none">
     <path d="m9 18 6-6-6-6" />
   </symbol>
@@ -458,6 +465,17 @@
   </section>
   <p class="settings-footnote">Monthly allowance: the total in VS Code's Copilot menu ("Credits X / Y used", enter Y). Plan defaults: Business 300 · Enterprise 1000 · Pro 300 · Pro+ 1500; an org pool can be far larger.</p>
 
+  <h3 class="settings-overline" id="group-models">Models</h3>
+  <section class="card settings-group" aria-labelledby="group-models">
+    <button data-track="models-open" id="models-open" class="settings-row" type="button" aria-haspopup="dialog">
+      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-palette"></use></svg>
+      <span class="settings-row-label">Merge and colour</span>
+      <span class="settings-row-value" id="set-models-value">Default</span>
+      <svg class="icon settings-row-chevron" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+    </button>
+  </section>
+  <p class="settings-footnote">Spellings of one model that differ only in case, spacing, separators or a release date already share a row. Merge models that are really one, or recolour a model; clearing a choice restores it.</p>
+
   <h3 class="settings-overline" id="group-sources">Data sources</h3>
   <section class="card settings-group" aria-labelledby="group-sources">
     <label class="settings-row">
@@ -505,6 +523,19 @@
   <label class="roots-field" for="set-roots">One path per line</label>
   <textarea data-track="setting-roots" id="set-roots" rows="4" placeholder="C:\Users\me\AppData\Roaming\MyCompanyEditor"></textarea>
   <p class="footnote">Saves when you leave the field.</p>
+</dialog>
+
+<!-- Models sheet: one card per model from the local history; each choice saves as it changes. -->
+<dialog data-track-view="settings-models" id="models-dialog">
+  <div class="dialog-head">
+    <h2>Models</h2>
+    <button data-track="models-close" class="dialog-close" id="models-close" type="button" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </div>
+  <p class="footnote">Colours follow the provider by default, one shade per model within it. Merging counts a model under another's name; the raw label stays in each request.</p>
+  <p class="muted" id="mdl-empty" hidden>No models in the local history yet.</p>
+  <ul class="mdl-list" id="mdl-list"></ul>
 </dialog>
 
 <div class="toast" id="toast" role="status" aria-live="polite" popover="manual"></div>

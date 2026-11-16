@@ -3,5 +3,7 @@
   "monthly_credits": 300,
   "cycle_reset_day": 1,
   "extra_roots": [],
-  "include_copilot_cli": true
+  "include_copilot_cli": true,
+  "model_aliases": {},
+  "model_colors": {}
 }

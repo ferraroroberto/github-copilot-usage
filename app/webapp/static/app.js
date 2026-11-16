@@ -4,10 +4,9 @@
  * /api/billing). Charts are Chart.js (vendored — no CDN so it works behind
  * corporate proxies).
  *
- * Categorical palettes are CVD-validated (dataviz six-checks): fixed
- * assignment order, colors follow the model (never its rank), 8th+ series
- * folds into a gray "Other". Stacked segments carry a 2px surface gap as the
- * secondary encoding.
+ * Model colors (provider family hue, one lightness step per rank) and their
+ * validation live in models.js. Stacked segments carry a 2px surface gap as
+ * the secondary encoding.
  */
 
 /* global Chart */
@@ -17,6 +16,7 @@ import { initUsageLog } from './_vendored/usage-log/usage-log.js';
 import { setSwitch } from './_vendored/switch/switch.js';
 import { initRequests } from './requests.js';
 import { flagChips, initInsights, refreshInsights, renderDiagnostics } from './insights.js';
+import { createModelColors, initModelSettings, seriesColor, summarizeModelSettings } from './models.js';
 
 // Local-only usage log (views, taps, device class); same-origin, no content recorded.
 const usage = initUsageLog();
@@ -30,19 +30,12 @@ const POLL_MS = 30_000;
 const BILLING_POLL_MS = 60_000;
 const SESSIONS_PREVIEW = 12;
 
-const PALETTE = {
-  light: ['#0969da', '#bc4c00', '#8250df', '#1a7f37', '#bf3989', '#0685ab', '#bf8700'],
-  dark:  ['#4493f8', '#dd6b20', '#a371f7', '#2ea043', '#db61a2', '#0f96aa', '#b3831a'],
-};
-const OTHER_COLOR = { light: '#656d76', dark: '#8b949e' };
-
 const state = {
   period: 'today',
   summary: null,
   sessions: [],
   sessionsSort: 'credits',
   sessionsExpanded: false,
-  modelSlots: new Map(),   // model name -> palette slot (stable for the page's lifetime)
 };
 
 const $ = (id) => document.getElementById(id);
@@ -161,25 +154,13 @@ function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-// ---------------------------------------------------------------------------
-// Model colors — stable slot per model, fixed palette order
-// ---------------------------------------------------------------------------
+// What the server last confirmed; a failed save puts the field back to this.
+let settings = {
+  monthly_credits: 0, cycle_reset_day: 1, extra_roots: [], include_copilot_cli: true,
+  model_aliases: {}, model_colors: {},
+};
 
-function modelColor(model) {
-  if (!state.modelSlots.has(model)) {
-    state.modelSlots.set(model, state.modelSlots.size);
-  }
-  const slot = state.modelSlots.get(model);
-  const theme = currentTheme();
-  if (slot >= PALETTE[theme].length) return OTHER_COLOR[theme];
-  return PALETTE[theme][slot];
-}
-
-function seedModelSlots(byModel) {
-  // Assign slots by total credits (descending) on first load so the most
-  // expensive models take the leading palette hues; later models append.
-  for (const row of byModel) modelColor(row.model);
-}
+const colors = createModelColors(() => settings.model_colors || {}, currentTheme);
 
 // ---------------------------------------------------------------------------
 // Fetch + poll
@@ -235,7 +216,8 @@ async function fetchBilling() {
 function render() {
   const s = state.summary;
   if (!s) return;
-  seedModelSlots(s.by_model || []);
+  colors.setMeta(s.model_meta);
+  colors.seed(s.by_model || []);
   renderTiles(s);
   renderBudget(s.budget);
   renderCharts(s);
@@ -352,16 +334,14 @@ function renderCharts(s) {
   const labels = ts.map((b) => b.label);
   const surface = cssVar('--card');
 
-  // Model set across the window, in stable slot order.
-  const models = [...new Set(ts.flatMap((b) => Object.keys(b.models || {})))];
-  models.forEach(modelColor);
-  models.sort((a, b) => state.modelSlots.get(a) - state.modelSlots.get(b));
+  // Model set across the window, family by family in stable rank order.
+  const models = colors.stackOrder([...new Set(ts.flatMap((b) => Object.keys(b.models || {})))]);
 
   const creditDatasets = models
     .map((m) => ({
       label: m,
       data: ts.map((b) => (b.models?.[m]?.credits) || 0),
-      backgroundColor: modelColor(m),
+      backgroundColor: colors.colorOf(m),
       borderColor: surface,          // 2px surface gap between stacked segments
       borderWidth: 1,
       borderRadius: 3,
@@ -394,9 +374,9 @@ function renderCharts(s) {
 
 function renderTokenChart(ts, labels) {
   const theme = currentTheme();
-  const inColor = PALETTE[theme][0];
-  const outColor = PALETTE[theme][1];
-  const cacheColor = PALETTE[theme][2];
+  const inColor = seriesColor(theme, 0);
+  const outColor = seriesColor(theme, 1);
+  const cacheColor = seriesColor(theme, 2);
   const sumField = (b, f) => Object.values(b.models || {}).reduce((acc, m) => acc + (m[f] || 0), 0);
 
   if (_chartTokens) _chartTokens.destroy();
@@ -464,12 +444,18 @@ function renderMix(mix, card, container) {
 
 // ---- tables ----
 
+// A grouped row's hover names every spelling it holds; a single spelling is just the name.
+function modelTitle(r) {
+  const raw = r.raw_models || [];
+  return raw.length > 1 ? r.model + ' — also logged as: ' + raw.filter((n) => n !== r.model).join(', ') : r.model;
+}
+
 function renderModelTable(rows) {
   const tbody = $('model-table').querySelector('tbody');
   $('model-empty').hidden = rows.length > 0;
   tbody.innerHTML = rows.map((r) => `
     <tr>
-      <td class="td-trunc" title="${esc(r.model)}"><span class="model-dot" style="background:${modelColor(r.model)}"></span>${esc(r.model)}</td>
+      <td class="td-trunc" title="${esc(modelTitle(r))}"><span class="model-dot" style="background:${colors.colorOf(r.model)}"></span>${esc(r.model)}</td>
       <td class="num">${fmtNum(r.requests)}</td>
       <td class="num">${fmtCredits(r.credits)}</td>
       <td class="num">${r.credits_share_pct}%</td>
@@ -660,9 +646,6 @@ $('period-seg').addEventListener('click', (e) => {
 // Settings
 // ---------------------------------------------------------------------------
 
-// What the server last confirmed; a failed save puts the field back to this.
-let settings = { monthly_credits: 0, cycle_reset_day: 1, extra_roots: [], include_copilot_cli: true };
-
 let toastTimer = null;
 // The toast is a manual popover so it paints above an open modal dialog; where
 // popovers are missing the .show class alone still displays it.
@@ -692,6 +675,7 @@ async function saveSetting(key, value, message) {
     settings = { ...settings, ...saved };
     showToast(message);
     refresh();
+    $('set-models-value').textContent = summarizeModelSettings(settings);
     return saved;
   } catch (exc) {
     console.error(exc);
@@ -711,6 +695,7 @@ function paintSettings(cfg) {
   $('set-reset').value = cfg.cycle_reset_day;
   setSwitch($('set-cli'), !!cfg.include_copilot_cli);
   $('set-roots-value').textContent = rootsLabel(cfg.extra_roots || []);
+  $('set-models-value').textContent = summarizeModelSettings(cfg);
   const patSet = !!cfg.billing_pat_configured;
   const pat = $('set-pat-value');
   pat.textContent = patSet ? 'Configured' : 'Not set';
@@ -813,6 +798,17 @@ initInsights({
   openRequests: requests.open,
   getPeriod: () => state.period,
 });
+
+initModelSettings({
+  $, jsonApi, esc, fmtNum, saveSetting, showToast, colors,
+  getSettings: () => settings,
+});
+
+// Colour overrides live in the config, so the charts repaint once it arrives.
+jsonApi('/api/config').then((cfg) => {
+  paintSettings(cfg);
+  if (state.summary) render();
+}).catch(() => {});
 
 refresh();
 setInterval(refresh, POLL_MS);

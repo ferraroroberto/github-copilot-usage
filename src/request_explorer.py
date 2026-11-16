@@ -15,10 +15,11 @@ unbilled requests stay in the result.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from src import aggregate
+from src.model_labels import ModelLabels
 from src.vscode_parser import RequestRecord
 
 SORTS = ("ts", "credits", "tokens", "elapsed")
@@ -100,14 +101,15 @@ def _result_of(r: RequestRecord) -> str:
     return "error" if r.error else "ok"
 
 
-# Record -> the value a facet filters and counts on.
-_VALUE: Dict[str, Callable[[RequestRecord], str]] = {
-    "project": lambda r: r.project_key,
-    "model": lambda r: r.model or "unknown",
-    "mode": lambda r: r.mode or "unknown",
-    "ide": lambda r: r.ide,
-    "result": _result_of,
-}
+def _values(labels: ModelLabels) -> Dict[str, Callable[[RequestRecord], str]]:
+    """Record -> the value a facet filters and counts on; a model counts as its group."""
+    return {
+        "project": lambda r: r.project_key,
+        "model": lambda r: labels.key(r.model),
+        "mode": lambda r: r.mode or "unknown",
+        "ide": lambda r: r.ide,
+        "result": _result_of,
+    }
 
 
 def _selected(q: Query, dim: str) -> str:
@@ -135,11 +137,11 @@ def _text_ok(needle: str, r: RequestRecord) -> bool:
     )
 
 
-def _failed_filters(q: Query, r: RequestRecord) -> List[str]:
+def _failed_filters(q: Query, r: RequestRecord, value: Dict[str, Callable[[RequestRecord], str]]) -> List[str]:
     """The filters ``r`` fails: a facet dimension name, or ``other`` for range and text."""
     failed = [
         dim for dim in _DIMENSIONS
-        if _selected(q, dim) and _VALUE[dim](r) != _selected(q, dim)
+        if _selected(q, dim) and value[dim](r) != _selected(q, dim)
     ]
     if not _credit_range_ok(q, r) or not _text_ok(q.text, r):
         failed.append("other")
@@ -170,7 +172,7 @@ def _preview(message: str) -> str:
     return text if len(text) <= PREVIEW_CHARS else text[: PREVIEW_CHARS - 1].rstrip() + "…"
 
 
-def _row(r: RequestRecord) -> Dict[str, Any]:
+def _row(r: RequestRecord, labels: ModelLabels) -> Dict[str, Any]:
     return {
         "request_id": r.request_id,
         "session_id": r.session_id,
@@ -180,6 +182,7 @@ def _row(r: RequestRecord) -> Dict[str, Any]:
         "project": r.project_name,
         "mode": r.mode,
         "model": r.model,
+        "model_label": labels.label(r.model),
         "message": _preview(r.message),
         "credits": r.credits,
         "usd": round(r.credits * aggregate.USD_PER_CREDIT, 4) if r.credits is not None else None,
@@ -206,6 +209,11 @@ def _facets(counts: Dict[str, Dict[str, int]], labels: Dict[str, Dict[str, str]]
 def explore(records: List[RequestRecord], q: Query) -> Dict[str, Any]:
     """Run one query: the page of rows, the match totals and the period's facets."""
     in_period = aggregate.records_in_period(records, q.period)
+    models = aggregate.labels_for(records)
+    value = _values(models)
+    # A bookmarked model may be a raw label or an old group key: resolve it to today's group.
+    if q.model:
+        q = replace(q, model=models.key(q.model))
 
     matched: List[RequestRecord] = []
     counts: Dict[str, Dict[str, int]] = {dim: {} for dim in _DIMENSIONS}
@@ -216,16 +224,21 @@ def explore(records: List[RequestRecord], q: Query) -> Dict[str, Any]:
             counts[dim][_selected(q, dim)] = 0
 
     for r in in_period:
-        failed = _failed_filters(q, r)
+        failed = _failed_filters(q, r, value)
         if len(failed) > 1 or failed == ["other"]:
             continue
         # With no failure the request counts toward every facet; failing only dimension
         # ``d`` it counts toward ``d``'s facet alone (that is the option's "would show" count).
         dims: Tuple[str, ...] = tuple(_DIMENSIONS) if not failed else (failed[0],)
         for dim in dims:
-            value = _VALUE[dim](r)
-            counts[dim][value] = counts[dim].get(value, 0) + 1
-            labels[dim].setdefault(value, r.project_name if dim == "project" else value)
+            option = value[dim](r)
+            counts[dim][option] = counts[dim].get(option, 0) + 1
+            if dim == "project":
+                labels[dim].setdefault(option, r.project_name)
+            elif dim == "model":
+                labels[dim].setdefault(option, models.label(r.model))
+            else:
+                labels[dim].setdefault(option, option)
         if not failed:
             matched.append(r)
 
@@ -241,6 +254,6 @@ def explore(records: List[RequestRecord], q: Query) -> Dict[str, Any]:
         "pages": pages,
         "credits": round(credits, 4),
         "period_total": len(in_period),
-        "rows": [_row(r) for r in ordered[start:start + q.page_size]],
+        "rows": [_row(r, models) for r in ordered[start:start + q.page_size]],
         "facets": _facets(counts, labels),
     }

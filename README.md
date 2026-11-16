@@ -27,7 +27,8 @@ That's it — the first run creates a virtual environment, installs three depend
 - **Where your prompt tokens go** — VS Code records a per-request composition breakdown (System Instructions / Tool Definitions / Messages / attachments…). The dashboard aggregates it, weighted by prompt size. If "Tool Definitions" dominates, disabling unused tools and MCP servers shrinks *every single request* you make.
 - **Session explorer** — every chat session, sortable by cost or recency; click one for the per-request drill-down: your prompt, mode (agent/ask/edit), resolved model, tokens in/out, **exact credits billed** (not an estimate — this is the number GitHub charges), and elapsed time. CLI rows spread from session totals are marked `~` as estimates.
 - **Request explorer** — the *Search requests* card opens every request of a period in one list: filter by project, model, mode, editor, result and credit range, search prompt and session text, sort by time, credits, tokens or time taken, and page through. The option lists carry counts that follow the period and the other filters. The filters live in the URL (`/?view=requests&model=…`), so a filtered view can be bookmarked and survives a reload, and a row opens its session. A credit range matches billed requests only; unbilled requests stay listed when no range is set.
-- **By model / by project / by mode breakdowns** with credit shares.
+- **By model / by project / by mode breakdowns** with credit shares. Spellings of one model that differ only in case, spacing, separators (space, `_`, `-`) or a trailing release date (`claude-sonnet-4-20250514`) share one row; different versions and variants (`gpt-5`, `gpt-5.1`, `gpt-5-mini`) never merge. The row's tooltip lists every spelling it holds and each request keeps its raw label.
+- **Model merging and colours** — *Settings → Models* lists the models in your local history. Merge one into another by exact name (`model_aliases`, no patterns), and recolour a model by provider family and opacity (`model_colors`); clearing a choice restores the default. Chart colours follow the provider (Google blue, Anthropic orange, xAI purple, OpenAI green, other pink) with one shade per model inside a provider; a fourth model of a provider takes gray, and the legend, tooltips and the table name every series.
 - **Context drill-down** — select a row of *Where your prompt tokens go* (or *Who drives this?*) to see the projects, models, sessions and requests carrying that part of the prompt, each with its share and a coverage line saying how much of the period has a composition at all (Copilot CLI and older logs have none). Figures are prompt size times the logged percentage: estimates, never per-tool billing.
 - **Session diagnostics** — a session row and its detail flag a large prompt, a prompt that keeps growing and a high share of system and tool overhead. They are labelled heuristics, with the thresholds as constants in `src/session_diagnostics.py`.
 - **Insights** — a card of local, rule-based findings (top contributors, change against the previous period, billing-cycle risk, prompt composition), each with a severity and a tap that opens the session, drill-down or filtered request list it refers to. A period with no or too few requests says so rather than guessing. No model call, nothing leaves the machine.
@@ -86,6 +87,10 @@ Credits stay the billing measure. Cache tokens are kept in their own buckets, an
 | `cycle_reset_day` | `1` | day of month your billing cycle resets |
 | `extra_roots` | `[]` | additional editor storage paths to scan |
 | `include_copilot_cli` | `true` | also parse Copilot CLI sessions |
+| `model_aliases` | `{}` | models to merge, `{"<name>": "<name it merges into>"}`; names are matched exactly after normalising case, spacing, separators and a release date, and a target cannot itself be merged away |
+| `model_colors` | `{}` | per-model chart colour, `{"<name>": {"family": "openai", "opacity": 0.6}}`; `family` is `google`, `anthropic`, `xai`, `openai` or `other`, `opacity` runs 0.2 to 1, and either may be left out |
+
+A settings update with an unknown key, a malformed value or a bad colour is refused with its reason (`400`) and changes nothing; a bad value written by hand in `config.json` is ignored with a log warning.
 
 Everything except the port is editable live from the ⚙ Settings dialog; each setting saves as you change it (numbers when you leave the field), with a toast, and there is no Save button.
 
@@ -124,6 +129,7 @@ GET /api/insights?period=...   local rule-based insights: type, severity, one se
 GET /api/context?period=...&label=   who drives the prompt tokens: projects, models, sessions, requests, plus coverage
 GET /api/export.csv?period=...
 GET /api/billing
+GET /api/models          every model in the local history with its spellings, provider family and alias, for the Settings choices
 GET /api/config          POST /api/config
 POST /api/alerts/test    send a Telegram test message (pace alert)
 POST /api/usage/events   the page's batched view/tap events (local usage log)

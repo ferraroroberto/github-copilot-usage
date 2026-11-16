@@ -12,7 +12,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Header, Query
+from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import PlainTextResponse, Response
 
@@ -24,6 +24,7 @@ from src import (
     config,
     context_drilldown,
     insights,
+    model_labels,
     pace_alert,
     request_explorer,
 )
@@ -203,7 +204,17 @@ async def api_config_get() -> dict:
 
 @app.post("/api/config")
 async def api_config_post(updates: dict) -> dict:
-    return config.save(updates or {})
+    try:
+        return config.save(updates or {})
+    except config.ConfigError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/api/models")
+async def api_models() -> dict:
+    """Every model in the local history as spelled before any alias, for the Settings choices."""
+    records, _ = aggregate.gather_records()
+    return {"families": model_labels.family_options(), "models": aggregate.labels_for(records).catalog()}
 
 
 @app.post("/api/alerts/test")

@@ -323,6 +323,15 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
   font: inherit; font-size: var(--font-body); padding: 8px 10px; resize: vertical;
 }
 
+/* Models sheet: one card per model, the merge / family / opacity choices in a grid of fields. */
+.mdl-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.mdl { border: 1px solid var(--border); border-radius: var(--r-md); padding: 10px 12px; }
+.mdl-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.mdl-name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mdl-sub { margin: 2px 0 0; font-size: var(--font-label); overflow-wrap: anywhere; }
+.mdl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px var(--gutter); margin-top: 10px; }
+.rq-field:disabled { color: var(--fg-muted); cursor: default; }
+
 /* Neutral frosted toast: the card's glass, centred near the bottom; only an error
  * tints. It is a manual popover so it sits above an open modal dialog. */
 .toast {

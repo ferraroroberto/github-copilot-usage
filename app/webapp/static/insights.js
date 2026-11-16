@@ -6,7 +6,16 @@
  * already filtered, anything else (a period, the billing cycle) opens it for that period.
  */
 
+import { actionRowHtml, esc, splitMeta } from './rows.js';
+
 const SEVERITY_LABEL = { critical: 'Critical', warning: 'Warning', info: 'Info' };
+// What an insight is about, as the row's title; its sentence is the status line.
+const TYPE_LABEL = {
+  top_contributor: 'Biggest contributor',
+  period_change: 'Spend change',
+  budget_risk: 'Budget',
+  prompt_composition: 'Prompt tokens',
+};
 const FLAG_LABEL = {
   large_prompt: 'Large prompt',
   growing_prompt: 'Growing prompt',
@@ -43,14 +52,13 @@ let ctx = { period: 'week', label: '' };
 // ---- shared pieces ----
 
 export function flagChips(flags) {
-  const { esc } = deps;
   return (flags || []).map((f) =>
     `<span class="badge flag" title="${esc(f.text)}">${esc(FLAG_LABEL[f.type] || f.type)}</span>`).join(' ');
 }
 
 // The session dialog's diagnostics block: the facts, then each flag with its heuristic wording.
 export function renderDiagnostics(el, diag) {
-  const { esc, fmtTok } = deps;
+  const { fmtTok } = deps;
   if (!diag || !diag.max_prompt_tokens) { el.hidden = true; el.innerHTML = ''; return; }
   const facts = ['largest prompt ' + fmtTok(diag.max_prompt_tokens)];
   if (diag.growth_ratio) facts.push('last prompt ' + diag.growth_ratio + '× the first');
@@ -66,16 +74,22 @@ export function renderDiagnostics(el, diag) {
 
 // ---- insights card ----
 
+// Only an exception wears a chip: an insight that is merely informative reads as plain text.
+function severityChip(severity) {
+  if (severity === 'info') return '';
+  return ` <span class="sev sev-${esc(severity)}">${esc(SEVERITY_LABEL[severity] || severity)}</span>`;
+}
+
 function insightRow(insight, i) {
-  const { esc } = deps;
-  const sev = `<span class="sev sev-${esc(insight.severity)}">${esc(SEVERITY_LABEL[insight.severity] || insight.severity)}</span>`;
   if (STATIC_TYPES.has(insight.type)) {
-    return `<li class="insight-static"><span class="sess-title">${esc(insight.text)}</span>${sev}</li>`;
+    return `<li class="insight-static">${esc(insight.text)}</li>`;
   }
-  return `
-    <li data-track="insight-open" data-i="${i}" tabindex="0" role="button" aria-label="${esc(insight.text)} Open the matching view.">
-      <span class="sess-title">${esc(insight.text)}</span>${sev}
-    </li>`;
+  return actionRowHtml({
+    track: 'insight-open',
+    data: { i },
+    title: TYPE_LABEL[insight.type] || insight.type,
+    meta: `<span>${esc(insight.text)}${severityChip(insight.severity)}</span>`,
+  });
 }
 
 function renderInsights(body) {
@@ -126,7 +140,6 @@ function openInsight(insight) {
 // ---- context drill-down ----
 
 function chipHtml(label, text, active) {
-  const { esc } = deps;
   return `<button data-track="context-label" class="chip${active ? ' active' : ''}" type="button" data-label="${esc(label)}" aria-pressed="${active}">${esc(text)}</button>`;
 }
 
@@ -138,16 +151,15 @@ function renderChips(labels) {
   $('cx-labels').innerHTML = chips.join('');
 }
 
-function rowHtml(kind, key, title, share, sub, flags) {
-  const { esc } = deps;
-  const width = Math.min(100, Math.max(0, share || 0));
-  return `
-    <li data-track="context-open-row" data-kind="${kind}" data-key="${esc(key)}" tabindex="0" role="button" aria-label="Open ${kind}: ${esc(title)}">
-      <span class="sess-title">${esc(title) || '<span class="muted">(no prompt text)</span>'}</span>
-      <span class="sess-credits">${share === null || share === undefined ? '—' : share + '%'}</span>
-      <span class="sess-meta">${esc(sub)}${flags && flags.length ? ' ' + flagChips(flags) : ''}</span>
-      <span class="mix-track cx-bar"><span class="mix-fill" style="width:${width}%"></span></span>
-    </li>`;
+function contextRow(kind, key, title, share, sub, flags) {
+  return actionRowHtml({
+    track: 'context-open-row',
+    data: { kind, key },
+    title,
+    blank: '(no prompt text)',
+    meta: splitMeta(sub, share === null || share === undefined ? '—' : share + '%', flagChips(flags)),
+    share: share || 0,
+  });
 }
 
 function fillLists(body) {
@@ -155,14 +167,14 @@ function fillLists(body) {
   const tok = (n) => '~' + fmtTok(n) + ' tok';
   const reqs = (n) => fmtNum(n) + (n === 1 ? ' request' : ' requests');
   $('cx-projects').innerHTML = body.projects.map((p) =>
-    rowHtml('project', p.project_key, p.project, p.share_pct, tok(p.est_tokens) + ' · ' + reqs(p.requests))).join('');
+    contextRow('project', p.project_key, p.project, p.share_pct, tok(p.est_tokens) + ' · ' + reqs(p.requests))).join('');
   $('cx-models').innerHTML = body.models.map((m) =>
-    rowHtml('model', m.model, m.model, m.share_pct, tok(m.est_tokens) + ' · ' + reqs(m.requests))).join('');
+    contextRow('model', m.model, m.model, m.share_pct, tok(m.est_tokens) + ' · ' + reqs(m.requests))).join('');
   $('cx-sessions').innerHTML = body.sessions.map((s) =>
-    rowHtml('session', s.session_id, s.title, s.share_pct,
+    contextRow('session', s.session_id, s.title, s.share_pct,
       tok(s.est_tokens) + ' · ' + reqs(s.requests) + ' · ' + s.project, s.flags)).join('');
   $('cx-requests').innerHTML = body.requests.map((r) =>
-    rowHtml('request', r.session_id, r.message, r.share_pct,
+    contextRow('request', r.session_id, r.message, r.share_pct,
       tok(r.est_tokens) + ' of ' + fmtTok(r.prompt_tokens) + ' · ' + fmtDay(r.ts) + ' ' + fmtTime(r.ts)
       + ' · ' + r.project + ' · ' + r.model)).join('');
 }
@@ -213,8 +225,8 @@ function openContext(label, period) {
   loadContext();
 }
 
-function openContextRow(li) {
-  const { kind, key } = li.dataset;
+function openContextRow(row) {
+  const { kind, key } = row.dataset;
   const period = ctx.period;
   if (kind === 'project') deps.openRequests({ period, project: key });
   else if (kind === 'model') deps.openRequests({ period, model: key });
@@ -223,23 +235,17 @@ function openContextRow(li) {
 
 // ---- wiring ----
 
-function onActivate(list, handler) {
-  list.addEventListener('click', (e) => handler(e.target));
-  list.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      if (handler(e.target)) e.preventDefault();
-    }
+// The rows are real buttons, so Enter and Space already arrive as a click.
+function onRowTap(list, selector, handler) {
+  list.addEventListener('click', (e) => {
+    const row = e.target.closest(selector);
+    if (row) handler(row);
   });
 }
 
 export function initInsights(handedOver) {
   deps = handedOver;
-  onActivate($('insight-list'), (target) => {
-    const li = target.closest('li[data-i]');
-    if (li) openInsight(shown[Number(li.dataset.i)]);
-    return !!li;
-  });
-  // The rows are real buttons, so Enter and Space already arrive as a click.
+  onRowTap($('insight-list'), 'button[data-i]', (row) => openInsight(shown[Number(row.dataset.i)]));
   $('mix-bars').addEventListener('click', (e) => {
     const row = e.target.closest('button[data-label]');
     if (row) openContext(row.dataset.label, deps.getPeriod());
@@ -251,10 +257,6 @@ export function initInsights(handedOver) {
     if (chip && chip.dataset.label !== ctx.label) { ctx.label = chip.dataset.label; loadContext(); }
   });
   for (const id of ['cx-projects', 'cx-models', 'cx-sessions', 'cx-requests']) {
-    onActivate($(id), (target) => {
-      const li = target.closest('li[data-kind]');
-      if (li) openContextRow(li);
-      return !!li;
-    });
+    onRowTap($(id), 'button[data-kind]', openContextRow);
   }
 }

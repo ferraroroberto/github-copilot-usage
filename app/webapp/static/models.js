@@ -213,7 +213,7 @@ export function initModelSettings(deps) {
     try {
       view.catalog = await jsonApi('/api/models');
     } catch {
-      showToast('Could not load the models. Try again.', true);
+      showToast('Could not load the models. Try again.', 'error');
       return;
     }
     render(null);

@@ -8,6 +8,11 @@ const $ = (id) => document.getElementById(id);
 
 export function initSessionName({ jsonApi, showToast, reopen, refresh }) {
   let sessionId = null;
+  let saved = '';   // the custom name the server holds; Save wakes only when the field differs from it
+
+  function syncSave() {
+    $('sd-save').disabled = $('sd-name').value.trim() === saved;
+  }
 
   async function save(name) {
     const sid = sessionId;
@@ -20,7 +25,7 @@ export function initSessionName({ jsonApi, showToast, reopen, refresh }) {
       });
     } catch (exc) {
       console.error(exc);
-      showToast('Could not save the name. Try again.', true);
+      showToast('Could not save the name. Try again.', 'error');
       return;
     }
     showToast(name ? 'Session renamed' : 'Original title restored');
@@ -31,13 +36,16 @@ export function initSessionName({ jsonApi, showToast, reopen, refresh }) {
     e.preventDefault();
     save($('sd-name').value.trim());
   });
+  $('sd-name').addEventListener('input', syncSave);
   $('sd-name-clear').addEventListener('click', () => save(''));
 
   // Called with each session detail the sheet opens on.
   return function show(sid, detail) {
     sessionId = sid;
-    $('sd-name').value = detail.custom_name || '';
+    saved = detail.custom_name || '';
+    $('sd-name').value = saved;
     $('sd-name').placeholder = detail.parsed_title || 'Custom name';
-    $('sd-name-clear').hidden = !detail.custom_name;
+    $('sd-name-restore').hidden = !saved;
+    syncSave();
   };
 }

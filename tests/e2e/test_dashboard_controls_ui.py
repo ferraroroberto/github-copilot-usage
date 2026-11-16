@@ -77,8 +77,10 @@ def test_a_session_can_be_renamed_and_restored(page):
     page.click("#session-list li")
     page.wait_for_selector("#session-dialog[open]")
     assert page.locator("#sd-name-clear").is_hidden()
+    assert page.locator("#sd-save").is_disabled()  # the sheet's one primary wakes only once the name changes
     page.fill("#sd-name", "Billing investigation")
-    page.click("#sd-rename button[type=submit]")
+    assert page.locator("#sd-save").is_enabled()
+    page.click("#sd-save")
     page.wait_for_function("document.querySelector('#sd-title').textContent === 'Billing investigation'")
     assert page.locator("#sd-name-clear").is_visible()
     page.click("#sd-close")
@@ -193,3 +195,31 @@ def test_each_tab_shows_its_own_pane_under_one_page_header(page):
         assert _no_horizontal_scroll(page)
     page.click("#settings-btn")
     page.wait_for_selector("#settings-dialog[open]")  # Settings is the header gear, never a tab
+
+
+def test_the_refresh_menu_is_the_vendored_row_menu_and_reports_through_the_toast(page):
+    items = '[role="menu"] [role="menuitem"]'
+    page.click("#menu-btn")
+    page.wait_for_selector(items)
+    assert page.eval_on_selector_all(items, "els => els.map(e => e.textContent.trim())") == ["Refresh", "Force refresh"]
+    page.keyboard.press("Escape")
+    page.wait_for_selector('[role="menu"]', state="detached")
+
+    page.click("#menu-btn")
+    page.click('[role="menuitem"]:has-text("Force refresh")')
+    page.wait_for_function("document.querySelector('#toast') && !document.querySelector('#toast').hidden")
+    assert page.inner_text("#toast").startswith("Rebuilt from the files")
+
+
+def test_a_toast_paints_above_an_open_sheet(page):
+    page.click("#settings-btn")
+    page.wait_for_selector("#settings-dialog[open]")
+    page.click('#set-textsize [data-textsize="large"]')
+    page.wait_for_function("document.querySelector('#toast') && !document.querySelector('#toast').hidden")
+    # A modal dialog makes the rest of the page inert, so hit-testing cannot see the toast; its
+    # place in the top layer (opened after the dialog, so stacked above it) is what carries it.
+    assert page.evaluate("document.querySelector('#toast').matches(':popover-open')")
+    box = page.locator("#toast").bounding_box()
+    viewport = page.viewport_size
+    assert 0 <= box["x"] and box["x"] + box["width"] <= viewport["width"]
+    assert box["y"] + box["height"] <= viewport["height"]  # on screen, above the foot of the viewport

@@ -157,6 +157,18 @@
     <p class="footnote" id="budget-note">Local data from this machine only — set your allowance in Settings.</p>
   </section>
 
+  <!-- Insights: local, rule-based findings; each opens the view it refers to -->
+  <section class="card" id="insights-card" hidden>
+    <div class="card-head">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+      <h2>Insights</h2>
+      <span class="card-meta" id="insights-meta"></span>
+    </div>
+    <ul class="session-list insight-list" id="insight-list"></ul>
+    <p class="insight-quiet" id="insight-quiet" hidden>Nothing stands out in this period.</p>
+    <p class="footnote">Worked out on this machine from your own logs, with fixed rules and no model call. Figures from prompt composition are estimates, not per-tool billing.</p>
+  </section>
+
   <!-- Charts -->
   <section class="card" id="charts-card">
     <div class="card-head">
@@ -176,7 +188,8 @@
       <h2>Where your prompt tokens go</h2>
     </div>
     <div id="mix-bars"></div>
-    <p class="footnote">Composition of what is actually sent to the model, weighted by prompt size — from VS Code's own per-request breakdown. High "Tool Definitions"? Disable unused tools/MCP servers to shrink every request.</p>
+    <button data-track="context-open-all" class="btn-surface" id="context-open" type="button" aria-haspopup="dialog">Who drives this?</button>
+    <p class="footnote">Composition of what is actually sent to the model, weighted by prompt size — from VS Code's own per-request breakdown. Select a row to see which projects, models, sessions and requests carry it. High "Tool Definitions"? Disable unused tools/MCP servers to shrink every request.</p>
   </section>
 
   <!-- Breakdown tables -->
@@ -288,6 +301,7 @@
     </button>
   </div>
   <div class="dialog-meta" id="sd-meta"></div>
+  <div id="sd-diagnostics" hidden></div>
   <div id="sd-mix"></div>
   <div class="table-wrap">
     <table id="sd-table">
@@ -295,6 +309,34 @@
       <tbody></tbody>
     </table>
   </div>
+</dialog>
+
+<!-- Context drill-down: who drives the prompt tokens (all of them, or one composition label) -->
+<dialog data-track-view="context" id="context-dialog">
+  <div class="dialog-head">
+    <h2 id="cx-title">Prompt context</h2>
+    <button data-track="context-close" class="dialog-close" id="cx-close" type="button" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </div>
+  <div class="dialog-meta" id="cx-meta"></div>
+  <div class="chip-row" id="cx-labels" role="group" aria-label="Composition label"></div>
+  <div class="dialog-meta" id="cx-coverage"></div>
+  <div class="empty" id="cx-empty" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <p id="cx-empty-text"></p>
+  </div>
+  <div id="cx-body">
+    <h3 class="chart-title">Projects</h3>
+    <ul class="session-list" id="cx-projects"></ul>
+    <h3 class="chart-title">Models</h3>
+    <ul class="session-list" id="cx-models"></ul>
+    <h3 class="chart-title">Sessions</h3>
+    <ul class="session-list" id="cx-sessions"></ul>
+    <h3 class="chart-title">Requests</h3>
+    <ul class="session-list" id="cx-requests"></ul>
+  </div>
+  <p class="footnote" id="cx-note"></p>
 </dialog>
 
 <!-- Request explorer: filters, sort and page live in the URL (?view=requests&...) -->

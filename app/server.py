@@ -18,7 +18,15 @@ from fastapi.responses import PlainTextResponse, Response
 
 from app import build_info
 from app.version import VERSION
-from src import aggregate, billing, config, pace_alert, request_explorer
+from src import (
+    aggregate,
+    billing,
+    config,
+    context_drilldown,
+    insights,
+    pace_alert,
+    request_explorer,
+)
 from src.static_versioning import CachingStaticFiles, StaticVersion
 from src.usage_store import usage_db_path
 
@@ -141,6 +149,23 @@ async def api_requests(
         page=page, page_size=page_size,
     )
     return request_explorer.explore(records, query)
+
+
+@app.get("/api/insights")
+async def api_insights(
+    period: str = Query("week", description="today | week | month | cycle | all"),
+) -> dict:
+    records, _ = aggregate.gather_records()
+    return insights.build_insights(records, period)
+
+
+@app.get("/api/context")
+async def api_context(
+    period: str = Query("week", description="today | week | month | cycle | all"),
+    label: str = Query("", description="a prompt-composition label; empty means the whole prompt"),
+) -> dict:
+    records, _ = aggregate.gather_records()
+    return context_drilldown.drilldown(records, period, label)
 
 
 @app.get("/api/export.csv")

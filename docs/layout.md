@@ -9,7 +9,7 @@ github-copilot-usage/
 │   ├── build_info.py          # short commit + process start time for the footer
 │   ├── version.py             # single source of the version reported by /health
 │   └── webapp/
-│       └── static/            # the vanilla-JS SPA: index.html, app.js, requests.js (the request explorer view), styles.css, PWA manifest + icons, vendored Chart.js
+│       └── static/            # the vanilla-JS SPA: index.html, app.js, requests.js (the request explorer view), insights.js (the insights card, session diagnostics and the context drill-down), styles.css, PWA manifest + icons, vendored Chart.js
 │
 ├── src/                       # logic layer (never imports `app`)
 │   ├── config.py              # config.json + env loading, thread-safe settings
@@ -19,6 +19,10 @@ github-copilot-usage/
 │   ├── cli_session_store.py   # read-only reader for the Copilot CLI's session-store.db per-call usage
 │   ├── aggregate.py           # period bucketing, per-model and per-session rollups, CSV export
 │   ├── request_explorer.py    # the request explorer query: filters, sorting, paging and facet counts over the parsed requests
+│   ├── prompt_composition.py  # one reading of a request's logged composition: label, category and estimated tokens
+│   ├── context_drilldown.py   # who carries the prompt tokens: top projects, models, sessions and requests, with coverage
+│   ├── session_diagnostics.py # per-session heuristic flags: large prompt, growing prompt, high non-user share
+│   ├── insights.py            # deterministic local insights with a stable type, severity and linkable evidence
 │   ├── static_versioning.py   # content-hash cache busting: the ?v= stamp, CachingStaticFiles and the stamped index.html
 │   ├── billing.py             # optional GitHub billing API client (needs a token; absent → visible reason)
 │   ├── billing_state.py       # the billing card's declared state and its one derive function (docs/billing-state.md)

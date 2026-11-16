@@ -20,7 +20,14 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-from src import cli_parser, config, discovery, vscode_parser
+from src import (
+    cli_parser,
+    config,
+    discovery,
+    prompt_composition,
+    session_diagnostics,
+    vscode_parser,
+)
 from src.vscode_parser import RequestRecord
 
 _log = logging.getLogger(__name__)
@@ -272,6 +279,7 @@ def get_summary(records: List[RequestRecord], period: str = "today") -> dict:
         g = by_project_groups.get(r.project_key)
         if g is None:
             g = by_project_groups[r.project_key] = {
+                "project_key": r.project_key,
                 "project": r.project_name,
                 "project_path": r.project_path,
                 **_blank(),
@@ -310,20 +318,13 @@ def prompt_mix(records: List[RequestRecord]) -> List[dict]:
     cat_by_label: Dict[str, str] = {}
     covered_tokens = 0
     for r in records:
-        if not r.prompt_details or r.prompt_tokens <= 0:
+        entries = prompt_composition.label_tokens(r)
+        if not entries:
             continue
         covered_tokens += r.prompt_tokens
-        for d in r.prompt_details:
-            if not isinstance(d, dict):
-                continue
-            label = str(d.get("label") or d.get("category") or "Other")
-            pct = d.get("percentageOfPrompt")
-            try:
-                pct = float(pct)
-            except (TypeError, ValueError):
-                continue
-            tok_by_label[label] += r.prompt_tokens * pct / 100.0
-            cat_by_label.setdefault(label, str(d.get("category") or ""))
+        for label, category, tokens in entries:
+            tok_by_label[label] += tokens
+            cat_by_label.setdefault(label, category)
 
     if not covered_tokens:
         return []
@@ -483,7 +484,8 @@ def records_in_period(records: List[RequestRecord], period: str) -> List[Request
 
 
 def get_sessions(records: List[RequestRecord], period: str = "all") -> List[dict]:
-    return build_sessions(records_in_period(records, period))
+    in_period = records_in_period(records, period)
+    return session_diagnostics.attach_flags(build_sessions(in_period), in_period)
 
 
 def get_session_detail(records: List[RequestRecord], session_id: str) -> Optional[dict]:
@@ -520,6 +522,7 @@ def get_session_detail(records: List[RequestRecord], session_id: str) -> Optiona
         for r in sess
     ]
     header["prompt_mix"] = prompt_mix(sess)
+    header["diagnostics"] = session_diagnostics.diagnose(sess)
     return header
 
 

@@ -121,22 +121,30 @@ def test_the_start_date_leaves_earlier_records_out_and_labels_the_coverage(page)
 
 
 def test_a_card_collapses_and_stays_collapsed_after_a_reload(page):
-    _open_tab(page, "trends")
-    body = page.locator("#charts-card .chart-wrap").first
-    assert body.is_visible()
-    button = page.locator("#charts-card .collapse-btn")
-    assert button.get_attribute("aria-expanded") == "true"
-    button.click()
-    assert body.is_hidden() and button.get_attribute("aria-expanded") == "false"
-    assert page.locator("#charts-card .card-head h2").is_visible()  # the heading stays to unfold it by
+    _open_tab(page, "overview")
+    card = page.locator("details.card--collapsible", has=page.locator("h3.collapse-title", has_text="Data sources"))
+    summary = card.locator(":scope > summary")
+    body = card.locator(".source-list")
+    assert card.get_attribute("open") is not None and body.is_visible()
+    assert summary.bounding_box()["height"] == 52  # the vendored disclosure's closed height
+    summary.click()
+    assert body.is_hidden() and card.get_attribute("open") is None
+    assert summary.bounding_box()["height"] == 52  # folding never moves the row
+    assert card.locator("h3.collapse-title").is_visible()  # the heading stays to unfold it by
 
     page.reload()
     page.wait_for_selector("#session-list li", state="attached")
-    assert page.locator("#pane-trends").is_visible()  # the open tab survives the reload
-    assert page.locator("#charts-card .chart-wrap").first.is_hidden()
-    page.locator("#charts-card .collapse-btn").click()
+    card = page.locator("details.card--collapsible", has=page.locator("h3.collapse-title", has_text="Data sources"))
+    assert card.locator(".source-list").is_hidden()
+    card.locator(":scope > summary").click()
+    assert card.locator(".source-list").is_visible()
+    assert card.locator(":scope > summary").bounding_box()["height"] >= 44
+
+
+def test_the_trends_tab_has_no_card_that_only_repeats_its_name(page):
+    _open_tab(page, "trends")
     assert page.locator("#charts-card .chart-wrap").first.is_visible()
-    assert page.locator("#charts-card .collapse-btn").bounding_box()["height"] >= 44
+    assert page.locator("#charts-card .collapse-title").count() == 0
 
 
 def test_the_trend_steps_through_older_windows_and_a_bucket_tap_focuses_the_dashboard(page):

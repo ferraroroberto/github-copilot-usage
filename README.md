@@ -152,7 +152,7 @@ GET /api/usage/time      foreground minutes: ?days=7&by=day|device|view
 ```
 .venv/Scripts/python.exe -m pip install -r requirements-dev.txt   # test + lint deps
 .venv/Scripts/python.exe -m pytest      # tests (synthetic session fixtures)
-.venv/Scripts/python.exe -m pip install playwright && .venv/Scripts/python.exe -m playwright install chromium   # optional: lets tests/e2e run (phone-viewport check of the request explorer); skipped with a reason without them
+.venv/Scripts/python.exe -m playwright install chromium   # once: the browser tests/e2e drive (phone and desktop viewports); skipped with a reason until it is installed
 .venv/Scripts/python.exe -m app         # run without opening a browser
 ```
 

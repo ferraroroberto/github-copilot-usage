@@ -18,6 +18,7 @@
   --neutral-soft: color-mix(in srgb, var(--muted) 16%, transparent);
   --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
   --accent-border-soft: color-mix(in srgb, var(--accent) 24%, transparent);
+  --accent-border-strong: color-mix(in srgb, var(--accent) 28%, transparent);
   --success: #1a7f37;
   --deficit: #cf222e;
   --attention: #9a6700;
@@ -162,7 +163,6 @@ body:has(dialog[open]) { overflow: hidden; }
  * labelled control (the vendored switch carries its own). The header icon buttons are real 44px, so side-by-side
  * targets never overlap. */
 .dialog-close::before { content: ""; position: absolute; inset: -5px; }
-.btn-surface::before { content: ""; position: absolute; inset: -4px 0; }
 .icon-btn svg { width: 18px; height: 18px; }
 .icon-btn:hover { color: var(--fg); }
 [data-theme="dark"] .glyph-moon { display: none; }
@@ -194,13 +194,10 @@ body:has(dialog[open]) { overflow: hidden; }
 .delta.down { color: var(--success); }  /* less spend = green */
 
 /* ---- cards ---- */
-/* The card surface is the vendored card.css; this page's headers stay left-packed
- * (the vendored one spreads title and meta apart) and carry a bottom margin. */
+/* The card surface is the vendored card.css and the collapsible card the vendored disclosure.css;
+ * a long trailing count (the mode chips) ellipsises so the summary keeps its 52px. */
 .card { min-width: 0; }
-.card-head { justify-content: flex-start; margin-bottom: 10px; flex-wrap: nowrap; }
-.card-head h2 { font-size: var(--font-body); font-weight: 700; margin: 0; min-width: 0; }
-.card-icon { width: 18px; height: 18px; color: var(--fg-muted); flex: none; }
-.card-meta { margin: 0 0 0 auto; min-width: 0; text-align: right; font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); }
+.collapse-count { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .badge {
   font-size: var(--font-caption); font-weight: 700; color: var(--fg-muted);
   background: var(--canvas-subtle); border: 1px solid var(--border-muted);
@@ -237,7 +234,10 @@ code {
 .budget-fill.warn { background: var(--attention); }
 .budget-fill.over { background: var(--danger); }
 .budget-marker { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--fg-muted); opacity: 0.7; }
-.budget-legend { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: var(--font-label); font-weight: 600; flex-wrap: wrap; }
+/* Two stacked lines, each holding its height before its value lands, so the card does not
+ * grow when a phone-width legend would wrap. */
+.budget-legend { display: grid; gap: 2px; margin-top: 8px; font-size: var(--font-label); font-weight: 600; }
+.budget-legend > span { min-height: 1.5em; }
 
 /* ---- charts ---- */
 .chart-title { font-size: var(--font-label); font-weight: 700; color: var(--fg-muted); margin: 14px 0 6px; }
@@ -276,15 +276,9 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .sess-title { font-weight: 600; font-size: var(--font-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sess-credits { font-weight: 700; font-size: var(--font-label); text-align: right; font-variant-numeric: tabular-nums; }
 .sess-meta { grid-column: 1 / -1; font-size: var(--font-label); color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.btn-surface {
-  position: relative;
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  height: var(--control-h); padding: 0 14px; margin-top: 10px;
-  background: var(--canvas-subtle); color: var(--fg-muted);
-  border: 1px solid var(--border); border-radius: var(--r-md);
-  font: inherit; font-size: var(--font-label); font-weight: 600; cursor: pointer; text-decoration: none;
-}
-.btn-surface:hover { color: var(--fg); }
+/* Standalone actions under a card body's content sit a row below it. */
+.collapse-body > .button-surface, .collapse-body > .button-tint { margin-top: 10px; }
+.button-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 
 /* ---- sources ---- */
 .source-list { list-style: none; margin: 0; padding: 0; font-size: var(--font-label); }
@@ -292,11 +286,6 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .source-list li + li { border-top: 1px solid var(--border-muted); }
 .source-ide { font-weight: 700; }
 .source-path { color: var(--fg-muted); font-size: var(--font-label); word-break: break-all; flex: 1 1 100%; }
-
-/* ---- empty state ---- */
-.empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 16px; color: var(--fg-muted); text-align: center; }
-.empty svg { width: 24px; height: 24px; }
-.empty p { margin: 0; font-size: var(--font-label); }
 
 /* ---- export row (the build footer is the vendored page-foot) ---- */
 .export-row { display: flex; align-items: center; padding: 4px 4px 0; }
@@ -325,7 +314,9 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 /* ---- settings ----
  * The groups, rows, number fields and switch are the vendored settings-group,
  * card and switch components; only the roots sheet and the toast are this app's. */
-.icon {
+/* :where keeps this at zero specificity so a component sizing its own glyph
+ * (empty-state-icon, the disclosure title icon) always wins. */
+:where(.icon) {
   display: inline-block; width: 1em; height: 1em; flex: none;
   stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
   vertical-align: -0.15em;
@@ -386,15 +377,12 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 @media (min-width: 560px) { .rq-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .rq-label { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); }
 .rq-toolbar { display: flex; flex-wrap: wrap; gap: var(--gutter); margin-top: 4px; }
-.rq-toolbar .btn-surface { margin-top: 0; }
 .rq-summary { margin: 14px 0 4px; font-weight: 600; }
 .rq-list { margin-top: 4px; }
 .rq-pager { display: flex; align-items: center; justify-content: space-between; gap: var(--gutter); margin-top: 8px; }
-.rq-pager .btn-surface { margin-top: 0; }
-.rq-pager .btn-surface:disabled { color: var(--fg-muted); cursor: default; }
 .rq-page { font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); }
 .rq-sortbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--gutter); margin-bottom: 4px; }
-.rq-sortbar .rq-order { margin-top: 0; height: 44px; }
+.rq-sortbar .rq-order { height: 44px; }
 .rq-filter-box { margin-top: 8px; }
 .rq-filter-box > summary {
   display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; list-style: none;
@@ -457,16 +445,6 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .menu-item:disabled { color: var(--fg-muted); cursor: default; }
 .menu-item .icon { color: var(--fg-muted); }
 
-/* ---- collapsible sections ---- */
-/* The chevron is the only target that folds a card; the head's own text stays inert. */
-.collapse-btn { margin-left: auto; margin-block: -13px; }
-.card-meta + .collapse-btn { margin-left: 0; }
-.collapse-btn svg { transition: transform 0.15s ease; }
-.card.collapsed .collapse-btn svg { transform: rotate(-90deg); }
-.card.collapsed > :not(.card-head) { display: none; }
-.card.collapsed .card-head { margin-bottom: 0; }
-@media (prefers-reduced-motion: reduce) { .collapse-btn svg { transition: none; } }
-
 /* ---- focused range and coverage ---- */
 .focus-bar {
   display: flex; align-items: center; justify-content: space-between; gap: var(--gutter);
@@ -474,7 +452,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
   border-radius: var(--r-md);
 }
 .focus-label { font-size: var(--font-label); font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
-.focus-bar .btn-surface { margin-top: 0; flex: none; }
+.focus-bar .button-surface { flex: none; }
 .coverage-note {
   margin: 0; padding: 8px 12px; font-size: var(--font-label); font-weight: 600; color: var(--attention-text);
   background: color-mix(in srgb, var(--attention) 12%, transparent);
@@ -482,16 +460,14 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 }
 
 /* ---- chart history ---- */
+.trend-range { margin: 0 0 10px; font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); }
 .trend-nav { display: flex; flex-wrap: wrap; gap: var(--gutter); }
-.trend-nav .btn-surface { margin-top: 0; min-width: 72px; }
-.trend-nav .btn-surface:disabled { color: var(--fg-muted); opacity: 0.55; cursor: default; }
+.trend-nav .button-surface { min-width: 72px; }
 .chart-wrap canvas { cursor: pointer; }
 
 /* ---- session rename ---- */
 .rename-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
 .rename-row .rq-field { flex: 1 1 180px; width: auto; }
-.rename-row .btn-surface { margin-top: 0; }
 
 /* ---- settings: the start date ---- */
 .settings-row-date { width: auto; min-width: 9.5em; text-align: left; -moz-appearance: auto; }
-.settings-row-clear { margin-top: 0; }

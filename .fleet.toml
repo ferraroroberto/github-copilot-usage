@@ -191,3 +191,10 @@ name   = "billing"
 module = "src/billing_state.py"
 type   = "BillingState"
 derive = "derive"
+
+# [e2e] -- the standing browser suite is the contract for the single-page UI, and most tests
+# run on both the desktop and phone projections (plus a theme matrix on one), so its collected
+# node count sits above the scaffold's 15-test target without any redundant test. The budget
+# holds it at today's size: lower it when a test is trimmed, never raise it without a reason.
+[e2e]
+test_budget = 36

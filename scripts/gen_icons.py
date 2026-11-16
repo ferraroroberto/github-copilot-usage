@@ -1,20 +1,19 @@
-"""Self-contained PWA / favicon asset generator for github-copilot-usage.
+"""Self-contained PWA / favicon / tray asset generator for github-copilot-usage.
 
-Implements the fleet's ``brand_gen`` app-icon contract (design.md ``app-icon``:
-one brand master -> the canonical raster set ``icon-180/192/512``, a distinct
-``icon-512-maskable`` with Android safe-zone padding, and a multi-size
-``favicon.ico``) **without importing project-scaffolding's shared
-``brand_gen`` generator** — this repo ships publicly to locked-down corporate
+Implements the fleet's app-icon contract (one brand master -> the canonical
+raster set ``icon-180/192/512``, a distinct ``icon-512-maskable`` with Android
+safe-zone padding, and a multi-size ``favicon.ico``) **without importing any
+shared generator** — this repo ships publicly to locked-down corporate
 machines, so it may not reference any other local repo or private infra
 (see CLAUDE.md "Standalone by design").
 
-The brand master is this app's own ``app/webapp/static/favicon.svg`` — a GitHub-blue
-rounded tile behind a three-bar column-chart glyph (the same Lucide
-``chart-column`` mark used for the in-app ``.logo``). Its geometry is
-reproduced here with Pillow drawing primitives, so no SVG renderer is needed;
-Pillow is already a repo dependency (``requirements-tray.txt``), so this adds
-no new footprint. The generated PNG/ICO assets are committed, so nothing at
-runtime ever imports this script.
+The brand master is this app's own ``app/webapp/static/favicon.svg``: the
+Lucide ``chart-column`` glyph drawn as a light stroke on a near-black tile, the
+look every fleet app shares. Its geometry is reproduced here with Pillow
+primitives (no SVG renderer needed; Pillow is already a repo dependency via
+``requirements-tray.txt``). The generated PNG/ICO assets are committed, and the
+Windows tray loads ``icon-512.png`` at runtime, so the web icons and the tray
+icon come from this one definition.
 
 Regenerate after changing the brand:
 
@@ -22,6 +21,7 @@ Regenerate after changing the brand:
 """
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import List, Tuple
 
@@ -29,53 +29,62 @@ from PIL import Image, ImageDraw
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "app" / "webapp" / "static"
 
-# --- brand master geometry (app/webapp/static/favicon.svg, a 64-unit design grid) ---
-BRAND_BLUE = (9, 105, 218)      # #0969da — the GitHub-blue accent tile
-BAR_WHITE = (255, 255, 255)
-_STROKE = 6.0                    # bar stroke width in grid units
-# (centre-x, y-top, y-bottom) for each column, round-capped
-_BARS: List[Tuple[float, float, float]] = [
-    (18.0, 30.0, 44.0),
-    (32.0, 18.0, 44.0),
-    (46.0, 36.0, 44.0),
-]
-# glyph extent including the round caps (half-stroke = 3 units)
-_GLYPH_BOX = (15.0, 15.0, 49.0, 47.0)  # minx, miny, maxx, maxy
+TILE_BG = (10, 10, 10)          # #0A0A0A
+GLYPH_STROKE = (240, 240, 240)  # #F0F0F0
+STROKE_WIDTH = 2.6              # grid units on Lucide's 24-unit grid
+GRID = 24.0
 
-# padding of the glyph inside the opaque tile
-FULL_BLEED_PAD = 0.16   # regular / apple / favicon
+FULL_BLEED_PAD = 0.12   # regular / apple / favicon
 MASKABLE_PAD = 0.26     # Android adaptive-icon safe zone
+SUPERSAMPLE = 4         # Pillow draws aliased, so draw large and downsample
+
+Point = Tuple[float, float]
+
+
+def _axis_path() -> List[Point]:
+    """Lucide ``M3 3v16a2 2 0 0 0 2 2h16``: the L-shaped axis with a rounded corner."""
+    corner = [
+        (5.0 - 2.0 * math.cos(math.radians(a)), 19.0 + 2.0 * math.sin(math.radians(a)))
+        for a in range(0, 91, 3)
+    ]
+    return [(3.0, 3.0)] + corner + [(21.0, 21.0)]
+
+
+# Every stroked path of the glyph, in grid units.
+_PATHS: List[List[Point]] = [
+    _axis_path(),
+    [(18.0, 17.0), (18.0, 9.0)],
+    [(13.0, 17.0), (13.0, 5.0)],
+    [(8.0, 17.0), (8.0, 14.0)],
+]
+
+
+def _stroke(draw: ImageDraw.ImageDraw, points: List[Point], width: float) -> None:
+    """Draw a round-capped, round-joined polyline of ``width`` pixels."""
+    radius = width / 2
+    for (x0, y0), (x1, y1) in zip(points, points[1:]):
+        draw.line([(x0, y0), (x1, y1)], fill=GLYPH_STROKE, width=round(width))
+    for x, y in points:
+        draw.ellipse([x - radius, y - radius, x + radius, y + radius], fill=GLYPH_STROKE)
 
 
 def _render_tile(size: int, pad_ratio: float) -> Image.Image:
-    """Rasterize the brand glyph centred on an opaque full-bleed blue tile.
+    """Rasterize the glyph on an opaque full-bleed near-black tile.
 
     Opaque RGB (no alpha, no transparent corners) is required: iOS composites
     any alpha against black, and Android/iOS apply their own mask shape, so the
     source must be an edge-to-edge opaque square — the rounded-corner look lives
     in the vector ``favicon.svg`` and in the platform mask, never baked in here.
     """
-    img = Image.new("RGB", (size, size), BRAND_BLUE)
+    big = size * SUPERSAMPLE
+    img = Image.new("RGB", (big, big), TILE_BG)
     draw = ImageDraw.Draw(img)
 
-    gx0, gy0, gx1, gy1 = _GLYPH_BOX
-    glyph_w, glyph_h = gx1 - gx0, gy1 - gy0
-    avail = size * (1 - 2 * pad_ratio)
-    scale = avail / max(glyph_w, glyph_h)
-    off_x = (size - glyph_w * scale) / 2 - gx0 * scale
-    off_y = (size - glyph_h * scale) / 2 - gy0 * scale
-
-    radius = (_STROKE / 2) * scale
-    for cx, y_top, y_bot in _BARS:
-        x = cx * scale + off_x
-        top = y_top * scale + off_y
-        bot = y_bot * scale + off_y
-        draw.rounded_rectangle(
-            [x - radius, top - radius, x + radius, bot + radius],
-            radius=radius,
-            fill=BAR_WHITE,
-        )
-    return img
+    scale = big * (1 - 2 * pad_ratio) / GRID
+    offset = big * pad_ratio
+    for path in _PATHS:
+        _stroke(draw, [(offset + x * scale, offset + y * scale) for x, y in path], STROKE_WIDTH * scale)
+    return img.resize((size, size), Image.Resampling.LANCZOS)
 
 
 def render_set(out_dir: Path = STATIC_DIR) -> None:

@@ -12,9 +12,11 @@ Requires the extras in ``requirements-tray.txt`` (pystray + pillow) —
 from __future__ import annotations
 
 import io
+import logging
 import os
 import sys
 import webbrowser
+from pathlib import Path
 
 # Under pythonw.exe there is no console: sys.stdout/stderr are None, and
 # anything that touches them (uvicorn's logging setup calls
@@ -26,7 +28,7 @@ for _name in ("stdout", "stderr"):
 
 try:
     import pystray
-    from PIL import Image, ImageDraw
+    from PIL import Image
 except ImportError:
     print("❌ tray extras missing — run: pip install -r requirements-tray.txt")
     sys.exit(1)
@@ -34,16 +36,24 @@ except ImportError:
 from app.listeners import Listeners
 from src import config
 
+logger = logging.getLogger(__name__)
+
+
+_ICON_PATH = Path(__file__).resolve().parent / "webapp" / "static" / "icon-512.png"
+
 
 def _make_icon_image() -> "Image.Image":
-    """A simple generated glyph: rounded blue square with a white gauge arc."""
-    size = 64
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    d.rounded_rectangle([2, 2, size - 2, size - 2], radius=14, fill=(9, 105, 218, 255))
-    d.arc([12, 12, size - 12, size - 12], start=130, end=320, fill=(255, 255, 255, 255), width=7)
-    d.ellipse([size // 2 - 4, size // 2 - 4, size // 2 + 4, size // 2 + 4], fill=(255, 255, 255, 255))
-    return img
+    """The tray icon is the web app icon itself, so the two cannot drift apart.
+
+    A missing or unreadable file falls back to a plain near-black tile: the tray
+    must still start without its icon art.
+    """
+    try:
+        with Image.open(_ICON_PATH) as src:
+            return src.convert("RGB").resize((64, 64), Image.Resampling.LANCZOS)
+    except (OSError, ValueError):
+        logger.warning("⚠️ tray icon art %s unreadable; using a plain tile", _ICON_PATH)
+        return Image.new("RGB", (64, 64), (10, 10, 10))
 
 
 def main() -> None:

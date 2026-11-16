@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import PlainTextResponse, Response
 
@@ -31,6 +31,7 @@ from src import (
     refresh,
     request_explorer,
 )
+from src.shell_etag import shell_response
 from src.static_versioning import CachingStaticFiles, StaticVersion
 from src.usage_store import usage_db_path
 from src.vscode_parser import RequestRecord
@@ -291,8 +292,8 @@ async def api_alert_test() -> dict:
 
 
 @app.get("/")
-async def index(if_none_match: Optional[str] = Header(None)) -> Response:
-    return STATIC_VERSION.index_response(if_none_match)
+async def index(request: Request) -> Response:
+    return shell_response(request, STATIC_VERSION.shell_html())
 
 
 app.mount("/", CachingStaticFiles(directory=STATIC_DIR, version=STATIC_VERSION), name="static")

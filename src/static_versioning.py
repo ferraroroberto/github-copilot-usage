@@ -23,11 +23,13 @@ import os
 import posixpath
 import re
 from pathlib import Path
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable
 
 from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 from starlette.types import Scope
+
+from src.shell_etag import SHELL_CACHE_CONTROL
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +45,6 @@ _LONG_CACHE = "public, max-age=31536000, immutable"
 _DAY_CACHE = "public, max-age=86400"
 _IMMUTABLE_SUFFIXES = frozenset({".js", ".css"})
 _DAILY_SUFFIXES = frozenset({".webmanifest", ".png", ".ico"})
-_SHELL_CACHE = "no-cache, must-revalidate"
 
 # `import ... from './foo.js'` or `'../dir/foo.js'`: captures the quoted relative
 # specifier and any existing `?v=` so re-stamping a stamped body is idempotent.
@@ -94,19 +95,6 @@ def compute_asset_hashes(static_dir: Path) -> Dict[str, str]:
 def fleet_hash_of(hashes: Dict[str, str]) -> str:
     """The one stamp every asset carries; ``""`` when nothing was hashed."""
     return next(iter(hashes.values()), "")
-
-
-def _etag_matches(if_none_match: Optional[str], etag: str) -> bool:
-    """Weak comparison (RFC 9110 13.1.2): ``W/`` prefixes are ignored, ``*`` matches."""
-    if not if_none_match:
-        return False
-    if if_none_match.strip() == "*":
-        return True
-    for tag in if_none_match.split(","):
-        tag = tag.strip()
-        if (tag[2:] if tag.startswith("W/") else tag) == etag:
-            return True
-    return False
 
 
 def rewrite_index_html(body: str, hashes: Dict[str, str]) -> str:
@@ -169,18 +157,9 @@ class StaticVersion:
         from_dir = "" if rel_parent == Path(".") else rel_parent.as_posix()
         return rewrite_js_imports(body, self.asset_hashes, from_dir)
 
-    def index_response(self, if_none_match: Optional[str] = None) -> Response:
-        """The stamped ``index.html``, revalidated by ETag.
-
-        ``no-cache`` keeps a cached shell from pointing at old assets; the ETag over the
-        stamped body lets that revalidation cost a bodiless 304 when nothing changed.
-        """
-        html = self.stamp_html((self._static_dir / "index.html").read_text(encoding="utf-8"))
-        etag = f'"{_short_hash(html.encode("utf-8"))}"'
-        headers = {"Cache-Control": _SHELL_CACHE, "ETag": etag}
-        if _etag_matches(if_none_match, etag):
-            return Response(status_code=304, headers=headers)
-        return Response(html, media_type="text/html", headers=headers)
+    def shell_html(self) -> str:
+        """The stamped ``index.html``: the document ``shell_response`` tags and serves."""
+        return self.stamp_html((self._static_dir / "index.html").read_text(encoding="utf-8"))
 
 
 class CachingStaticFiles(StaticFiles):
@@ -225,5 +204,5 @@ class CachingStaticFiles(StaticFiles):
         elif suffix in _DAILY_SUFFIXES:
             response.headers["Cache-Control"] = _DAY_CACHE
         elif suffix == ".html":
-            response.headers["Cache-Control"] = _SHELL_CACHE
+            response.headers["Cache-Control"] = SHELL_CACHE_CONTROL
         return response

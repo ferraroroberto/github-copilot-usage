@@ -87,7 +87,8 @@ Credits stay the billing measure. Cache tokens are kept in their own buckets, an
 
 | Key | Default | Meaning |
 |---|---|---|
-| `port` | `8377` | dashboard port (loopback only), also `COPILOT_USAGE_PORT` env |
+| `port` | `8377` | dashboard port (loopback, and the Tailscale address when `tailnet_access` is on), also `COPILOT_USAGE_PORT` env |
+| `tailnet_access` | `false` | also serve the dashboard over HTTPS on this machine's Tailscale address, read at server start; see [Open from your phone](#open-from-your-phone-tailscale) |
 | `monthly_credits` | `300` | your monthly credit allowance (the "/ Y" total in VS Code's Copilot menu) |
 | `cycle_reset_day` | `1` | day of month your billing cycle resets |
 | `extra_roots` | `[]` | additional editor storage paths to scan |
@@ -142,6 +143,8 @@ GET /api/models          every model in the local history with its spellings, pr
 GET /api/config          POST /api/config
 GET /api/features        the feature blocks: switch, whether this machine can run each, and why not
 PUT /api/features/{block_id}   {"enabled": true|false} switches one block, effective at once
+GET /api/tailnet         the Tailscale option: saved switch, whether this server serves it, its URL, or why not
+PUT /api/tailnet         {"enabled": true|false} saves the switch; the bind changes at the next server start
 POST /api/refresh?force=false|true   rebuild the data now (force clears the parser caches first); joins a rebuild already running
 POST /api/cache/clear   drop the snapshot, the cached summaries and the parser caches; the next read rebuilds
 POST /api/alerts/test    send a Telegram test message (pace alert)
@@ -163,9 +166,13 @@ Verification gate (also needs Node, for `jscpd`): `powershell -File scripts/veri
 
 Layout: `app/` (FastAPI server, optional tray, the vanilla-JS dashboard in `app/webapp/static/`) · `src/` (discovery, the jsonl replay parser, aggregation, optional billing client) · `tests/` — see [docs/layout.md](docs/layout.md).
 
+## Open from your phone (Tailscale)
+
+Off by default: the server answers on `127.0.0.1` only. Turn on **Settings → Available features → Open from other devices on my Tailscale network** (or set `"tailnet_access": true`) and restart (`tray.bat --restart`); the server then also serves HTTPS on this machine's Tailscale address, on the same port, with the certificate from `tailscale cert`, and Settings shows the URL to open. It needs the `tailscale` command, a connected tailnet with MagicDNS and HTTPS Certificates enabled. If any of that is missing the server stays on loopback and Settings and the log say which. It never binds `0.0.0.0`, and anyone who can reach that address on your tailnet can use the dashboard and its settings. Details: [docs/setup-and-migration.md](docs/setup-and-migration.md).
+
 ## Privacy
 
-Read-only over Copilot's own local log files; zero subprocesses; binds to `127.0.0.1` only; no telemetry; the only outbound call is the optional GitHub billing API when *you* configure a PAT. Your prompts stay on your machine — the dashboard shows the first ~200 characters of each request message so you can recognize what a request was, and the CSV export contains the same.
+Read-only over Copilot's own local log files; no subprocesses except the `tailscale` command, and only while the Tailscale option above is on; binds to `127.0.0.1` only, plus your own Tailscale address when you turn that option on; no telemetry; the only outbound call is the optional GitHub billing API when *you* configure a PAT (the Tailscale option fetches its certificate through your local Tailscale client). Your prompts stay on your machine — the dashboard shows the first ~200 characters of each request message so you can recognize what a request was, and the CSV export contains the same.
 
 **Usage log.** Besides reading Copilot's files, the dashboard records its own use — which view or control was used, a random per-visit id, the device class and timestamps, never prompts, names, URLs or addresses — into `usage.sqlite3`, one SQLite file on the machine serving it, in `C:\sqlite\github-copilot-usage\` on Windows and `~/.local/share/sqlite/github-copilot-usage/` elsewhere (created on first write). Set `GITHUB_COPILOT_USAGE_DATA_DIR` to use another directory, or `FLEET_DATA_ROOT` to use `<root>/github-copilot-usage/`; either may live in `.env`. Rows older than a year, or beyond 200,000, are pruned; nothing leaves the machine, and deleting the file resets it.
 

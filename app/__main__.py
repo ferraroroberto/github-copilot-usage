@@ -13,8 +13,7 @@ import sys
 import threading
 import webbrowser
 
-import uvicorn
-
+from app.listeners import Listeners
 from src import config
 
 # A stated guess at uvicorn's bind time, not a measurement: opening the browser
@@ -35,13 +34,20 @@ def main() -> None:
     args = parser.parse_args()
 
     port = args.port or int(config.load().get("port", 8377))
-    url = "http://127.0.0.1:" + str(port) + "/"
+    listeners = Listeners(port, log_level="info")
+    url = listeners.loopback_url
 
     if args.open:
-        threading.Timer(_BROWSER_OPEN_DELAY_SECS,webbrowser.open, args=(url,)).start()
+        threading.Timer(_BROWSER_OPEN_DELAY_SECS, webbrowser.open, args=(url,)).start()
 
+    listeners.start()
     print("ℹ️ github-copilot-usage — dashboard at " + url)
-    uvicorn.run("app.server:app", host="127.0.0.1", port=port, log_level="info")
+    if listeners.tailnet_url:
+        print("ℹ️ also open from your Tailscale network at " + listeners.tailnet_url)
+    try:
+        listeners.wait()
+    except KeyboardInterrupt:
+        listeners.stop()
 
 
 if __name__ == "__main__":

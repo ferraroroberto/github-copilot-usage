@@ -5,15 +5,17 @@ github-copilot-usage/
 ├── app/                       # the UI process: server, tray, entry point
 │   ├── __main__.py            # `python -m app` — argparse, uvicorn, optional browser open
 │   ├── server.py              # FastAPI routes (JSON API + serves the dashboard); no parsing logic
-│   ├── tray.py                # optional Windows tray icon (pystray) that owns the server thread
+│   ├── listeners.py           # the sockets served: loopback over HTTP always, the Tailscale address over HTTPS when opted in, on one event loop
+│   ├── tray.py                # optional Windows tray icon (pystray) that owns the listeners
 │   ├── build_info.py          # short commit + process start time for the footer
 │   ├── version.py             # single source of the version reported by /health
 │   └── webapp/
-│       └── static/            # the vanilla-JS SPA: index.html (the four tab panes under one page header), app.js, rows.js (the one list-row renderer: sessions, insights, requests and the drill-down all draw the vendored action-row through it), requests.js (the request explorer view), insights.js (the insights card, session diagnostics and the context drill-down), features.js (Settings → Available features: the switches and what hides while a block is off), models.js (model colours by provider family and the Settings sheet that merges models and overrides a colour), charts.js (the two trend charts), timeline.js (trend windows, the focused date range and the coverage note), sections.js (collapsible cards), session-name.js (the rename row of the session sheet), styles.css, PWA manifest + icons, vendored Chart.js
+│       └── static/            # the vanilla-JS SPA: index.html (the four tab panes under one page header), app.js, rows.js (the one list-row renderer: sessions, insights, requests and the drill-down all draw the vendored action-row through it), requests.js (the request explorer view), insights.js (the insights card, session diagnostics and the context drill-down), features.js (Settings → Available features: the switches and what hides while a block is off), tailnet.js (the Tailscale access row in that group), models.js (model colours by provider family and the Settings sheet that merges models and overrides a colour), charts.js (the two trend charts), timeline.js (trend windows, the focused date range and the coverage note), sections.js (collapsible cards), session-name.js (the rename row of the session sheet), styles.css, PWA manifest + icons, vendored Chart.js
 │
 ├── src/                       # logic layer (never imports `app`)
 │   ├── config.py              # config.json + env loading, thread-safe settings
 │   ├── features.py            # the feature blocks switched per machine: their ids, what each needs here, the switch
+│   ├── tailnet.py             # the opt-in Tailscale bind: reads the machine's tailnet address and name through the tailscale command, fetches the certificate, says why it cannot
 │   ├── discovery.py           # finds Copilot's session-log folders per editor variant and OS
 │   ├── vscode_parser.py       # read-only, mtime-cached parser for VS Code chat session logs
 │   ├── cli_parser.py          # read-only, mtime-cached parser for Copilot CLI session logs

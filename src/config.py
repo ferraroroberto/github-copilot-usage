@@ -30,8 +30,11 @@ CONFIG_PATH: Path = PROJECT_ROOT / "config.json"
 ENV_PATH: Path = PROJECT_ROOT / ".env"
 
 DEFAULTS: Dict[str, Any] = {
-    # HTTP port for the dashboard (loopback only).
+    # Port for the dashboard: loopback over HTTP, and the Tailscale address over HTTPS when tailnet_access is on.
     "port": 8377,
+    # Also serve the dashboard on this machine's Tailscale address (never 0.0.0.0). Off unless true; read at
+    # server start, so a change applies after a restart. src/tailnet.py says what it needs.
+    "tailnet_access": False,
     # Your monthly credit allowance. Copy the total from VS Code's Copilot
     # menu ("Credits X / Y used" -> Y): plan defaults are Business 300,
     # Enterprise 1000, Pro 300, Pro+ 1500, but org-provisioned credit pools
@@ -61,7 +64,7 @@ DEFAULTS: Dict[str, Any] = {
 
 # Editable via POST /api/config — everything else requires editing the file.
 _UI_EDITABLE_KEYS = {
-    "monthly_credits", "cycle_reset_day", "extra_roots", "features",
+    "monthly_credits", "cycle_reset_day", "extra_roots", "features", "tailnet_access",
     "model_aliases", "model_colors", "telemetry_start_date", "session_names",
 }
 
@@ -105,6 +108,13 @@ def validate_session_names(value: Any) -> Dict[str, str]:
     return cleaned
 
 
+def validate_flag(value: Any) -> bool:
+    """A true-or-false setting; anything else raises ValueError."""
+    if not isinstance(value, bool):
+        raise ValueError("must be true or false")
+    return value
+
+
 def validate_features(value: Any) -> Dict[str, bool]:
     """The ``{block id: on}`` map; a malformed entry raises ValueError."""
     if not isinstance(value, dict):
@@ -125,6 +135,7 @@ _VALIDATORS: Dict[str, Callable[[Any], Any]] = {
     "model_colors": model_labels.validate_colors,
     "telemetry_start_date": validate_start_date,
     "features": validate_features,
+    "tailnet_access": validate_flag,
     "session_names": validate_session_names,
 }
 

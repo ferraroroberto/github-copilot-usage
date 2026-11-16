@@ -639,6 +639,7 @@ function paintSettings(cfg) {
   $('set-allowance').value = cfg.monthly_credits;
   $('set-reset').value = cfg.cycle_reset_day;
   $('set-start').value = cfg.telemetry_start_date || '';
+  syncStartClear();
   setSwitch($('set-cli'), !!cfg.include_copilot_cli);
   $('set-roots-value').textContent = rootsLabel(cfg.extra_roots || []);
   $('set-models-value').textContent = summarizeModelSettings(cfg);
@@ -684,6 +685,11 @@ function bindNumberSetting(id, key, min, max, label) {
 bindNumberSetting('set-allowance', 'monthly_credits', 0, 1_000_000, 'Allowance');
 bindNumberSetting('set-reset', 'cycle_reset_day', 1, 28, 'Reset day');
 
+// The "Count every record" row only exists while a start date is set.
+function syncStartClear() {
+  $('set-start-clear').hidden = !$('set-start').value;
+}
+
 // An empty value counts every record again; the server refuses a date it cannot read.
 $('set-start').addEventListener('change', async () => {
   const el = $('set-start');
@@ -692,6 +698,7 @@ $('set-start').addEventListener('change', async () => {
   const saved = await saveSetting('telemetry_start_date', el.value,
     el.value ? 'Counting from ' + fmtDay(el.value + 'T00:00:00') : 'Counting every record');
   if (!saved) el.value = before;
+  syncStartClear();
 });
 $('set-start-clear').addEventListener('click', () => {
   $('set-start').value = '';

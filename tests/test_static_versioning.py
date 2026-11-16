@@ -9,6 +9,7 @@ from starlette.applications import Starlette
 from starlette.routing import Mount, Route
 from starlette.testclient import TestClient
 
+from src.shell_etag import shell_response
 from src.static_versioning import (
     CachingStaticFiles,
     StaticVersion,
@@ -44,7 +45,7 @@ def _tree(root: Path, app_js: str = "import { a } from './_vendored/mod/a.js';\n
 def _client(static: Path) -> TestClient:
     version = StaticVersion(static)
     app = Starlette(routes=[
-        Route("/", lambda request: version.index_response(request.headers.get("if-none-match"))),
+        Route("/", lambda request: shell_response(request, version.shell_html())),
         Mount("/", CachingStaticFiles(directory=static, version=version), name="static"),
     ])
     return TestClient(app)
@@ -122,8 +123,18 @@ def test_shell_carries_an_etag_and_a_repeat_costs_no_body(tmp_path: Path) -> Non
     assert again.content == b""
     assert again.headers["etag"] == etag
     assert again.headers["cache-control"] == "no-cache, must-revalidate"
-    assert client.get("/", headers={"If-None-Match": f'"stale", W/{etag}'}).status_code == 304
+    assert client.get("/", headers={"If-None-Match": f'"stale", {etag}'}).status_code == 304
+    assert client.get("/", headers={"If-None-Match": etag.removeprefix("W/")}).status_code == 304
     assert client.get("/", headers={"If-None-Match": '"stale"'}).status_code == 200
+
+
+def test_an_asset_change_rotates_the_shell_tag(tmp_path: Path) -> None:
+    static = _tree(tmp_path)
+    etag = _client(static).get("/").headers["etag"]
+    (static / "styles.css").write_text("body{color:red}", encoding="utf-8")
+    after = _client(static).get("/", headers={"If-None-Match": etag})
+    assert after.status_code == 200
+    assert after.headers["etag"] != etag
 
 
 def test_the_real_dashboard_shell_is_gzipped(tmp_path: Path, monkeypatch) -> None:

@@ -26,6 +26,7 @@ github-copilot-usage/
 │   ├── session_diagnostics.py # per-session heuristic flags: large prompt, growing prompt, high non-user share
 │   ├── insights.py            # deterministic local insights with a stable type, severity and linkable evidence
 │   ├── static_versioning.py   # content-hash cache busting: the ?v= stamp, CachingStaticFiles and the stamped index.html
+│   ├── shell_etag.py          # vendored byte-for-byte; the shell's weak ETag and the 200-or-304 answer for a conditional GET
 │   ├── billing.py             # optional GitHub billing API client (needs a token; absent → visible reason)
 │   ├── billing_state.py       # the billing card's declared state and its one derive function (docs/billing-state.md)
 │   ├── pace_alert.py          # optional Telegram message once per cycle when the projection reaches the allowance

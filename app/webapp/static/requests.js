@@ -105,7 +105,7 @@ function rowHtml(r) {
       <span class="sess-title">${esc(r.message) || '<span class="muted">(no prompt text)</span>'}${r.error ? ' ' + WARN_GLYPH : ''}</span>
       <span class="sess-credits">${credits}</span>
       <span class="sess-meta">
-        ${fmtDay(r.ts)} ${fmtTime(r.ts)} · ${esc(r.project)} · ${esc(r.model)}${r.mode ? ' · ' + esc(r.mode) : ''}
+        ${fmtDay(r.ts)} ${fmtTime(r.ts)} · ${esc(r.project)} · <span title="${esc(r.model)}">${esc(r.model_label || r.model)}</span>${r.mode ? ' · ' + esc(r.mode) : ''}
         · ${fmtTok(r.prompt_tokens)} in / ${fmtTok(r.completion_tokens)} out${took}${r.usage_estimated ? ' · estimated' : ''}
       </span>
     </li>`;

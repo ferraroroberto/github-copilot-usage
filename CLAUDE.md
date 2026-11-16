@@ -58,7 +58,7 @@ The structure ratchet's limits, baseline and Python requirement are in `docs/lay
 - key views:
   - /    (single-page dashboard; session-detail, requests and settings dialogs)
 
-Chart palettes are CVD-validated (fixed assignment order, model keeps its color, 8th+ series folds into gray "Other"); if you touch chart colors, re-validate for both themes before shipping.
+Chart palettes are CVD-validated (provider-family hues in a fixed order, one lightness step per model rank, a model keeps its color, a fourth model of a family folds into gray); if you touch chart colors (`app/webapp/static/models.js`), re-validate for both themes before shipping.
 
 The light palette matches `design.md` exactly; the dark palette matches `design.dark.md` (GitHub's dark palette, deliberately mirrored — see `app/webapp/static/styles.css:1-2`).
 

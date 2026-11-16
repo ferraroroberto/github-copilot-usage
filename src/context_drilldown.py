@@ -119,6 +119,7 @@ def drilldown(records: List[RequestRecord], period: str, label: str = "") -> Dic
             labels,
         )
 
+    models = aggregate.labels_for(records)
     contributions = [(r, _contribution(r, label)) for r in in_period]
     contributions = [(r, tokens) for r, tokens in contributions if tokens > 0]
     total = sum(tokens for _r, tokens in contributions)
@@ -148,7 +149,9 @@ def drilldown(records: List[RequestRecord], period: str, label: str = "") -> Dic
             contributions, lambda r: r.project_key,
             lambda r: {"project_key": r.project_key, "project": r.project_name}, total,
         ),
-        "models": _group(contributions, lambda r: r.model, lambda r: {"model": r.model}, total),
+        "models": _group(
+            contributions, lambda r: models.key(r.model), lambda r: {"model": models.label(r.model)}, total,
+        ),
         "sessions": sessions,
         "requests": _request_rows(contributions, total),
         "note": ESTIMATE_NOTE,

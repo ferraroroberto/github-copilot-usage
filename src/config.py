@@ -12,12 +12,15 @@ corporate machines.
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import os
 import threading
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
+
+from src import model_labels
 
 _log = logging.getLogger(__name__)
 
@@ -41,10 +44,29 @@ DEFAULTS: Dict[str, Any] = {
     "extra_roots": [],
     # Also parse GitHub Copilot CLI sessions from ~/.copilot/session-state.
     "include_copilot_cli": True,
+    # Models to merge: {"<normalised name>": "<normalised name it merges into>"}. Exact names
+    # only; src/model_labels.py says what normalising removes.
+    "model_aliases": {},
+    # Chart colour per model: {"<normalised name>": {"family": "openai", "opacity": 0.6}}.
+    # Either field may be left out; the family defaults to the model's provider.
+    "model_colors": {},
 }
 
 # Editable via POST /api/config — everything else requires editing the file.
-_UI_EDITABLE_KEYS = {"monthly_credits", "cycle_reset_day", "extra_roots", "include_copilot_cli"}
+_UI_EDITABLE_KEYS = {
+    "monthly_credits", "cycle_reset_day", "extra_roots", "include_copilot_cli",
+    "model_aliases", "model_colors",
+}
+
+# Keys whose value has a shape beyond a number or a flag; each raises ValueError when malformed.
+_VALIDATORS: Dict[str, Callable[[Any], Any]] = {
+    "model_aliases": model_labels.validate_aliases,
+    "model_colors": model_labels.validate_colors,
+}
+
+
+class ConfigError(ValueError):
+    """A settings update the server refuses; the message says which key and why."""
 
 _lock = threading.Lock()
 _cache: Dict[str, Any] = {}
@@ -72,19 +94,28 @@ def load() -> Dict[str, Any]:
     global _loaded
     with _lock:
         if _loaded:
-            return dict(_cache)
+            return copy.deepcopy(_cache)
         _load_env_file(ENV_PATH)
-        merged: Dict[str, Any] = dict(DEFAULTS)
+        merged: Dict[str, Any] = copy.deepcopy(DEFAULTS)
         try:
             raw = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
             if isinstance(raw, dict):
                 for k, v in raw.items():
                     if k in DEFAULTS:
                         merged[k] = v
+                    else:
+                        _log.warning("⚠️ config: ignoring unknown key %r in %s", k, CONFIG_PATH)
         except FileNotFoundError:
             pass
         except (OSError, ValueError) as exc:
             _log.warning("⚠️ config: %s unreadable (%s); using defaults", CONFIG_PATH, exc)
+
+        for k, check in _VALIDATORS.items():
+            try:
+                merged[k] = check(merged[k])
+            except ValueError as exc:
+                _log.warning("⚠️ config: ignoring %s in %s (%s)", k, CONFIG_PATH, exc)
+                merged[k] = copy.deepcopy(DEFAULTS[k])
 
         port_env = os.environ.get("COPILOT_USAGE_PORT")
         if port_env:
@@ -96,34 +127,50 @@ def load() -> Dict[str, Any]:
         _cache.clear()
         _cache.update(merged)
         _loaded = True
-        return dict(_cache)
+        return copy.deepcopy(_cache)
+
+
+def _clean(key: str, value: Any) -> Any:
+    """One UI-editable value in its stored form; raises ConfigError when it cannot be."""
+    try:
+        if key == "monthly_credits":
+            return max(0, int(value))
+        if key == "cycle_reset_day":
+            return min(28, max(1, int(value)))
+        if key == "extra_roots":
+            if not isinstance(value, list):
+                raise ValueError("must be a list of paths")
+            return [str(p) for p in value if str(p).strip()]
+        if key == "include_copilot_cli":
+            return bool(value)
+        return _VALIDATORS[key](value)
+    except (TypeError, ValueError) as exc:
+        raise ConfigError("%s: %s" % (key, exc)) from exc
 
 
 def save(updates: Dict[str, Any]) -> Dict[str, Any]:
-    """Persist UI-editable keys to config.json and return the new config."""
+    """Persist UI-editable keys to config.json and return the new config.
+
+    Every update is checked before any is written, so a refused request changes nothing.
+    """
+    unknown = sorted(k for k in updates if k not in DEFAULTS)
+    if unknown:
+        raise ConfigError("unknown setting(s): %s" % ", ".join(unknown))
+    readonly = sorted(k for k in updates if k not in _UI_EDITABLE_KEYS)
+    if readonly:
+        raise ConfigError("not editable here (edit config.json): %s" % ", ".join(readonly))
+    cleaned = {k: _clean(k, v) for k, v in updates.items()}
+
     current = load()
     with _lock:
-        for k, v in updates.items():
-            if k not in _UI_EDITABLE_KEYS:
-                continue
-            if k == "monthly_credits":
-                v = max(0, int(v))
-            elif k == "cycle_reset_day":
-                v = min(28, max(1, int(v)))
-            elif k == "extra_roots":
-                if not isinstance(v, list):
-                    continue
-                v = [str(p) for p in v if str(p).strip()]
-            elif k == "include_copilot_cli":
-                v = bool(v)
-            current[k] = v
+        current.update(cleaned)
         on_disk = {k: current[k] for k in DEFAULTS}
         CONFIG_PATH.write_text(
             json.dumps(on_disk, indent=2) + "\n", encoding="utf-8"
         )
         _cache.clear()
         _cache.update(current)
-    return dict(current)
+    return copy.deepcopy(current)
 
 
 def extra_roots() -> List[Path]:

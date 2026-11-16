@@ -16,7 +16,7 @@ import csv
 import io
 import logging
 from calendar import monthrange
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -28,6 +28,7 @@ from src import (
     session_diagnostics,
     vscode_parser,
 )
+from src.model_labels import ModelLabels
 from src.vscode_parser import RequestRecord
 
 _log = logging.getLogger(__name__)
@@ -98,6 +99,16 @@ def gather_records() -> Tuple[List[RequestRecord], List[dict]]:
             })
 
     return records, sources
+
+
+def labels_for(records: List[RequestRecord]) -> ModelLabels:
+    """How the models of ``records`` group, with the configured aliases applied.
+
+    Built from every record, never one period's, so a model keeps its label and colour
+    whichever period is open.
+    """
+    aliases = config.load().get("model_aliases") or {}
+    return ModelLabels(Counter(r.model for r in records), aliases)
 
 
 def _iso_or_none(mtime: float) -> Optional[str]:
@@ -234,6 +245,7 @@ def get_summary(records: List[RequestRecord], period: str = "today") -> dict:
         period = "today"
     today = date.today()
     lo, hi = _period_bounds(period, today)
+    labels = labels_for(records)
 
     in_period = [r for r in records if _in_bounds(_local_date(r), lo, hi)]
 
@@ -270,7 +282,11 @@ def get_summary(records: List[RequestRecord], period: str = "today") -> dict:
             x["credits_share_pct"] = round(100.0 * x["credits"] / total_credits, 1)
         return rows
 
-    by_model = group_by(lambda r: r.model, "model")
+    by_model = group_by(lambda r: labels.label(r.model), "model")
+    by_group = {g.label: g for g in labels.groups()}
+    for row in by_model:
+        group = by_group[row["model"]]
+        row.update(model_key=group.key, family=group.family, raw_models=list(group.raw))
     by_mode = group_by(lambda r: r.mode or "unknown", "mode")
     by_ide = group_by(lambda r: r.ide, "ide")
 
@@ -297,12 +313,13 @@ def get_summary(records: List[RequestRecord], period: str = "today") -> dict:
         "totals": totals,
         "prev_totals": prev_totals,
         "by_model": by_model,
+        "model_meta": labels.meta(),
         "by_mode": by_mode,
         "by_project": by_project,
         "by_ide": by_ide,
         "prompt_mix": prompt_mix(in_period),
-        "time_series": _time_series(records, period, today),
-        "top_sessions": build_sessions(in_period)[:_TOP_SESSIONS],
+        "time_series": _time_series(records, period, today, labels),
+        "top_sessions": build_sessions(in_period, labels)[:_TOP_SESSIONS],
         "budget": budget_status(records, today),
     }
 
@@ -341,7 +358,7 @@ def prompt_mix(records: List[RequestRecord]) -> List[dict]:
     return rows
 
 
-def _time_series(records: List[RequestRecord], period: str, today: date) -> List[dict]:
+def _time_series(records: List[RequestRecord], period: str, today: date, labels: ModelLabels) -> List[dict]:
     """Oldest-first buckets with per-model credits/tokens/requests."""
     if period in ("today", "cycle"):
         buckets = [today - timedelta(days=i) for i in range(_MAX_DAILY_BUCKETS - 1, -1, -1)]
@@ -370,9 +387,10 @@ def _time_series(records: List[RequestRecord], period: str, today: date) -> List
         bk = key_fn(_local_date(r))
         if bk not in bucket_set:
             continue
-        slot = bmap[bk].get(r.model)
+        label = labels.label(r.model)
+        slot = bmap[bk].get(label)
         if slot is None:
-            slot = bmap[bk][r.model] = {
+            slot = bmap[bk][label] = {
                 "credits": 0.0, "requests": 0,
                 "prompt_tokens": 0, "completion_tokens": 0,
                 "cache_read_tokens": 0, "cache_write_tokens": 0,
@@ -436,8 +454,13 @@ def budget_status(records: List[RequestRecord], today: Optional[date] = None) ->
 # ---------------------------------------------------------------------------
 
 
-def build_sessions(records: List[RequestRecord]) -> List[dict]:
-    """Group records into per-session rows, most expensive first."""
+def build_sessions(records: List[RequestRecord], labels: Optional[ModelLabels] = None) -> List[dict]:
+    """Group records into per-session rows, most expensive first.
+
+    ``models`` lists the grouped labels; pass the labels of the full history so a
+    subset of the records does not relabel a model.
+    """
+    labels = labels or labels_for(records)
     smap: Dict[Tuple[str, str], Dict[str, Any]] = {}
     for r in records:
         k = (r.ide, r.session_id)
@@ -463,8 +486,9 @@ def build_sessions(records: List[RequestRecord]) -> List[dict]:
             s["first_ts"] = iso
         if iso > s["last_ts"]:
             s["last_ts"] = iso
-        if r.model not in s["models"]:
-            s["models"].append(r.model)
+        model = labels.label(r.model)
+        if model not in s["models"]:
+            s["models"].append(model)
         if r.mode and r.mode not in s["modes"]:
             s["modes"].append(r.mode)
         if r.usage_source and r.usage_source not in s["usage_sources"]:
@@ -485,7 +509,7 @@ def records_in_period(records: List[RequestRecord], period: str) -> List[Request
 
 def get_sessions(records: List[RequestRecord], period: str = "all") -> List[dict]:
     in_period = records_in_period(records, period)
-    return session_diagnostics.attach_flags(build_sessions(in_period), in_period)
+    return session_diagnostics.attach_flags(build_sessions(in_period, labels_for(records)), in_period)
 
 
 def get_session_detail(records: List[RequestRecord], session_id: str) -> Optional[dict]:
@@ -494,7 +518,8 @@ def get_session_detail(records: List[RequestRecord], session_id: str) -> Optiona
     if not sess:
         return None
     sess.sort(key=lambda r: r.ts)
-    header = build_sessions(sess)[0]
+    labels = labels_for(records)
+    header = build_sessions(sess, labels)[0]
     header["requests_detail"] = [
         {
             "request_id": r.request_id,
@@ -502,6 +527,7 @@ def get_session_detail(records: List[RequestRecord], session_id: str) -> Optiona
             "message": r.message,
             "mode": r.mode,
             "model": r.model,
+            "model_label": labels.label(r.model),
             "model_requested": r.model_requested,
             "prompt_tokens": r.prompt_tokens,
             "completion_tokens": r.completion_tokens,

@@ -43,8 +43,9 @@ DEFAULTS: Dict[str, Any] = {
     # auto-discover (e.g. a company-branded fork). Each entry can point at the
     # product dir (…/MyEditor), its User dir, or a workspaceStorage dir.
     "extra_roots": [],
-    # Also parse GitHub Copilot CLI sessions from ~/.copilot/session-state.
-    "include_copilot_cli": True,
+    # Feature blocks switched off on this machine: {"<block id>": false}. A block that is not listed is on;
+    # src/features.py names the blocks.
+    "features": {},
     # Models to merge: {"<normalised name>": "<normalised name it merges into>"}. Exact names
     # only; src/model_labels.py says what normalising removes.
     "model_aliases": {},
@@ -60,7 +61,7 @@ DEFAULTS: Dict[str, Any] = {
 
 # Editable via POST /api/config — everything else requires editing the file.
 _UI_EDITABLE_KEYS = {
-    "monthly_credits", "cycle_reset_day", "extra_roots", "include_copilot_cli",
+    "monthly_credits", "cycle_reset_day", "extra_roots", "features",
     "model_aliases", "model_colors", "telemetry_start_date", "session_names",
 }
 
@@ -104,11 +105,26 @@ def validate_session_names(value: Any) -> Dict[str, str]:
     return cleaned
 
 
+def validate_features(value: Any) -> Dict[str, bool]:
+    """The ``{block id: on}`` map; a malformed entry raises ValueError."""
+    if not isinstance(value, dict):
+        raise ValueError("must be an object of block id to true or false")
+    cleaned: Dict[str, bool] = {}
+    for block_id, on in value.items():
+        if not isinstance(block_id, str) or not block_id:
+            raise ValueError("a block id must be non-empty text")
+        if not isinstance(on, bool):
+            raise ValueError("%s must be true or false" % block_id)
+        cleaned[block_id] = on
+    return cleaned
+
+
 # Keys whose value has a shape beyond a number or a flag; each raises ValueError when malformed.
 _VALIDATORS: Dict[str, Callable[[Any], Any]] = {
     "model_aliases": model_labels.validate_aliases,
     "model_colors": model_labels.validate_colors,
     "telemetry_start_date": validate_start_date,
+    "features": validate_features,
     "session_names": validate_session_names,
 }
 
@@ -145,9 +161,12 @@ def load() -> Dict[str, Any]:
             return copy.deepcopy(_cache)
         _load_env_file(ENV_PATH)
         merged: Dict[str, Any] = copy.deepcopy(DEFAULTS)
+        cli_was_off = False
         try:
             raw = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
             if isinstance(raw, dict):
+                # The Copilot CLI flag of older files is now the "copilot_cli" feature block.
+                cli_was_off = raw.pop("include_copilot_cli", True) is False
                 for k, v in raw.items():
                     if k in DEFAULTS:
                         merged[k] = v
@@ -164,6 +183,8 @@ def load() -> Dict[str, Any]:
             except ValueError as exc:
                 _log.warning("⚠️ config: ignoring %s in %s (%s)", k, CONFIG_PATH, exc)
                 merged[k] = copy.deepcopy(DEFAULTS[k])
+        if cli_was_off:
+            merged["features"].setdefault("copilot_cli", False)
 
         port_env = os.environ.get("COPILOT_USAGE_PORT")
         if port_env:
@@ -189,8 +210,6 @@ def _clean(key: str, value: Any) -> Any:
             if not isinstance(value, list):
                 raise ValueError("must be a list of paths")
             return [str(p) for p in value if str(p).strip()]
-        if key == "include_copilot_cli":
-            return bool(value)
         return _VALIDATORS[key](value)
     except (TypeError, ValueError) as exc:
         raise ConfigError("%s: %s" % (key, exc)) from exc
@@ -219,6 +238,11 @@ def save(updates: Dict[str, Any]) -> Dict[str, Any]:
         _cache.clear()
         _cache.update(current)
     return copy.deepcopy(current)
+
+
+def feature_enabled(block_id: str) -> bool:
+    """Whether a feature block is on for this machine; a block that is not listed is on."""
+    return bool(load()["features"].get(block_id, True))
 
 
 def extra_roots() -> List[Path]:

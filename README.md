@@ -17,7 +17,7 @@ start.bat        # Windows
 bash scripts/start.sh   # macOS / Linux
 ```
 
-That's it — the first run creates a virtual environment, installs three dependencies (fastapi, uvicorn, httpx), starts the server on `http://127.0.0.1:8377/` and opens the dashboard in your browser.
+That's it — the first run creates a virtual environment, installs three dependencies (fastapi, uvicorn, httpx), starts the server on `http://127.0.0.1:8377/` and opens the dashboard in your browser. Setting it up on another computer, or moving your config across: [docs/setup-and-migration.md](docs/setup-and-migration.md).
 
 ## What you get
 
@@ -36,6 +36,7 @@ That's it — the first run creates a virtual environment, installs three depend
 - **Session diagnostics** — a session row and its detail flag a large prompt, a prompt that keeps growing and a high share of system and tool overhead. They are labelled heuristics, with the thresholds as constants in `src/session_diagnostics.py`. The prompt-size flags use fixed token cuts; the overhead flag is relative to your own sessions (the top tenth, once at least ten sessions carry a composition), because system and tool overhead is high on almost every session and its level differs per machine.
 - **Insights** — a card of local, rule-based findings (top contributors, change against the previous period, billing-cycle risk, prompt composition), each with a severity and a tap that opens the session, drill-down or filtered request list it refers to. A period with no or too few requests says so rather than guessing. No model call, nothing leaves the machine.
 - **Refresh and clear cache** — the header's freshness readout opens a menu with *Refresh* (re-read what changed) and *Force refresh* (drop every parse cache and rebuild from the files); *Settings → Data sources → Clear cache* drops the caches and rebuilds on the next load. Each reports its result in a toast. Overlapping refreshes share one rebuild, which keeps running if the page that asked for it goes away, and a summary is recomputed whenever any request's content changes.
+- **Available features** — *Settings → Available features* switches whole parts of the app on or off for this machine: Copilot CLI sessions, the official billing card, the Telegram pace alert and the usage log. All are on by default; a block that is off hides its part of the page and stops its work, with no restart, and one whose dependency is missing says why. The switches are stored in `config.json`, so the code is the same everywhere.
 - **CSV export** of every request for your own spreadsheets.
 - **Official GitHub billing card** (optional): add a PAT and see the account-wide per-day per-model credit spend straight from GitHub's billing API — covers usage from *all* your devices, not just this machine.
 - **Light + dark theme** and a **Small / Default / Large text-size** setting (Settings dialog), colorblind-validated chart palette, no CDN dependencies (Chart.js is vendored — works behind corporate proxies).
@@ -90,7 +91,7 @@ Credits stay the billing measure. Cache tokens are kept in their own buckets, an
 | `monthly_credits` | `300` | your monthly credit allowance (the "/ Y" total in VS Code's Copilot menu) |
 | `cycle_reset_day` | `1` | day of month your billing cycle resets |
 | `extra_roots` | `[]` | additional editor storage paths to scan |
-| `include_copilot_cli` | `true` | also parse Copilot CLI sessions |
+| `features` | `{}` | feature blocks switched off on this machine, `{"<block>": false}`; `copilot_cli`, `billing_card`, `pace_alert` and `usage_log` exist, and a block not listed is on. An older `include_copilot_cli: false` reads as `copilot_cli` off |
 | `model_aliases` | `{}` | models to merge, `{"<name>": "<name it merges into>"}`; names are matched exactly after normalising case, spacing, separators and a release date, and a target cannot itself be merged away |
 | `model_colors` | `{}` | per-model chart colour, `{"<name>": {"family": "openai", "opacity": 0.6}}`; `family` is `google`, `anthropic`, `xai`, `openai` or `other`, `opacity` runs 0.2 to 1, and either may be left out |
 | `telemetry_start_date` | `""` | first local day (`YYYY-MM-DD`) that counts; earlier records are left out of every total, empty counts them all |
@@ -139,6 +140,8 @@ GET /api/export.csv?period=...
 GET /api/billing
 GET /api/models          every model in the local history with its spellings, provider family and alias, for the Settings choices
 GET /api/config          POST /api/config
+GET /api/features        the feature blocks: switch, whether this machine can run each, and why not
+PUT /api/features/{block_id}   {"enabled": true|false} switches one block, effective at once
 POST /api/refresh?force=false|true   rebuild the data now (force clears the parser caches first); joins a rebuild already running
 POST /api/cache/clear   drop the snapshot, the cached summaries and the parser caches; the next read rebuilds
 POST /api/alerts/test    send a Telegram test message (pace alert)

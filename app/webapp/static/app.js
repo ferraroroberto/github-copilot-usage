@@ -11,7 +11,6 @@
 
 import { buildReadoutText } from './_vendored/page-foot/page-foot.js';
 import { initUsageLog } from './_vendored/usage-log/usage-log.js';
-import { setSwitch } from './_vendored/switch/switch.js';
 import { initNavTabs } from './_vendored/nav/nav-tabs.js';
 import { renderHeadStatus } from './_vendored/home-head/home-head.js';
 import { showToast as showFleetToast } from './_vendored/toast/toast.js';
@@ -19,14 +18,26 @@ import { createRowMenu } from './_vendored/row-menu/row-menu.js';
 import { actionRowHtml, esc, splitMeta } from './rows.js';
 import { initRequests } from './requests.js';
 import { flagChips, initInsights, refreshInsights, renderDiagnostics } from './insights.js';
+import { initFeatures } from './features.js';
 import { createModelColors, initModelSettings, summarizeModelSettings } from './models.js';
 import { createCharts } from './charts.js';
 import { initSections } from './sections.js';
 import { initSessionName } from './session-name.js';
 import { fetchTrend, initTimeline, render as renderTimeline } from './timeline.js';
 
-// Local-only usage log (views, taps, device class); same-origin, no content recorded.
-const usage = initUsageLog();
+// Local-only usage log (views, taps, device class); same-origin, no content recorded. It runs only
+// while its feature block is on, and switching the block starts or stops it with no reload.
+const NO_USAGE = { trackView() {}, stop() {} };
+let usage = NO_USAGE;
+function syncUsageLog() {
+  const on = features.isOn('usage_log');
+  if (on && usage === NO_USAGE) {
+    usage = initUsageLog();
+  } else if (!on && usage !== NO_USAGE) {
+    usage.stop();
+    usage = NO_USAGE;
+  }
+}
 
 const POLL_MS = 30_000;
 // Billing changes server-side at most every 5 min (src/billing.py caches today),
@@ -157,7 +168,7 @@ function cssVar(name) {
 
 // What the server last confirmed; a failed save puts the field back to this.
 let settings = {
-  monthly_credits: 0, cycle_reset_day: 1, extra_roots: [], include_copilot_cli: true,
+  monthly_credits: 0, cycle_reset_day: 1, extra_roots: [],
   model_aliases: {}, model_colors: {},
 };
 
@@ -223,6 +234,7 @@ async function refresh() {
 
 let _billingFetched = 0;
 async function fetchBilling() {
+  if (!features.isOn('billing_card')) return;
   if (Date.now() - _billingFetched < BILLING_POLL_MS) return;
   _billingFetched = Date.now();
   let body;
@@ -640,7 +652,6 @@ function paintSettings(cfg) {
   $('set-reset').value = cfg.cycle_reset_day;
   $('set-start').value = cfg.telemetry_start_date || '';
   syncStartClear();
-  setSwitch($('set-cli'), !!cfg.include_copilot_cli);
   $('set-roots-value').textContent = rootsLabel(cfg.extra_roots || []);
   $('set-models-value').textContent = summarizeModelSettings(cfg);
   const patSet = !!cfg.billing_pat_configured;
@@ -663,6 +674,7 @@ function paintSettings(cfg) {
 $('settings-btn').addEventListener('click', async () => {
   try {
     paintSettings(await jsonApi('/api/config'));
+    await features.load();
   } catch { /* open anyway with stale values */ }
   $('settings-dialog').showModal();
 });
@@ -703,15 +715,6 @@ $('set-start').addEventListener('change', async () => {
 $('set-start-clear').addEventListener('click', () => {
   $('set-start').value = '';
   $('set-start').dispatchEvent(new Event('change'));
-});
-
-$('set-cli').addEventListener('click', async () => {
-  const el = $('set-cli');
-  const next = el.getAttribute('aria-checked') !== 'true';
-  setSwitch(el, next);
-  const saved = await saveSetting('include_copilot_cli', next,
-    next ? 'Copilot CLI sessions included' : 'Copilot CLI sessions left out');
-  if (!saved) setSwitch(el, !next);
 });
 
 $('roots-open').addEventListener('click', () => {
@@ -806,6 +809,17 @@ $('cache-clear').addEventListener('click', async () => {
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
+
+// Feature blocks are read before anything that one of them owns starts (the usage log, the billing poll).
+// The server decides which blocks are off; a failed read leaves every block on.
+const features = initFeatures({
+  jsonApi,
+  showToast: toast,
+  // The data and the billing card follow the switches, so a toggle re-reads them.
+  afterToggle: () => { _billingFetched = 0; refresh(); },
+});
+features.onChange(syncUsageLog);
+await features.load();
 
 fetch('/api/version').then((r) => r.json()).then((v) => {
   $('buildReadout').textContent = buildReadoutText(v.git_sha || 'unknown', v.built_at || '');

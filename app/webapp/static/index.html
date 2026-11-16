@@ -313,7 +313,7 @@
   </details>
 
   <!-- Official billing (optional PAT) -->
-  <details class="card card--collapsible" id="billing-card" open>
+  <details class="card card--collapsible" id="billing-card" data-feature-ui="billing_card" open>
     <summary class="collapse-summary" data-track="section-toggle">
       <span class="collapse-main">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
@@ -687,11 +687,6 @@
   <h3 class="settings-overline" id="group-sources">Data sources</h3>
   <section class="card settings-group" aria-labelledby="group-sources">
     <label class="settings-row">
-      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-terminal"></use></svg>
-      <span class="settings-row-label">Copilot CLI sessions</span>
-      <button data-track="setting-cli" id="set-cli" class="toggle" type="button" role="switch" aria-checked="true" aria-label="Include Copilot CLI sessions"><span class="knob"></span><span class="toggle-label">ON</span></button>
-    </label>
-    <label class="settings-row">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-calendar-days"></use></svg>
       <span class="settings-row-label">Start date</span>
       <span class="settings-row-number settings-row-number-date">
@@ -708,7 +703,7 @@
       <span class="settings-row-value" id="set-roots-value">None</span>
       <svg class="icon settings-row-chevron" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
     </button>
-    <div class="settings-row">
+    <div class="settings-row" data-feature-ui="billing_card">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-lock"></use></svg>
       <span class="settings-row-label">Billing token</span>
       <span class="settings-row-value" id="set-pat-value">Not set</span>
@@ -719,10 +714,10 @@
     </button>
   </section>
   <p class="settings-footnote">Records before the start date are left out of every total; leave it empty to count everything. A period it cuts into is labelled partial coverage.</p>
-  <p class="settings-footnote" id="set-pat-note" hidden></p>
+  <p class="settings-footnote" id="set-pat-note" data-feature-ui="billing_card" hidden></p>
 
-  <h3 class="settings-overline" id="group-alerts">Alerts</h3>
-  <section class="card settings-group" aria-labelledby="group-alerts">
+  <h3 class="settings-overline" id="group-alerts" data-feature-ui="pace_alert">Alerts</h3>
+  <section class="card settings-group" aria-labelledby="group-alerts" data-feature-ui="pace_alert">
     <div class="settings-row">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-bell"></use></svg>
       <span class="settings-row-label">Pace alert (Telegram)</span>
@@ -733,7 +728,45 @@
       <span class="settings-row-label">Send test message</span>
     </button>
   </section>
-  <p class="settings-footnote" id="set-alert-note"></p>
+  <p class="settings-footnote" id="set-alert-note" data-feature-ui="pace_alert"></p>
+
+  <h3 class="settings-overline" id="group-features">Available features</h3>
+  <section class="card settings-group" aria-labelledby="group-features">
+    <label class="settings-row">
+      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-terminal"></use></svg>
+      <span class="settings-row-text">
+        <span class="settings-row-label">Copilot CLI sessions</span>
+        <span class="settings-row-hint" data-covers="Reads the terminal CLI session logs">Reads the terminal CLI session logs</span>
+      </span>
+      <button data-track="feature-copilot-cli" data-feature="copilot_cli" class="toggle on" type="button" role="switch" aria-checked="true" aria-label="Copilot CLI sessions"><span class="knob"></span><span class="toggle-label">ON</span></button>
+    </label>
+    <label class="settings-row">
+      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-clipboard-list"></use></svg>
+      <span class="settings-row-text">
+        <span class="settings-row-label">Official billing card</span>
+        <span class="settings-row-hint" data-covers="The GitHub billing card and its token">The GitHub billing card and its token</span>
+      </span>
+      <button data-track="feature-billing-card" data-feature="billing_card" class="toggle on" type="button" role="switch" aria-checked="true" aria-label="Official billing card"><span class="knob"></span><span class="toggle-label">ON</span></button>
+    </label>
+    <label class="settings-row">
+      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-bell"></use></svg>
+      <span class="settings-row-text">
+        <span class="settings-row-label">Pace alert</span>
+        <span class="settings-row-hint" data-covers="The Telegram message and its timer">The Telegram message and its timer</span>
+      </span>
+      <button data-track="feature-pace-alert" data-feature="pace_alert" class="toggle on" type="button" role="switch" aria-checked="true" aria-label="Pace alert"><span class="knob"></span><span class="toggle-label">ON</span></button>
+    </label>
+    <label class="settings-row">
+      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-activity"></use></svg>
+      <span class="settings-row-text">
+        <span class="settings-row-label">Usage log</span>
+        <span class="settings-row-hint" data-covers="Which views and controls get used">Which views and controls get used</span>
+      </span>
+      <button data-track="feature-usage-log" data-feature="usage_log" class="toggle on" type="button" role="switch" aria-checked="true" aria-label="Usage log"><span class="knob"></span><span class="toggle-label">ON</span></button>
+    </label>
+  </section>
+  <p class="settings-footnote">Each switch is for this machine only and applies at once. A block that is off hides its part of the page and stops its work.</p>
+  <p class="settings-footnote" id="features-note" hidden></p>
   </div>
   </div>
 </dialog>

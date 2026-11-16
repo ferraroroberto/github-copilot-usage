@@ -2,7 +2,7 @@
 
 Binds to 127.0.0.1 only — this is a personal, local tool; nothing is exposed
 on the network. All endpoints are read-only over Copilot's own log files
-except POST /api/config and PUT /api/sessions/{id}/name (both write config.json); the
+except POST /api/config, PUT /api/sessions/{id}/name and PUT /api/features/{id} (all write config.json); the
 refresh and cache-clear endpoints only change this process's in-memory state.
 """
 
@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import PlainTextResponse, Response
 
@@ -25,6 +25,7 @@ from src import (
     billing,
     config,
     context_drilldown,
+    features,
     insights,
     model_labels,
     pace_alert,
@@ -47,6 +48,16 @@ app = FastAPI(title="github-copilot-usage", version=VERSION, docs_url="/api/docs
 # A phone on a slow link pays for every byte of the shell, the module graph and the JSON.
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
+def _requires(block_id: str):
+    """A route dependency that refuses the call while a feature block is switched off."""
+
+    async def check() -> None:
+        if not config.feature_enabled(block_id):
+            raise HTTPException(status_code=404, detail="turned off in Settings, Available features: " + block_id)
+
+    return Depends(check)
+
+
 # Local-only view/tap log: the vendored router over a per-user database. Resolving the path creates
 # nothing, so an unwritable data folder cannot stop the server from starting.
 # Mounted before the catch-all static mount below. The vendored module targets Python 3.11+ while
@@ -56,7 +67,7 @@ try:
 except Exception as exc:  # any failure of this optional component must not stop the server
     _log.warning("⚠️ usage log disabled, the dashboard runs without it: %s: %s", type(exc).__name__, exc)
 else:
-    app.include_router(usage_router(usage_db_path()))
+    app.include_router(usage_router(usage_db_path()), dependencies=[_requires("usage_log")])
 
 
 async def _pace_alert_loop() -> None:
@@ -71,7 +82,19 @@ async def _pace_alert_loop() -> None:
 
 
 # Held here so the event loop's weak reference is not the task's only one.
-_background: list = []
+_pace_task: Optional["asyncio.Task[None]"] = None
+
+
+def _sync_pace_alert() -> None:
+    """Run the pace-alert timer exactly while its feature block is on."""
+    global _pace_task
+    running = _pace_task is not None and not _pace_task.done()
+    if config.feature_enabled("pace_alert"):
+        if not running:
+            _pace_task = asyncio.create_task(_pace_alert_loop())
+    elif _pace_task is not None:
+        _pace_task.cancel()
+        _pace_task = None
 
 
 @app.on_event("startup")
@@ -79,13 +102,13 @@ async def _startup() -> None:
     reason = pace_alert.channel_reason()
     if reason is not None:
         _log.info("ℹ️ pace alert off: Telegram %s", reason)
-    _background.append(asyncio.create_task(_pace_alert_loop()))
+    _sync_pace_alert()
 
 
 @app.on_event("shutdown")
 async def _shutdown() -> None:
-    for task in _background:
-        task.cancel()
+    if _pace_task is not None:
+        _pace_task.cancel()
     await billing.close_client()
 
 
@@ -224,7 +247,7 @@ async def api_export(
     )
 
 
-@app.get("/api/billing")
+@app.get("/api/billing", dependencies=[_requires("billing_card")])
 async def api_billing(days: int = Query(14, ge=1, le=30)) -> dict:
     try:
         return await billing.get_daily_credits(days)
@@ -266,6 +289,28 @@ async def api_config_post(updates: dict) -> dict:
         raise HTTPException(status_code=400, detail=str(exc))
 
 
+@app.get("/api/features")
+async def api_features_get() -> dict:
+    """The feature blocks with their switch and whether this machine can run each."""
+    return {"blocks": features.describe()}
+
+
+@app.put("/api/features/{block_id}")
+async def api_features_put(block_id: str, body: dict) -> dict:
+    """Switch one block on or off; takes effect now, with no restart."""
+    enabled = (body or {}).get("enabled")
+    if not isinstance(enabled, bool):
+        raise HTTPException(status_code=400, detail="enabled: must be true or false")
+    try:
+        features.set_enabled(block_id, enabled)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="unknown feature block")
+    except config.ConfigError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    _sync_pace_alert()
+    return {"blocks": features.describe()}
+
+
 @app.get("/api/models")
 async def api_models() -> dict:
     """Every model in the local history as spelled before any alias, for the Settings choices.
@@ -276,7 +321,7 @@ async def api_models() -> dict:
     return {"families": model_labels.family_options(), "models": aggregate.labels_for(records).catalog()}
 
 
-@app.post("/api/alerts/test")
+@app.post("/api/alerts/test", dependencies=[_requires("pace_alert")])
 async def api_alert_test() -> dict:
     try:
         await pace_alert.send_telegram("Test from github-copilot-usage: pace alerts will arrive in this chat.")

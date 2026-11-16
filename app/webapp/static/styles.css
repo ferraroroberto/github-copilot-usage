@@ -385,6 +385,9 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
   border: 1px solid color-mix(in srgb, var(--attention) 30%, transparent); border-radius: var(--r-md);
 }
 
+/* ---- feature blocks: whatever belongs to a block that is switched off (features.js) ---- */
+[data-feature-off] { display: none !important; }
+
 /* ---- chart history ---- */
 .trend-range { margin: 0 0 10px; font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); }
 .trend-nav { display: flex; flex-wrap: wrap; gap: var(--gutter); }

@@ -106,7 +106,7 @@ def _period_change(summary: Dict[str, Any], period: str) -> List[Dict[str, Any]]
     if abs(change) < CHANGE_PCT:
         return []
     text = "Credits are %s %d%% on %s (%s vs %s)." % (
-        "up" if change > 0 else "down", round(abs(change)), _PREVIOUS[period],
+        "up" if change > 0 else "down", round(abs(change)), _PREVIOUS.get(period, "the span before"),
         _credits(now), _credits(prev["credits"]),
     )
     return [_insight("period_change", "warning" if change > 0 else "info", text, period=period)]
@@ -157,8 +157,7 @@ def _prompt_composition(
 
 def build_insights(records: List[RequestRecord], period: str = "week") -> Dict[str, Any]:
     """All insights for ``period``, most severe first, with the state of the evidence."""
-    if period not in aggregate.VALID_PERIODS:
-        period = "week"
+    period = aggregate.normalize_period(period, "week")
     summary = aggregate.get_summary(records, period)
     in_period = aggregate.records_in_period(records, period)
     cov = context_drilldown.coverage(in_period)

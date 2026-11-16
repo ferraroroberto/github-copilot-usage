@@ -181,10 +181,10 @@ body:has(dialog[open]) { overflow: hidden; }
 /* The card surface is the vendored card.css; this page's headers stay left-packed
  * (the vendored one spreads title and meta apart) and carry a bottom margin. */
 .card { min-width: 0; }
-.card-head { justify-content: flex-start; margin-bottom: 10px; flex-wrap: wrap; }
-.card-head h2 { font-size: var(--font-body); font-weight: 700; margin: 0; }
+.card-head { justify-content: flex-start; margin-bottom: 10px; flex-wrap: nowrap; }
+.card-head h2 { font-size: var(--font-body); font-weight: 700; margin: 0; min-width: 0; }
 .card-icon { width: 18px; height: 18px; color: var(--fg-muted); flex: none; }
-.card-meta { margin: 0 0 0 auto; font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); }
+.card-meta { margin: 0 0 0 auto; min-width: 0; text-align: right; font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); }
 .badge {
   font-size: var(--font-caption); font-weight: 700; color: var(--fg-muted);
   background: var(--canvas-subtle); border: 1px solid var(--border-muted);
@@ -442,3 +442,42 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 .menu-item:hover { background: color-mix(in srgb, var(--fg) 8%, transparent); }
 .menu-item:disabled { color: var(--fg-muted); cursor: default; }
 .menu-item .icon { color: var(--fg-muted); }
+
+/* ---- collapsible sections ---- */
+/* The chevron is the only target that folds a card; the head's own text stays inert. */
+.collapse-btn { margin-left: auto; margin-block: -13px; }
+.card-meta + .collapse-btn { margin-left: 0; }
+.collapse-btn svg { transition: transform 0.15s ease; }
+.card.collapsed .collapse-btn svg { transform: rotate(-90deg); }
+.card.collapsed > :not(.card-head) { display: none; }
+.card.collapsed .card-head { margin-bottom: 0; }
+@media (prefers-reduced-motion: reduce) { .collapse-btn svg { transition: none; } }
+
+/* ---- focused range and coverage ---- */
+.focus-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--gutter);
+  padding: 4px 4px 4px 14px; background: var(--accent-soft); border: 1px solid var(--accent-border-soft);
+  border-radius: var(--r-md);
+}
+.focus-label { font-size: var(--font-label); font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.focus-bar .btn-surface { margin-top: 0; flex: none; }
+.coverage-note {
+  margin: 0; padding: 8px 12px; font-size: var(--font-label); font-weight: 600; color: var(--attention-text);
+  background: color-mix(in srgb, var(--attention) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--attention) 30%, transparent); border-radius: var(--r-md);
+}
+
+/* ---- chart history ---- */
+.trend-nav { display: flex; flex-wrap: wrap; gap: var(--gutter); }
+.trend-nav .btn-surface { margin-top: 0; min-width: 72px; }
+.trend-nav .btn-surface:disabled { color: var(--fg-muted); opacity: 0.55; cursor: default; }
+.chart-wrap canvas { cursor: pointer; }
+
+/* ---- session rename ---- */
+.rename-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.rename-row .rq-field { flex: 1 1 180px; width: auto; }
+.rename-row .btn-surface { margin-top: 0; }
+
+/* ---- settings: the start date ---- */
+.settings-row-date { width: auto; min-width: 9.5em; text-align: left; -moz-appearance: auto; }
+.settings-row-clear { margin-top: 0; }

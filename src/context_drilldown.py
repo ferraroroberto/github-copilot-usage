@@ -103,8 +103,7 @@ def _empty(period: str, label: str, cov: Dict[str, Any], reason: str, labels: Li
 
 def drilldown(records: List[RequestRecord], period: str, label: str = "") -> Dict[str, Any]:
     """The largest contributors to ``label`` (all prompt tokens when empty) in ``period``."""
-    if period not in aggregate.VALID_PERIODS:
-        period = "week"
+    period = aggregate.normalize_period(period, "week")
     in_period = aggregate.records_in_period(records, period)
     cov = coverage(in_period)
     labels = aggregate.prompt_mix(in_period)

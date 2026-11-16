@@ -63,6 +63,8 @@ class RequestRecord:
     cache_write_tokens: int = 0
     usage_source: str = ""          # vscode | session-store | events.jsonl | events.jsonl-allocated | events.jsonl-checkpoint
     usage_estimated: bool = False   # True = allocated from session/checkpoint totals, not measured per prompt
+    # Set only on the read-time copy of a renamed session: the title the log itself carried.
+    parsed_title: str = ""
 
 
 @dataclass

@@ -71,7 +71,7 @@ class Query:
     ) -> "Query":
         """Clamp every field to its allowed values so a stale URL still gives a valid view."""
         return cls(
-            period=period if period in aggregate.VALID_PERIODS else "week",
+            period=aggregate.normalize_period(period, "week"),
             project=project or "",
             model=model or "",
             mode=mode or "",

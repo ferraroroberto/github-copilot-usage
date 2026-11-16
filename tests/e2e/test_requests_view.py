@@ -7,17 +7,12 @@ The page's usage-log posts are intercepted so the run writes nothing to the user
 
 from __future__ import annotations
 
-import socket
-import threading
-import time
 from datetime import datetime, timedelta, timezone
 from typing import Iterator, List
 
 import pytest
 
 sync_api = pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
-
-import uvicorn  # noqa: E402
 
 from src import aggregate  # noqa: E402
 from src.vscode_parser import RequestRecord  # noqa: E402
@@ -54,38 +49,12 @@ def _records() -> List[RequestRecord]:
 
 
 @pytest.fixture(scope="module")
-def base_url() -> Iterator[str]:
+def base_url(serve) -> Iterator[str]:
     original = aggregate.gather_records
     aggregate.gather_records = lambda: (_records(), [])  # type: ignore[assignment]
-    from app.server import app
-
-    sock = socket.socket()
-    sock.bind(("127.0.0.1", 0))
-    port = sock.getsockname()[1]
-    sock.close()
-    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
-    thread = threading.Thread(target=server.run, daemon=True)
-    thread.start()
-    for _ in range(100):
-        if server.started:
-            break
-        time.sleep(0.1)
-    assert server.started, "the test server did not start"
-    yield "http://127.0.0.1:%d" % port
-    server.should_exit = True
-    thread.join(timeout=10)
+    with serve() as url:
+        yield url
     aggregate.gather_records = original  # type: ignore[assignment]
-
-
-@pytest.fixture(scope="module")
-def browser():
-    with sync_api.sync_playwright() as pw:
-        try:
-            chromium = pw.chromium.launch()
-        except Exception as exc:  # no browser binary installed
-            pytest.skip("chromium is not installed: %s" % str(exc).splitlines()[0])
-        yield chromium
-        chromium.close()
 
 
 @pytest.fixture()

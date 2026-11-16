@@ -56,7 +56,7 @@ The structure ratchet's limits, baseline and Python requirement are in `docs/lay
   - app/webapp/static/**/*.css
   - app/webapp/static/**/*.{js,html}
 - key views:
-  - /    (single-page dashboard; session-detail, requests and settings dialogs)
+  - /    (four tabs: Overview, Trends, Breakdown, Sessions; session-detail, requests and settings dialogs)
 
 Chart palettes are CVD-validated (provider-family hues in a fixed order, one lightness step per model rank, a model keeps its color, a fourth model of a family folds into gray); if you touch chart colors (`app/webapp/static/models.js`), re-validate for both themes before shipping.
 
@@ -69,6 +69,6 @@ The light palette matches `design.md` exactly; the dark palette matches `design.
 - **hit-target WARN (`.model-dot`, 10×10px)** — `.model-dot` is a decorative colour swatch (`<span>` in the models table, `app/webapp/static/app.js`), not a pointer target, so the 44px floor (design.md Touch targets) doesn't apply; the lint flags it only because "del" in "model" trips its interactive-selector heuristic. The genuinely interactive compact controls (`.icon-btn`, `.dialog-close`) carry the invisible `::before` hit-area expansion.
 - **glyph-icons WARN (two prose arrows in `index.html`)** — low materiality; the arrows stay as copy.
 
-The bottom-tab pill nav contract doesn't apply: single-view dashboard, the only `<nav>` is the period segmented control (`app/webapp/static/index.html`, `class="seg"`), not primary navigation, and there is no `_vendored/nav/`. The installed PWA uses the window as its scroller (no fixed-inset `.app` shell); `app/webapp/static/styles.css` hides page scroll under an open `<dialog>` and pads `.app` by `env(safe-area-inset-bottom)`, and `index.html` sets `apple-mobile-web-app-status-bar-style` to `default`. If the app ever grows a second top-level view, adopt `_vendored/nav/` verbatim — never re-author it.
+Navigation is the vendored `_vendored/nav/` bottom-tab pill (four tabs, each a `.pane` in `app/webapp/static/index.html`), opened by one vendored `home-head` page header: the tab's title, a context line, the freshness readout that opens the Refresh menu, the theme toggle and the Settings gear (Settings is never a tab). The period control and the focus bar sit under the header and apply to every tab. The installed PWA uses the window as its scroller; `index.html` carries the nav's standalone head (`viewport-fit=auto`, `black-translucent`). Never re-author a vendored component; re-vendor it.
 
 **App icons — self-contained, no `brand_gen`.** The PWA icon family (`icon-180/192/512`, distinct `icon-512-maskable`, multi-size `favicon.ico`) + `app/webapp/static/manifest.webmanifest` come from `scripts/gen_icons.py`, a standalone Pillow-only script reproducing `app/webapp/static/favicon.svg` (GitHub-blue tile, white column-chart bars). It must not import project-scaffolding's `brand_gen`: this repo is public and may not reference other local repos. The generated assets are committed; regenerate after a brand change with `.venv\Scripts\python.exe scripts\gen_icons.py`. (`design_lint`'s app-icon-family check keys on the `brand_gen` contract name + a `render_set()` call in `scripts/`, both satisfied here.)

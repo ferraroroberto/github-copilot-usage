@@ -73,6 +73,7 @@ def _rows(page) -> int:
 def _open(page, base_url: str, query: str = "") -> None:
     page.goto(base_url + "/" + query)
     if not query:
+        page.click('.tabs .tab[data-tab="sessions"]')
         page.click("#requests-open")
     page.wait_for_selector("#rq-list li")
 

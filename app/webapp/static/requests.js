@@ -145,7 +145,7 @@ function syncControls() {
   const labels = ORDER_LABELS[filters.sort] || ORDER_LABELS.ts;
   $('rq-order').textContent = filters.order === 'asc' ? labels[1] : labels[0];
   $('rq-period').querySelectorAll('button').forEach((b) =>
-    b.classList.toggle('active', b.dataset.period === filters.period));
+    b.setAttribute('aria-pressed', String(b.dataset.period === filters.period)));
   const active = activeFilters();
   $('rq-clear').hidden = active === 0;
   $('rq-filter-count').hidden = active === 0;

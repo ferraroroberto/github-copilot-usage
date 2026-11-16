@@ -781,6 +781,75 @@ $('alert-test').addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Refresh and clear cache
+// ---------------------------------------------------------------------------
+
+const menu = $('topmenu');
+const menuBtn = $('menu-btn');
+
+// The popover is in the top layer, so it is anchored to the button by hand.
+menu.addEventListener('beforetoggle', (e) => {
+  if (e.newState !== 'open') return;
+  const rect = menuBtn.getBoundingClientRect();
+  menu.style.top = Math.round(rect.bottom + 4) + 'px';
+  menu.style.right = Math.max(8, Math.round(window.innerWidth - rect.right)) + 'px';
+  menu.style.left = 'auto';
+});
+menu.addEventListener('toggle', (e) => menuBtn.setAttribute('aria-expanded', String(e.newState === 'open')));
+
+function closeMenu() {
+  try { if (menu.hidePopover && menu.matches(':popover-open')) menu.hidePopover(); } catch { /* already closed */ }
+}
+
+function refreshToast(res, force) {
+  const n = fmtNum(res.requests) + ' request' + (res.requests === 1 ? '' : 's');
+  if (res.joined) return 'A refresh was already running; its result is in: ' + n;
+  return (force ? 'Rebuilt from the files: ' : 'Refreshed: ') + n;
+}
+
+let refreshing = false;
+// One refresh at a time from this page; a second tap while one runs is ignored, and the server
+// joins any that overlap from elsewhere.
+async function runRefresh(force) {
+  if (refreshing) return;
+  refreshing = true;
+  closeMenu();
+  menuBtn.setAttribute('aria-busy', 'true');
+  menuBtn.disabled = true;
+  try {
+    const res = await jsonApi('/api/refresh' + (force ? '?force=true' : ''), { method: 'POST' });
+    if (!res.ok) {
+      showToast('Refresh failed: ' + res.reason, true);
+      return;
+    }
+    showToast(refreshToast(res, force));
+    await refresh();
+  } catch (exc) {
+    console.error(exc);
+    showToast('Refresh failed: ' + exc.message, true);
+  } finally {
+    refreshing = false;
+    menuBtn.disabled = false;
+    menuBtn.removeAttribute('aria-busy');
+  }
+}
+
+$('menu-refresh').addEventListener('click', () => runRefresh(false));
+$('menu-force').addEventListener('click', () => runRefresh(true));
+
+$('cache-clear').addEventListener('click', async () => {
+  try {
+    const res = await jsonApi('/api/cache/clear', { method: 'POST' });
+    if (!res.ok) throw new Error('refused');
+    showToast('Cache cleared. Rebuilding from the files.');
+    await refresh();
+  } catch (exc) {
+    console.error(exc);
+    showToast('Could not clear the cache: ' + exc.message, true);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 

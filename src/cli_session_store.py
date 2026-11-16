@@ -67,6 +67,11 @@ class StoreSnapshot:
 _cache: Dict[str, Tuple[tuple, Optional[StoreSnapshot], str]] = {}
 
 
+def clear_cache() -> None:
+    """Forget every read, so the next one opens the database again."""
+    _cache.clear()
+
+
 def _signature(db_path: Path) -> Optional[tuple]:
     sig = []
     for p in (db_path, db_path.with_name(db_path.name + "-wal")):

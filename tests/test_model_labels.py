@@ -52,7 +52,7 @@ def test_blank_and_missing_models_read_as_unknown():
     ("GPT-5 mini", "openai"), ("o3-mini", "openai"), ("codex-max", "openai"),
     ("Claude Sonnet 4.5", "anthropic"), ("haiku-3", "anthropic"),
     ("Gemini 2.5 Pro", "google"), ("grok-code-fast-1", "xai"),
-    ("Raptor mini", "other"), ("unknown", "other"),
+    ("Phi-4", "microsoft"), ("MAI-Code-1.1-Flash", "microsoft"), ("Raptor mini", "other"), ("sapphire", "other"), ("unknown", "other"),
 ])
 def test_family_follows_the_provider(name, family):
     assert model_labels.family_of(model_labels.normalize(name)) == family
@@ -263,5 +263,5 @@ def test_api_models_lists_the_history_for_the_settings_choices(spelled, monkeypa
 
     monkeypatch.setattr(aggregate, "gather_records", lambda: (spelled, []))
     body = TestClient(app).get("/api/models").json()
-    assert [f["id"] for f in body["families"]] == ["google", "anthropic", "xai", "openai", "other"]
+    assert [f["id"] for f in body["families"]] == ["google", "anthropic", "xai", "openai", "microsoft", "other"]
     assert body["models"][0]["key"] == "gpt-5-mini" and body["models"][0]["requests"] == 3

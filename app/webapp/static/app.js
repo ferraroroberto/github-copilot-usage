@@ -72,7 +72,10 @@ $('theme-toggle').addEventListener('click', () => {
   const next = currentTheme() === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('copilot-usage.theme', next);
-  if (state.summary) renderCharts();   // re-resolve palette + axis colors
+  if (state.summary) {   // re-resolve palette + axis colors, and the table swatches that share them
+    renderCharts();
+    renderModelTable(state.summary.by_model || []);
+  }
 });
 
 // ---------------------------------------------------------------------------

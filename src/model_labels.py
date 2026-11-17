@@ -21,13 +21,13 @@ from typing import Any, Dict, List, Mapping, Tuple
 
 UNKNOWN = "unknown"
 
-# (id, label), in the order the chart stacks them: it is also the fixed hue order the front
-# end's palette is validated in.
+# (id, label), in the order the chart stacks them; each family has one brand colour in the front end.
 FAMILIES: Tuple[Tuple[str, str], ...] = (
     ("google", "Google"),
     ("anthropic", "Anthropic"),
     ("xai", "xAI"),
     ("openai", "OpenAI"),
+    ("microsoft", "Microsoft"),
     ("other", "Other providers"),
 )
 FAMILY_IDS = tuple(family for family, _ in FAMILIES)
@@ -44,6 +44,7 @@ _FAMILY_RULES = (
     ("google", re.compile(r"gemini|gemma")),
     ("xai", re.compile(r"grok")),
     ("openai", re.compile(r"(^|-)(gpt|chatgpt|codex)|^o\d+(-|$)")),
+    ("microsoft", re.compile(r"^mai-|(^|-)phi-?\d|microsoft")),
 )
 
 

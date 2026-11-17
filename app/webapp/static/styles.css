@@ -397,7 +397,7 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 /* ---- inline form controls ----
  * An input or select has no ::before to grow its hit area, and the vendored recipes reach the
  * 44px floor on touch only, so every pointer gets real 44px geometry. */
-.input-native, .select-native, .settings-row-input { height: var(--hit-min); }
+.input-native, .select-native { height: var(--hit-min); }
 /* The start date shrinks to the room its label leaves, up to 12em: WebKit draws a native date field
  * wider than a phone row, so it has to be told to shrink. */
 .settings-row-number-date { flex: 0 1 auto; min-width: 0; }

@@ -53,7 +53,8 @@ DEFAULTS: Dict[str, Any] = {
     # only; src/model_labels.py says what normalising removes.
     "model_aliases": {},
     # Chart colour per model: {"<normalised name>": {"family": "openai", "opacity": 0.6}}.
-    # Either field may be left out; the family defaults to the model's provider.
+    # Either field may be left out: the family defaults to the model's provider, the opacity to
+    # its rank by credits within the family (100, 80, 60, 40, then 20 per cent).
     "model_colors": {},
     # First local day (YYYY-MM-DD) that counts; earlier records are left out of every total.
     # Empty means every record counts.

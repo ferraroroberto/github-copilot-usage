@@ -1,41 +1,46 @@
 /* Model colours and the Settings sheet that merges models and overrides a colour.
  *
- * A model's colour is its provider family's hue, stepped lighter (light mode) or darker
- * (dark mode) by its rank among the family's models, in credit order; a model past the third
- * of its family takes the gray. Assignment follows the model, never a filter, and a model
- * keeps its step while the page lives. The family hues are the dashboard's validated
- * categorical order (blue, orange, purple, green, pink) and the steps pass the dataviz
- * validator's ordinal checks per family, with the family boundaries, band and chroma checks
- * in both modes. The lightest light steps and the deepest dark steps sit under 3:1 on the
- * card, so the legend, tooltips and the By model table (swatch plus name) carry the identity
- * as well, and stacked segments keep their surface gap.
+ * A model's colour is its provider family's brand colour at an opacity set by its rank among the
+ * family's models, in credit order: the most used is solid, then 80, 60, 40 and 20%, with 20% the
+ * floor for any further model. A saved override (family and/or opacity) wins over both. The
+ * brand colours are lightened where needed to hold 3:1 on the card in each theme; they are not
+ * all colour-blind safe together, so the legend, tooltips and the By model table (swatch plus
+ * name) carry the identity as well, and stacked segments keep their surface gap.
  */
 
-const LADDER = {
+const BRAND = {
   light: {
-    google:    ['#0969da', '#3489fd', '#74acfd'],
-    anthropic: ['#bc4c00', '#de6b31', '#ff8d58'],
-    xai:       ['#8250df', '#9f73fe', '#b8a0fd'],
-    openai:    ['#1a7f37', '#409e54', '#61be72'],
-    other:     ['#bf3989', '#e25aa8', '#fd83c5'],
+    google:    '#4285f4',
+    anthropic: '#c15f3c',
+    xai:       '#24292f',
+    openai:    '#0e9272',
+    microsoft: '#b7791f',
+    other:     '#8c959f',
   },
   dark: {
-    google:    ['#4493f8', '#2d7de0', '#1067c8'],
-    anthropic: ['#dd6b20', '#c25702', '#a44800'],
-    xai:       ['#a371f7', '#8e5bdf', '#7a44c7'],
-    openai:    ['#2ea043', '#058a2d', '#007322'],
-    other:     ['#db61a2', '#c34b8d', '#ab3478'],
+    google:    '#5b9bf8',
+    anthropic: '#d97757',
+    xai:       '#e6edf3',
+    openai:    '#10a37f',
+    microsoft: '#ffb900',
+    other:     '#8b949e',
   },
 };
-const OTHER_COLOR = { light: '#656d76', dark: '#8b949e' };
-// Stack order, and the order the single-series charts draw from.
-const FAMILY_ORDER = ['google', 'anthropic', 'xai', 'openai', 'other'];
-const STEPS_PER_FAMILY = 3;
-const OPACITIES = [1, 0.8, 0.6, 0.4];
+// A plain series palette for charts that are not per model (tokens in / out / cache).
+const SERIES = {
+  light: ['#0969da', '#bc4c00', '#8250df'],
+  dark: ['#4493f8', '#dd6b20', '#a371f7'],
+};
+// Opacity by rank within a family; a rank past the end keeps the last (the floor).
+const RANK_OPACITY = [1, 0.8, 0.6, 0.4, 0.2];
+// What the Settings sheet offers as an explicit opacity.
+const OPACITIES = RANK_OPACITY;
+// Stack order, as the server lists the families.
+const FAMILY_ORDER = ['google', 'anthropic', 'xai', 'openai', 'microsoft', 'other'];
 
 /** A plain series colour for charts that are not per model (tokens in / out / cache). */
 export function seriesColor(theme, index) {
-  return LADDER[theme][FAMILY_ORDER[index]][0];
+  return SERIES[theme][index];
 }
 
 function withAlpha(hex, alpha) {
@@ -44,7 +49,7 @@ function withAlpha(hex, alpha) {
 }
 
 export function createModelColors(getOverrides, getTheme) {
-  const slots = new Map();   // label -> insertion order is the credit-order rank
+  const slots = new Map();   // label -> insertion order is the credit-order rank in the current data
   let meta = {};
 
   const info = (label) => meta[label] || { key: label, family: 'other' };
@@ -52,7 +57,7 @@ export function createModelColors(getOverrides, getTheme) {
   function style(label) {
     const found = info(label);
     const override = getOverrides()[found.key] || {};
-    return { family: override.family || found.family, opacity: override.opacity ?? 1 };
+    return { family: override.family || found.family, opacity: override.opacity };
   }
 
   function rankOf(label) {
@@ -67,24 +72,23 @@ export function createModelColors(getOverrides, getTheme) {
   }
 
   return {
-    // Labels a merge removed free their step for the models that remain.
     setMeta(next) {
       meta = next || {};
-      for (const label of [...slots.keys()]) if (!(label in meta)) slots.delete(label);
     },
-    // The leading models by credits take the first steps of their families.
+    // Ranks restart from the rows, which arrive in credit order, so the most used model of each
+    // family is the solid one; a series only a chart knows about ranks after them.
     seed(rows) {
+      slots.clear();
       for (const row of rows) rankOf(row.model);
     },
     colorOf(label) {
       const theme = getTheme();
       const { family, opacity } = style(label);
-      const rank = rankOf(label);
-      const steps = LADDER[theme][family] || LADDER[theme].other;
-      const base = rank >= STEPS_PER_FAMILY ? OTHER_COLOR[theme] : steps[rank];
-      return opacity < 1 ? withAlpha(base, opacity) : base;
+      const base = BRAND[theme][family] || BRAND[theme].other;
+      const alpha = opacity ?? RANK_OPACITY[Math.min(rankOf(label), RANK_OPACITY.length - 1)];
+      return alpha < 1 ? withAlpha(base, alpha) : base;
     },
-    // Family by family, each family in rank order, so neighbours in a stack are neighbours in a ladder.
+    // Family by family, each family in rank order, so the shades of one provider sit together in a stack.
     stackOrder(labels) {
       const rank = new Map(labels.map((label) => [label, rankOf(label)]));
       const family = (label) => FAMILY_ORDER.indexOf(style(label).family);
@@ -131,8 +135,8 @@ function colourFields(view, m, override) {
   for (const f of view.catalog.families) familyOptions.push(optionHtml(view, f.id, f.label, family === f.id));
   const levels = OPACITIES.includes(override.opacity) || override.opacity === undefined
     ? OPACITIES : [...OPACITIES, override.opacity].sort((a, b) => b - a);
-  const opacityOptions = levels.map((o) =>
-    optionHtml(view, o === 1 ? '' : String(o), Math.round(o * 100) + '%', (override.opacity ?? 1) === o));
+  const opacityOptions = [optionHtml(view, '', 'By usage', override.opacity === undefined)].concat(
+    levels.map((o) => optionHtml(view, String(o), Math.round(o * 100) + '%', override.opacity === o)));
   return `
     <label class="rq-label"><span>Colour family</span>
       <select data-track="model-family" class="select-native" data-key="${view.esc(m.key)}" data-field="family">${familyOptions.join('')}</select>

@@ -180,7 +180,7 @@
 </svg>
 <!-- Primary navigation: the vendored floating bottom-tab pill on a phone, the segmented
      control on desktop. A direct <body> child, sibling to <main class="app">. -->
-<nav class="tabs" role="tablist" aria-label="Sections" data-active-tab="overview">
+<nav class="tabs" data-surface="chrome.nav" role="tablist" aria-label="Sections" data-active-tab="overview">
   <button id="tab-overview" type="button" class="tab active" data-tab="overview" data-track="tab-overview"
           role="tab" aria-selected="true" aria-controls="pane-overview">
     <svg class="tab-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
@@ -219,7 +219,7 @@
 <main class="app">
   <!-- The page header (vendored home-head): the tab's title, the live context line, the
        freshness readout that opens the refresh menu, then the theme toggle and the Settings gear. -->
-  <div class="card home-head">
+  <div class="card home-head" data-surface="chrome.header">
     <span class="home-title">
       <svg class="icon" aria-hidden="true"><use id="head-icon" href="#i-gauge"></use></svg>
       <span id="head-title">Overview</span>
@@ -237,7 +237,7 @@
     </button>
   </div>
 
-  <div class="segmented period-seg" id="period-seg" role="group" aria-label="Period">
+  <div class="segmented period-seg" id="period-seg" data-surface="chrome.period" role="group" aria-label="Period">
     <button data-track="period-today" data-period="today" class="segmented-item" aria-pressed="true" type="button">Today</button>
     <button data-track="period-week" data-period="week" class="segmented-item" aria-pressed="false" type="button">Week</button>
     <button data-track="period-month" data-period="month" class="segmented-item" aria-pressed="false" type="button">Month</button>
@@ -246,15 +246,15 @@
   </div>
 
   <!-- A tapped chart bucket focuses every figure on its dates; this bar names them and undoes it -->
-  <div class="focus-bar" id="focus-bar" hidden>
+  <div class="focus-bar" id="focus-bar" data-surface="chrome.focus-bar" hidden>
     <span class="focus-label" id="focus-label"></span>
     <button data-track="focus-clear" class="button-surface" id="focus-clear" type="button">Back</button>
   </div>
-  <p class="coverage-note" id="coverage-note" role="status" hidden></p>
+  <p class="coverage-note" id="coverage-note" data-surface="chrome.coverage-note" role="status" hidden></p>
 
-  <section id="pane-overview" class="pane" role="tabpanel" aria-labelledby="tab-overview" aria-label="Overview">
+  <section id="pane-overview" data-surface="overview.pane" class="pane" role="tabpanel" aria-labelledby="tab-overview" aria-label="Overview">
   <!-- Stat tiles -->
-  <section class="tiles">
+  <section class="tiles" data-surface="overview.tiles">
     <div class="tile tile-hero">
       <div class="tile-label">Premium requests (credits)</div>
       <div class="tile-value" id="t-credits">—</div>
@@ -278,7 +278,7 @@
   </section>
 
   <!-- Budget burn-down -->
-  <details class="card card--collapsible" id="budget-card" open>
+  <details class="card card--collapsible" id="budget-card" data-surface="overview.budget" open>
     <summary class="collapse-summary" data-track="section-toggle">
       <span class="collapse-main">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22a10 10 0 1 1 10-10"/><path d="M12 6v6l4 2"/></svg>
@@ -301,7 +301,7 @@
   </details>
 
   <!-- Insights: local, rule-based findings; each opens the view it refers to -->
-  <details class="card card--collapsible" id="insights-card" hidden open>
+  <details class="card card--collapsible" id="insights-card" data-surface="overview.insights" hidden open>
     <summary class="collapse-summary" data-track="section-toggle">
       <span class="collapse-main">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
@@ -318,7 +318,7 @@
   </details>
 
   <!-- Official billing (optional PAT) -->
-  <details class="card card--collapsible" id="billing-card" data-feature-ui="billing_card" open>
+  <details class="card card--collapsible" id="billing-card" data-surface="overview.billing" data-feature-ui="billing_card" open>
     <summary class="collapse-summary" data-track="section-toggle">
       <span class="collapse-main">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
@@ -339,7 +339,7 @@
   </details>
 
   <!-- Data sources -->
-  <details class="card card--collapsible" open>
+  <details class="card card--collapsible" data-surface="overview.sources" open>
     <summary class="collapse-summary" data-track="section-toggle">
       <span class="collapse-main">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
@@ -355,9 +355,9 @@
 
   </section>
 
-  <section id="pane-trends" class="pane" role="tabpanel" aria-labelledby="tab-trends" aria-label="Trends" hidden>
+  <section id="pane-trends" data-surface="trends.pane" class="pane" role="tabpanel" aria-labelledby="tab-trends" aria-label="Trends" hidden>
   <!-- Charts -->
-  <section class="card" id="charts-card">
+  <section class="card" id="charts-card" data-surface="trends.charts">
     <p class="trend-range" id="trend-range"></p>
     <div class="trend-nav" id="trend-nav">
       <button data-track="trend-older" class="button-surface" id="trend-older" type="button">Older</button>
@@ -372,7 +372,7 @@
   </section>
 
   <!-- Prompt composition -->
-  <details class="card card--collapsible" id="mix-card" hidden open>
+  <details class="card card--collapsible" id="mix-card" data-surface="trends.mix" hidden open>
     <summary class="collapse-summary" data-track="section-toggle">
       <span class="collapse-main">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="10" rx="1"/></svg>
@@ -389,9 +389,9 @@
 
   </section>
 
-  <section id="pane-breakdown" class="pane" role="tabpanel" aria-labelledby="tab-breakdown" aria-label="Breakdown" hidden>
+  <section id="pane-breakdown" data-surface="breakdown.pane" class="pane" role="tabpanel" aria-labelledby="tab-breakdown" aria-label="Breakdown" hidden>
   <!-- Breakdown tables -->
-  <details class="card card--collapsible" open>
+  <details class="card card--collapsible" data-surface="breakdown.models" open>
     <summary class="collapse-summary" data-track="section-toggle">
       <span class="collapse-main">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
@@ -406,7 +406,7 @@
           <tbody></tbody>
         </table>
       </div>
-      <div class="empty-state" id="model-empty" hidden>
+      <div class="empty-state" id="model-empty" data-surface="breakdown.models-empty" hidden>
         <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-search"></use></svg>
         <p class="empty-state-message">No Copilot usage in this period.</p>
         <button data-track="empty-show-all" class="empty-state-action" type="button" data-show-all>Show all time</button>
@@ -414,7 +414,7 @@
     </div>
   </details>
 
-  <details class="card card--collapsible" open>
+  <details class="card card--collapsible" data-surface="breakdown.projects" open>
     <summary class="collapse-summary" data-track="section-toggle">
       <span class="collapse-main">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
@@ -430,7 +430,7 @@
           <tbody></tbody>
         </table>
       </div>
-      <div class="empty-state" id="project-empty" hidden>
+      <div class="empty-state" id="project-empty" data-surface="breakdown.projects-empty" hidden>
         <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-search"></use></svg>
         <p class="empty-state-message">No Copilot usage in this period.</p>
         <button data-track="empty-show-all" class="empty-state-action" type="button" data-show-all>Show all time</button>
@@ -444,9 +444,9 @@
 
   </section>
 
-  <section id="pane-sessions" class="pane" role="tabpanel" aria-labelledby="tab-sessions" aria-label="Sessions" hidden>
+  <section id="pane-sessions" data-surface="sessions.pane" class="pane" role="tabpanel" aria-labelledby="tab-sessions" aria-label="Sessions" hidden>
   <!-- Sessions -->
-  <details class="card card--collapsible" open>
+  <details class="card card--collapsible" data-surface="sessions.list" open>
     <summary class="collapse-summary" data-track="section-toggle">
       <span class="collapse-main">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></svg>
@@ -461,7 +461,7 @@
         <button data-track="sessions-sort-recent" data-sort="recent" class="segmented-item" aria-pressed="false" type="button">Recent</button>
       </div>
       <ul class="action-rows" id="session-list"></ul>
-      <div class="empty-state" id="sessions-empty" hidden>
+      <div class="empty-state" id="sessions-empty" data-surface="sessions.empty" hidden>
         <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-search"></use></svg>
         <p class="empty-state-message">No sessions in this period.</p>
         <button data-track="empty-show-all" class="empty-state-action" type="button" data-show-all>Show all time</button>
@@ -471,7 +471,7 @@
   </details>
 
   <!-- Request explorer entry: the view itself is the requests dialog below -->
-  <details class="card card--collapsible" open>
+  <details class="card card--collapsible" data-surface="sessions.requests-entry" open>
     <summary class="collapse-summary" data-track="section-toggle">
       <span class="collapse-main">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -487,12 +487,12 @@
 
   </section>
 
-  <footer class="page-foot">
+  <footer class="page-foot" data-surface="chrome.footer">
     <p id="buildReadout"></p>
   </footer>
 </main>
 <!-- Session sheet: the vendored modal. Save name is its one primary action, awake only once the name changes. -->
-<dialog data-track-view="session-detail" id="session-dialog" class="detail-dialog sheet-wide">
+<dialog data-surface="drill.session" data-track-view="session-detail" id="session-dialog" class="detail-dialog sheet-wide">
   <div class="detail-card">
     <div class="detail-header">
       <h2 id="sd-title" tabindex="-1" autofocus>Session</h2>
@@ -501,7 +501,7 @@
       </button>
     </div>
     <div class="dialog-meta" id="sd-meta"></div>
-    <form id="sd-rename" autocomplete="off">
+    <form id="sd-rename" data-surface="drill.session-rename" autocomplete="off">
       <div class="row">
         <span>Name</span>
         <input class="input-native" id="sd-name" type="text" maxlength="120" placeholder="Custom name" aria-label="Custom session name" enterkeyhint="done">
@@ -511,7 +511,7 @@
         <button data-track="session-rename-clear" class="button-ghost" id="sd-name-clear" type="button">Restore title</button>
       </div>
     </form>
-    <div id="sd-diagnostics" hidden></div>
+    <div id="sd-diagnostics" data-surface="drill.session-diagnostics" hidden></div>
     <div id="sd-mix"></div>
     <div class="table-wrap">
       <table id="sd-table">
@@ -526,7 +526,7 @@
 </dialog>
 
 <!-- Context drill-down: who drives the prompt tokens (all of them, or one composition label) -->
-<dialog data-track-view="context" id="context-dialog" class="detail-dialog sheet-wide">
+<dialog data-surface="drill.context" data-track-view="context" id="context-dialog" class="detail-dialog sheet-wide">
   <div class="detail-card">
     <div class="detail-header">
       <h2 id="cx-title" tabindex="-1" autofocus>Prompt context</h2>
@@ -537,7 +537,7 @@
     <div class="dialog-meta" id="cx-meta"></div>
     <div class="chip-row" id="cx-labels" role="group" aria-label="Composition label"></div>
     <div class="dialog-meta" id="cx-coverage"></div>
-    <div class="empty-state" id="cx-empty" hidden>
+    <div class="empty-state" id="cx-empty" data-surface="drill.context-empty" hidden>
       <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-search"></use></svg>
       <p class="empty-state-message" id="cx-empty-text"></p>
     </div>
@@ -556,7 +556,7 @@
 </dialog>
 
 <!-- Request explorer: filters, sort and page live in the URL (?view=requests&...) -->
-<dialog data-track-view="requests" id="requests-dialog" class="detail-dialog sheet-wide">
+<dialog data-surface="drill.requests" data-track-view="requests" id="requests-dialog" class="detail-dialog sheet-wide">
   <div class="detail-card">
     <div class="detail-header">
       <h2 tabindex="-1" autofocus>Requests</h2>
@@ -587,7 +587,7 @@
       <button data-track="requests-order" class="button-surface rq-order" id="rq-order" type="button">Newest first</button>
     </div>
 
-    <details class="rq-filter-box" id="rq-filter-box">
+    <details class="rq-filter-box" id="rq-filter-box" data-surface="drill.requests-filters">
       <summary data-track="requests-filters-toggle">
         <span>Filters</span><span class="badge" id="rq-filter-count" hidden></span>
         <svg class="icon rq-chevron" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
@@ -609,15 +609,15 @@
     <p class="dialog-meta rq-summary" id="rq-summary" role="status" aria-live="polite"></p>
 
     <div id="rq-body" data-state="loading">
-      <div class="empty-state" id="rq-loading">
+      <div class="empty-state" id="rq-loading" data-surface="drill.requests-loading">
         <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-search"></use></svg>
         <p class="empty-state-message">Reading requests…</p>
       </div>
-      <div class="empty-state" id="rq-empty" hidden>
+      <div class="empty-state" id="rq-empty" data-surface="drill.requests-empty" hidden>
         <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-search"></use></svg>
         <p class="empty-state-message">No requests match these filters.</p>
       </div>
-      <div class="empty-state" id="rq-error" hidden>
+      <div class="empty-state" id="rq-error" data-surface="drill.requests-error" hidden>
         <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-triangle-alert"></use></svg>
         <p class="empty-state-message">Could not load requests.</p>
         <button data-track="requests-retry" class="empty-state-action" id="rq-retry" type="button">Retry</button>
@@ -634,7 +634,7 @@
 </dialog>
 
 <!-- Settings sheet: the vendored modal; each setting saves as it changes (a toast confirms), so there is no Save button. -->
-<dialog data-track-view="settings" id="settings-dialog" class="detail-dialog">
+<dialog data-surface="settings.sheet" data-track-view="settings" id="settings-dialog" class="detail-dialog">
   <div class="detail-card">
   <div class="detail-header">
     <h2 tabindex="-1" autofocus>Settings</h2>
@@ -645,7 +645,7 @@
 
   <div>
   <h3 class="settings-overline" id="group-display">Display</h3>
-  <section class="card settings-group" aria-labelledby="group-display">
+  <section class="card settings-group" data-surface="settings.display" aria-labelledby="group-display">
     <div class="settings-row">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-sliders-horizontal"></use></svg>
       <span class="settings-row-label" id="set-textsize-label">Text size</span>
@@ -658,7 +658,7 @@
   </section>
 
   <h3 class="settings-overline" id="group-cycle">Billing cycle</h3>
-  <section class="card settings-group" aria-labelledby="group-cycle">
+  <section class="card settings-group" data-surface="settings.cycle" aria-labelledby="group-cycle">
     <label class="settings-row">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-gauge"></use></svg>
       <span class="settings-row-label">Allowance</span>
@@ -679,7 +679,7 @@
   <p class="settings-footnote">Monthly allowance: the total in VS Code's Copilot menu ("Credits X / Y used", enter Y). Plan defaults: Business 300 · Enterprise 1000 · Pro 300 · Pro+ 1500; an org pool can be far larger.</p>
 
   <h3 class="settings-overline" id="group-models">Models</h3>
-  <section class="card settings-group" aria-labelledby="group-models">
+  <section class="card settings-group" data-surface="settings.models" aria-labelledby="group-models">
     <button data-track="models-open" id="models-open" class="settings-row" type="button" aria-haspopup="dialog">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-palette"></use></svg>
       <span class="settings-row-label">Merge and colour</span>
@@ -690,7 +690,7 @@
   <p class="settings-footnote">Spellings of one model that differ only in case, spacing, separators or a release date already share a row. Merge models that are really one, or recolour a model; clearing a choice restores it.</p>
 
   <h3 class="settings-overline" id="group-sources">Data sources</h3>
-  <section class="card settings-group" aria-labelledby="group-sources">
+  <section class="card settings-group" data-surface="settings.sources" aria-labelledby="group-sources">
     <label class="settings-row">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-calendar-days"></use></svg>
       <span class="settings-row-label">Start date</span>
@@ -722,7 +722,7 @@
   <p class="settings-footnote" id="set-pat-note" data-feature-ui="billing_card" hidden></p>
 
   <h3 class="settings-overline" id="group-alerts" data-feature-ui="pace_alert">Alerts</h3>
-  <section class="card settings-group" aria-labelledby="group-alerts" data-feature-ui="pace_alert">
+  <section class="card settings-group" data-surface="settings.alerts" aria-labelledby="group-alerts" data-feature-ui="pace_alert">
     <div class="settings-row">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-bell"></use></svg>
       <span class="settings-row-label">Pace alert (Telegram)</span>
@@ -736,7 +736,7 @@
   <p class="settings-footnote" id="set-alert-note" data-feature-ui="pace_alert"></p>
 
   <h3 class="settings-overline" id="group-features">Available features</h3>
-  <section class="card settings-group" aria-labelledby="group-features">
+  <section class="card settings-group" data-surface="settings.features" aria-labelledby="group-features">
     <label class="settings-row">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-terminal"></use></svg>
       <span class="settings-row-text">
@@ -786,7 +786,7 @@
 </dialog>
 
 <!-- Extra storage roots sheet: the paths are free text, so they cannot be a one-line row. -->
-<dialog data-track-view="settings-roots" id="roots-dialog" class="detail-dialog">
+<dialog data-surface="settings.roots" data-track-view="settings-roots" id="roots-dialog" class="detail-dialog">
   <div class="detail-card">
     <div class="detail-header">
       <h2 tabindex="-1" autofocus>Extra storage roots</h2>
@@ -801,7 +801,7 @@
 </dialog>
 
 <!-- Models sheet: one card per model from the local history; each choice saves as it changes. -->
-<dialog data-track-view="settings-models" id="models-dialog" class="detail-dialog sheet-wide">
+<dialog data-surface="settings.models-sheet" data-track-view="settings-models" id="models-dialog" class="detail-dialog sheet-wide">
   <div class="detail-card">
     <div class="detail-header">
       <h2 tabindex="-1" autofocus>Models</h2>
@@ -815,7 +815,7 @@
   </div>
 </dialog>
 
-<div class="toast" id="toast" role="status" aria-live="polite" popover="manual" hidden></div>
+<div class="toast" id="toast" data-surface="chrome.toast" role="status" aria-live="polite" popover="manual" hidden></div>
 
 <script src="vendor/chart.umd.min.js"></script>
 <script type="module" src="app.js"></script>

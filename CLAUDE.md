@@ -41,6 +41,7 @@ That runs `compileall -q app src tests`, `pytest -q`, and these ratchets, each a
 - **static**: fails on a new duplicated block, unused import or variable, or likely-bug pattern; needs Node for `jscpd` and `ruff` from `requirements-dev.txt`; a detector that cannot run exits 3, which fails the gate.
 - **docs**: fails when the root `README.md` outgrows its size budget or `README.md`/`docs/` gain an issue reference, dated heading or changelog heading.
 - **comment**: fails when a product-code comment gains an issue reference.
+- **ux-surface**: fails on a surface root (`<dialog>`, a `dialog`/`menu`/`tabpanel` role, a `popover`) with no constant `data-surface` id, an id with no entry in `docs/ux-surfaces.yaml`, an entry no element carries, one id on two surfaces, a link to an id with no entry, or a `docs/ux-surface-map.md` not regenerated from the map.
 - **conventions**: rules `no-window`, `logging-not-print`, `no-drive-path` and `subprocess-timeout` fail when a source file gains a spawn without `creationflags`, a `print` in library code, a hardcoded drive path or a subprocess call without `timeout=` (or a `# subprocess-timeout-exempt: <reason>` marker).
 
 There is no CI — the gate is local. For changes with a runtime surface, additionally hit `/api/summary?period=all` on a running instance and load `/` in a browser (both themes) before calling it done.
@@ -61,6 +62,10 @@ The structure ratchet's limits, baseline and Python requirement are in `docs/lay
 Chart palettes are CVD-validated (provider-family hues in a fixed order, one lightness step per model rank, a model keeps its color, a fourth model of a family folds into gray); if you touch chart colors (`app/webapp/static/models.js`), re-validate for both themes before shipping.
 
 The light palette matches `design.md` exactly; the dark palette matches `design.dark.md` (GitHub's dark palette, deliberately mirrored — see `app/webapp/static/styles.css:1-2`).
+
+### UX surface map
+
+A change that adds, removes, renames or reshapes a surface a person can reach (a tab, card, sheet, dialog, menu, Settings row, empty or error state, gesture) updates its entry in `docs/ux-surfaces.yaml` in the same change, keeps the surface root's `data-surface` id equal to the entry's `id`, and regenerates the page with `.venv\Scripts\python.exe scripts\ux_surface_map.py`. Never edit `docs/ux-surface-map.md` by hand; the `ux-surface` ratchet fails a page the map does not generate. The vendored row menu builds its own element, so its id is stamped at the call site in `app.js`.
 
 ### Design-system conformance exceptions
 

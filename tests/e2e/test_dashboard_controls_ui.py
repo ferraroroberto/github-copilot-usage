@@ -184,6 +184,25 @@ def test_each_tab_shows_its_own_pane_under_one_page_header(page):
         assert page.inner_text("#head-title") == label  # the header names the open tab
         assert page.locator("#theme-toggle").is_visible() and page.locator("#settings-btn").is_visible()
         assert _no_horizontal_scroll(page)
+        assert page.locator("#filters-btn").is_visible() == (name == "sessions")  # Filters & sort belongs to Sessions only
+
+    # Sessions: the sort and a second copy of the period sit in one sheet; the trigger counts what differs from the defaults.
+    assert page.get_attribute("#filters-btn", "aria-label") == "Filters & sort" and page.locator("#filters-count").is_hidden()
+    page.click("#filters-btn")
+    page.wait_for_selector("#filters-dialog[open]")
+    page.click('#filters-dialog [data-sort="recent"]')
+    page.click('#filters-dialog [data-period="all"]')
+    page.wait_for_function("document.querySelectorAll('#session-list li').length === 2")
+    assert page.inner_text("#filters-count") == "2"
+    assert page.get_attribute("#filters-btn", "aria-label") == "Filters & sort, 2 active: period All time, sort Recent"
+    assert page.get_attribute('#period-seg [data-period="all"]', "aria-pressed") == "true"  # the page's control follows the sheet
+    assert page.evaluate("document.querySelector('#filters-done').getBoundingClientRect().bottom <= window.innerHeight")
+    page.click("#filters-clear")
+    page.wait_for_function("document.querySelector('#filters-count').hidden")
+    assert page.get_attribute('#period-seg [data-period="today"]', "aria-pressed") == "true"
+    page.click("#filters-done")
+    page.wait_for_selector("#filters-dialog", state="hidden")
+
     page.click("#settings-btn")
     page.wait_for_selector("#settings-dialog[open]")  # Settings is the header gear, never a tab
     page.click("#settings-close")

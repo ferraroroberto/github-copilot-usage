@@ -40,7 +40,7 @@ Walked 2026-11-17 against build `5a2781c`, at widths 390, 1440, themes light, da
 | [Overview](#overview) | 6 |
 | [Trends](#trends) | 5 |
 | [Breakdown](#breakdown) | 5 |
-| [Sessions](#sessions) | 4 |
+| [Sessions](#sessions) | 5 |
 | [Drill-ins](#drill-ins) | 10 |
 | [Settings](#settings) | 9 |
 
@@ -58,17 +58,19 @@ flowchart LR
   s5["Navigation"]
   s6["Page footer"]
   s7["Toast"]
-  s38(["Settings page · Settings"])
+  s39(["Settings page · Settings"])
+  s26(["Sessions filters and sort · Sessions"])
   s8(["Overview tab · Overview"])
   s14(["Trends tab · Trends"])
   s19(["Breakdown tab · Breakdown"])
   s24(["Sessions tab · Sessions"])
   s15(["Charts · Trends"])
   s16(["Bar tap · Trends"])
-  s29(["Session rename · Drill-ins"])
+  s30(["Session rename · Drill-ins"])
   s0 -->|"the freshness readout"| s1
-  s0 -->|"the gear"| s38
+  s0 -->|"the gear"| s39
   s1 -->|"either item"| s7
+  s2 -->|"the Filters & sort button"| s26
   s5 -->|"Overview"| s8
   s5 -->|"Trends"| s14
   s5 -->|"Breakdown"| s19
@@ -76,7 +78,7 @@ flowchart LR
   s15 -->|"tapping a bar"| s3
   s15 -->|"a failed step"| s7
   s16 --> s3
-  s29 -->|"Save name or Restore title"| s7
+  s30 -->|"Save name or Restore title"| s7
 ```
 
 ### `chrome.header` Page header
@@ -121,10 +123,17 @@ flowchart LR
 
 - **Root:** `data-surface`
 - **Reach:** below the header, on every tab
-- **Holds:** Today, Week, Month, Cycle, All
-- **Does:** each button re-reads every figure, table and chart for that period
-- **States:** a focused date range (from a tapped bar) lights no button
-- **Why:** one period for the whole page, so a figure on one tab never disagrees with another
+- **Holds:**
+  - Today, Week, Month, Cycle, All
+  - on the Sessions tab only, the Filters & sort button beside it, with a count of the values that differ from the defaults
+- **Does:**
+  - each button re-reads every figure, table and chart for that period
+  - the Filters & sort button opens the Sessions filters sheet
+- **States:**
+  - a focused date range (from a tapped bar) lights no button
+  - the Filters & sort button is hidden on the other three tabs, and its count badge is hidden while the period is Today and the sort is Cost
+- **Why:** one period for the whole page, so a figure on one tab never disagrees with another; it stays visible on Overview, Trends and Breakdown, where it is the only control and the dashboard is read by flipping it
+- **Leads to:** [Sessions filters and sort](#sessionsfilters-sessions-filters-and-sort) (the Filters & sort button)
 
 ### `chrome.focus-bar` Focus bar
 
@@ -191,18 +200,18 @@ flowchart LR
   s12["Official GitHub billing"]
   s13["Data sources"]
   s5(["Navigation · Chrome"])
-  s28(["Session sheet · Drill-ins"])
-  s31(["Context drill-down · Drill-ins"])
-  s33(["Request explorer · Drill-ins"])
+  s29(["Session sheet · Drill-ins"])
+  s32(["Context drill-down · Drill-ins"])
+  s34(["Request explorer · Drill-ins"])
   s5 -->|"Overview"| s8
   s8 --> s9
   s8 --> s10
   s8 --> s11
   s8 --> s12
   s8 --> s13
-  s11 -->|"a finding about one session"| s28
-  s11 -->|"a finding about a prompt label"| s31
-  s11 -->|"a finding about a project, a model or a period"| s33
+  s11 -->|"a finding about one session"| s29
+  s11 -->|"a finding about a prompt label"| s32
+  s11 -->|"a finding about a project, a model or a period"| s34
 ```
 
 ### `overview.pane` Overview tab
@@ -303,14 +312,14 @@ flowchart LR
   s5(["Navigation · Chrome"])
   s3(["Focus bar · Chrome"])
   s7(["Toast · Chrome"])
-  s31(["Context drill-down · Drill-ins"])
+  s32(["Context drill-down · Drill-ins"])
   s5 -->|"Trends"| s14
   s14 --> s15
   s14 --> s18
   s15 -->|"tapping a bar"| s3
   s15 -->|"a failed step"| s7
   s16 --> s3
-  s18 --> s31
+  s18 --> s32
 ```
 
 ### `trends.pane` Trends tab
@@ -385,12 +394,12 @@ flowchart LR
   s22["By project"]
   s23["By project, empty"]
   s5(["Navigation · Chrome"])
-  s46(["Models sheet · Settings"])
+  s47(["Models sheet · Settings"])
   s5 -->|"Breakdown"| s19
   s19 --> s20
   s19 --> s22
   s20 -->|"an empty period"| s21
-  s20 -->|"Settings → Merge and colour"| s46
+  s20 -->|"Settings → Merge and colour"| s47
   s22 -->|"an empty period"| s23
 ```
 
@@ -453,17 +462,21 @@ flowchart LR
 flowchart LR
   s24["Sessions tab"]
   s25["Sessions"]
-  s26["Sessions, empty"]
-  s27["Requests entry"]
+  s26["Sessions filters and sort"]
+  s27["Sessions, empty"]
+  s28["Requests entry"]
+  s2(["Period control · Chrome"])
   s5(["Navigation · Chrome"])
-  s28(["Session sheet · Drill-ins"])
-  s33(["Request explorer · Drill-ins"])
+  s29(["Session sheet · Drill-ins"])
+  s34(["Request explorer · Drill-ins"])
+  s2 -->|"the Filters & sort button"| s26
   s5 -->|"Sessions"| s24
   s24 --> s25
-  s24 --> s27
-  s25 -->|"a row"| s28
-  s25 -->|"an empty period"| s26
-  s27 -->|"Search requests"| s33
+  s24 --> s28
+  s25 -->|"a row"| s29
+  s25 -->|"an empty period"| s27
+  s26 -->|"Done"| s25
+  s28 -->|"Search requests"| s34
 ```
 
 ### `sessions.pane` Sessions tab
@@ -481,11 +494,9 @@ flowchart LR
 - **Reach:** the Sessions tab
 - **Holds:**
   - a count in the heading
-  - Cost and Recent
   - one row per session with its project, time span, request count, editor, credits and flag chips
   - Show all, or Show fewer
 - **Does:**
-  - Cost and Recent re-sort the list
   - a row opens the session sheet
   - Show all expands the preview to every session
 - **States:**
@@ -495,6 +506,22 @@ flowchart LR
 - **Leads to:**
   - [Session sheet](#drillsession-session-sheet) (a row)
   - [Sessions, empty](#sessionsempty-sessions-empty) (an empty period)
+
+### `sessions.filters` Sessions filters and sort
+
+- **Root:** `data-surface`
+- **Reach:** the Filters & sort button beside the period control, on the Sessions tab
+- **Holds:**
+  - Sort: Cost and Recent
+  - Period: Today, Week, Month, Cycle, All (the same choice as the control on the page)
+  - Clear and Done
+- **Does:**
+  - each choice applies at once and the list, the totals and the badge on the button follow
+  - Clear returns the sort to Cost and the period to Today
+  - Done and the close button end the sheet
+- **States:** the title and the footer stay pinned and the body scrolls, so Done stays on screen at 390 by 664
+- **Why:** the tab has two controls (the period and the sort), and the fleet rule puts two or more into one sheet with a count on its trigger, so a re-sorted or narrowed list never looks like the whole one
+- **Leads to:** [Sessions](#sessionslist-sessions) (Done)
 
 ### `sessions.empty` Sessions, empty
 
@@ -521,38 +548,38 @@ Three dialogs hold every drill-in: the session sheet, the context drill-down and
 
 ```mermaid
 flowchart LR
-  s28["Session sheet"]
-  s29["Session rename"]
-  s30["Session diagnostics"]
-  s31["Context drill-down"]
-  s32["Context drill-down, empty"]
-  s33["Request explorer"]
-  s34["Request filters"]
-  s35["Requests, loading"]
-  s36["Requests, empty"]
-  s37["Requests, error"]
+  s29["Session sheet"]
+  s30["Session rename"]
+  s31["Session diagnostics"]
+  s32["Context drill-down"]
+  s33["Context drill-down, empty"]
+  s34["Request explorer"]
+  s35["Request filters"]
+  s36["Requests, loading"]
+  s37["Requests, empty"]
+  s38["Requests, error"]
   s11(["Insights · Overview"])
   s18(["Where your prompt tokens go · Trends"])
   s25(["Sessions · Sessions"])
-  s27(["Requests entry · Sessions"])
+  s28(["Requests entry · Sessions"])
   s7(["Toast · Chrome"])
-  s11 -->|"a finding about one session"| s28
-  s11 -->|"a finding about a prompt label"| s31
-  s11 -->|"a finding about a project, a model or a period"| s33
-  s18 --> s31
-  s25 -->|"a row"| s28
-  s27 -->|"Search requests"| s33
-  s28 --> s29
-  s28 --> s30
-  s29 -->|"Save name or Restore title"| s7
-  s31 --> s32
-  s31 -->|"a session or request row"| s28
-  s31 -->|"a project or model row"| s33
-  s33 --> s34
-  s33 --> s35
-  s33 --> s36
-  s33 --> s37
-  s33 -->|"a row"| s28
+  s11 -->|"a finding about one session"| s29
+  s11 -->|"a finding about a prompt label"| s32
+  s11 -->|"a finding about a project, a model or a period"| s34
+  s18 --> s32
+  s25 -->|"a row"| s29
+  s28 -->|"Search requests"| s34
+  s29 --> s30
+  s29 --> s31
+  s30 -->|"Save name or Restore title"| s7
+  s32 --> s33
+  s32 -->|"a session or request row"| s29
+  s32 -->|"a project or model row"| s34
+  s34 --> s35
+  s34 --> s36
+  s34 --> s37
+  s34 --> s38
+  s34 -->|"a row"| s29
 ```
 
 ### `drill.session` Session sheet
@@ -724,27 +751,27 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  s38["Settings page"]
-  s39["Display"]
-  s40["Billing cycle"]
-  s41["Models"]
-  s42["Data sources"]
-  s43["Alerts"]
-  s44["Available features"]
-  s45["Extra storage roots sheet"]
-  s46["Models sheet"]
+  s39["Settings page"]
+  s40["Display"]
+  s41["Billing cycle"]
+  s42["Models"]
+  s43["Data sources"]
+  s44["Alerts"]
+  s45["Available features"]
+  s46["Extra storage roots sheet"]
+  s47["Models sheet"]
   s0(["Page header · Chrome"])
   s20(["By model · Breakdown"])
-  s0 -->|"the gear"| s38
-  s20 -->|"Settings → Merge and colour"| s46
-  s38 --> s39
-  s38 --> s40
-  s38 --> s41
-  s38 --> s42
-  s38 --> s43
-  s38 --> s44
-  s41 -->|"Merge and colour"| s46
-  s42 -->|"Extra storage roots"| s45
+  s0 -->|"the gear"| s39
+  s20 -->|"Settings → Merge and colour"| s47
+  s39 --> s40
+  s39 --> s41
+  s39 --> s42
+  s39 --> s43
+  s39 --> s44
+  s39 --> s45
+  s42 -->|"Merge and colour"| s47
+  s43 -->|"Extra storage roots"| s46
 ```
 
 ### `settings.sheet` Settings page
@@ -886,6 +913,7 @@ flowchart LR
 | [Page header](#chromeheader-page-header) | the freshness readout | [Refresh menu](#chromerefresh-menu-refresh-menu) |
 | [Page header](#chromeheader-page-header) | the gear | [Settings page](#settingssheet-settings-page) |
 | [Refresh menu](#chromerefresh-menu-refresh-menu) | either item | [Toast](#chrometoast-toast) |
+| [Period control](#chromeperiod-period-control) | the Filters & sort button | [Sessions filters and sort](#sessionsfilters-sessions-filters-and-sort) |
 | [Navigation](#chromenav-navigation) | Overview | [Overview tab](#overviewpane-overview-tab) |
 | [Navigation](#chromenav-navigation) | Trends | [Trends tab](#trendspane-trends-tab) |
 | [Navigation](#chromenav-navigation) | Breakdown | [Breakdown tab](#breakdownpane-breakdown-tab) |
@@ -913,6 +941,7 @@ flowchart LR
 | [Sessions tab](#sessionspane-sessions-tab) |  | [Requests entry](#sessionsrequests-entry-requests-entry) |
 | [Sessions](#sessionslist-sessions) | a row | [Session sheet](#drillsession-session-sheet) |
 | [Sessions](#sessionslist-sessions) | an empty period | [Sessions, empty](#sessionsempty-sessions-empty) |
+| [Sessions filters and sort](#sessionsfilters-sessions-filters-and-sort) | Done | [Sessions](#sessionslist-sessions) |
 | [Requests entry](#sessionsrequests-entry-requests-entry) | Search requests | [Request explorer](#drillrequests-request-explorer) |
 | [Session sheet](#drillsession-session-sheet) |  | [Session rename](#drillsession-rename-session-rename) |
 | [Session sheet](#drillsession-session-sheet) |  | [Session diagnostics](#drillsession-diagnostics-session-diagnostics) |

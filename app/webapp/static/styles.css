@@ -402,3 +402,27 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
  * wider than a phone row, so it has to be told to shrink. */
 .settings-row-number-date { flex: 0 1 auto; min-width: 0; }
 .settings-row-date { width: 100%; max-width: 12em; min-width: 0; text-align: left; -moz-appearance: auto; }
+
+/* ---- control row and Filters & sort sheet ----
+ * The period stays under the header on every tab; on Sessions the Filters & sort trigger sits
+ * beside it. The trigger's count badge rides its corner and shows only while a non-default
+ * value is set, so a filtered list never looks unfiltered. */
+.control-row { display: flex; align-items: center; gap: 8px; }
+.control-row .segmented { flex: 1 1 auto; }
+.filters-btn { --icon-btn-box: 44px; flex: none; position: relative; border: 1px solid var(--control-border); border-radius: var(--r-md); background: var(--card); }
+.filters-count {
+  position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: var(--r-pill); background: var(--accent-fill); color: var(--accent-fg);
+  font-size: var(--font-caption); font-weight: 700; line-height: 18px; text-align: center;
+}
+/* The sheet keeps its title and footer pinned and scrolls only the body, so on a short phone
+ * the primary action never leaves the screen. The card inherits the dialog's viewport cap. */
+.filters-dialog { overflow: hidden; }
+.filters-dialog .detail-card { display: flex; flex-direction: column; max-height: inherit; }
+.filters-dialog .detail-header, .filters-dialog .detail-actions { flex: none; }
+.filters-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.filters-group { padding: 12px 0; display: flex; flex-direction: column; gap: 8px; }
+.filters-group + .filters-group { border-top: 1px solid var(--line); }
+.filters-label { font-size: var(--font-label); font-weight: 600; }
+.filters-actions { display: flex; gap: 10px; }
+.filters-actions .button-primary { flex: 1 1 auto; }

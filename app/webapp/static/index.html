@@ -237,12 +237,19 @@
     </button>
   </div>
 
-  <div class="segmented period-seg" id="period-seg" data-surface="chrome.period" role="group" aria-label="Period">
-    <button data-track="period-today" data-period="today" class="segmented-item" aria-pressed="true" type="button">Today</button>
-    <button data-track="period-week" data-period="week" class="segmented-item" aria-pressed="false" type="button">Week</button>
-    <button data-track="period-month" data-period="month" class="segmented-item" aria-pressed="false" type="button">Month</button>
-    <button data-track="period-cycle" data-period="cycle" class="segmented-item" aria-pressed="false" type="button">Cycle</button>
-    <button data-track="period-all" data-period="all" class="segmented-item" aria-pressed="false" type="button">All</button>
+  <!-- One control row: the period for every tab, plus (Sessions only) the Filters & sort trigger -->
+  <div class="control-row">
+    <div class="segmented period-seg" id="period-seg" data-surface="chrome.period" role="group" aria-label="Period">
+      <button data-track="period-today" data-period="today" class="segmented-item" aria-pressed="true" type="button">Today</button>
+      <button data-track="period-week" data-period="week" class="segmented-item" aria-pressed="false" type="button">Week</button>
+      <button data-track="period-month" data-period="month" class="segmented-item" aria-pressed="false" type="button">Month</button>
+      <button data-track="period-cycle" data-period="cycle" class="segmented-item" aria-pressed="false" type="button">Cycle</button>
+      <button data-track="period-all" data-period="all" class="segmented-item" aria-pressed="false" type="button">All</button>
+    </div>
+    <button data-track="filters-open" id="filters-btn" class="icon-button filters-btn" type="button" aria-haspopup="dialog" aria-label="Filters &amp; sort" title="Filters &amp; sort" hidden>
+      <svg class="icon" aria-hidden="true"><use href="#i-sliders-horizontal"></use></svg>
+      <span class="filters-count" id="filters-count" aria-hidden="true" hidden></span>
+    </button>
   </div>
 
   <!-- A tapped chart bucket focuses every figure on its dates; this bar names them and undoes it -->
@@ -456,10 +463,6 @@
       <span class="collapse-chevron" aria-hidden="true">›</span>
     </summary>
     <div class="collapse-body">
-      <div class="segmented seg-mini" id="sessions-sort" role="group" aria-label="Sort sessions">
-        <button data-track="sessions-sort-cost" data-sort="credits" class="segmented-item" aria-pressed="true" type="button">Cost</button>
-        <button data-track="sessions-sort-recent" data-sort="recent" class="segmented-item" aria-pressed="false" type="button">Recent</button>
-      </div>
       <ul class="action-rows" id="session-list"></ul>
       <div class="empty-state" id="sessions-empty" data-surface="sessions.empty" hidden>
         <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-search"></use></svg>
@@ -491,6 +494,40 @@
     <p id="buildReadout"></p>
   </footer>
 </main>
+<!-- Filters & sort sheet (Sessions): the vendored modal. Every control of the view sits here and applies as it changes; Done ends the sheet. -->
+<dialog data-surface="sessions.filters" data-track-view="sessions-filters" id="filters-dialog" class="detail-dialog filters-dialog" aria-labelledby="fs-title">
+  <div class="detail-card">
+    <div class="detail-header">
+      <h2 id="fs-title" tabindex="-1" autofocus>Filters &amp; sort</h2>
+      <button data-track="filters-close" class="icon-button detail-close" id="fs-close" type="button" aria-label="Close">
+        <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+      </button>
+    </div>
+    <div class="filters-body">
+      <div class="filters-group">
+        <span class="filters-label" id="fs-sort-label">Sort</span>
+        <div class="segmented" id="sessions-sort" role="group" aria-labelledby="fs-sort-label">
+          <button data-track="sessions-sort-cost" data-sort="credits" class="segmented-item" aria-pressed="true" type="button">Cost</button>
+          <button data-track="sessions-sort-recent" data-sort="recent" class="segmented-item" aria-pressed="false" type="button">Recent</button>
+        </div>
+      </div>
+      <div class="filters-group">
+        <span class="filters-label" id="fs-period-label">Period</span>
+        <div class="segmented" id="filters-period" role="group" aria-labelledby="fs-period-label">
+          <button data-track="filters-period-today" data-period="today" class="segmented-item" aria-pressed="true" type="button">Today</button>
+          <button data-track="filters-period-week" data-period="week" class="segmented-item" aria-pressed="false" type="button">Week</button>
+          <button data-track="filters-period-month" data-period="month" class="segmented-item" aria-pressed="false" type="button">Month</button>
+          <button data-track="filters-period-cycle" data-period="cycle" class="segmented-item" aria-pressed="false" type="button">Cycle</button>
+          <button data-track="filters-period-all" data-period="all" class="segmented-item" aria-pressed="false" type="button">All</button>
+        </div>
+      </div>
+    </div>
+    <div class="detail-actions filters-actions">
+      <button data-track="filters-clear" class="button-surface" id="filters-clear" type="button">Clear</button>
+      <button data-track="filters-done" class="button-primary" id="filters-done" type="button">Done</button>
+    </div>
+  </div>
+</dialog>
 <!-- Session sheet: the vendored modal. Save name is its one primary action, awake only once the name changes. -->
 <dialog data-surface="drill.session" data-track-view="session-detail" id="session-dialog" class="detail-dialog sheet-wide">
   <div class="detail-card">

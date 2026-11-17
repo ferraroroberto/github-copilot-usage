@@ -1,0 +1,896 @@
+# UX surface map: the single source for docs/ux-surface-map.md.
+#
+# Every screen, drill-in, menu, sheet, dialog, popover, Settings row, state, gesture and key a person can
+# reach in this dashboard, one entry per surface. The convention is project-scaffolding's docs/ux-surface-map.md.
+# Edit this file, never the generated page; then run `python scripts/ux_surface_map.py`.
+#
+# A change that adds, removes, renames or reshapes a user-visible surface updates its entry here in the same
+# change, adds or removes the matching `data-surface` attribute in the code, and regenerates the page.
+
+app: github-copilot-usage
+
+notes: |
+  The checklist of everything a person can see and do in the dashboard: every tab, card, sheet, dialog, menu, state, gesture and key, with how it is reached, what is on it and the decision behind it where one exists. [The README](../README.md) tells what each figure means; this page is the exhaustive index, so a layout change can check every surface and not only the ones a reviewer happens to open.
+
+  **Keeping it true.** A change that adds, removes, renames or reshapes a user-visible surface updates its entry in `docs/ux-surfaces.yaml` in the same change and regenerates this page with `python scripts/ux_surface_map.py`; this page is never edited by hand. The rule is in `CLAUDE.md`.
+
+  **Ids.** `<area>.<surface>`, lowercase words joined by `.` or `-`, the same form the e2e `surface(page, "<id>")` hook takes. An id never changes when a title is reworded, and one id names one surface. The surface's root element carries the same id as `data-surface`; the vendored row menu builds its own element, so the call site in `app.js` stamps the id on what `attach` returns. `scripts/ux_surface_ratchet.py` fails a surface root without an id, an id without an entry, an entry no element carries, an id on two roots, a link to an id with no entry and a page that is not what this map generates. It reads markup and JS, so the entries marked `none` and every screen or state with no root of its own are held by this map and the browser walk alone.
+
+  **Four tabs, one gear.** The nav is Overview · Trends · Breakdown · Sessions. Settings is the header gear, one tap from every tab, and is not a tab. The period control and the focus bar sit above the panes and apply to every tab; the header names the tab on show.
+
+  **Layout bands.** The same markup serves a phone and a desktop. On a phone the nav is the floating bottom pill, hidden while a dialog is open; on a desktop it is the segmented control at the top. Dialogs are full-height sheets on a phone and centred cards on a desktop (`sheet-wide` ones are wider).
+
+  **Where state lives.** The period, the open tab and the folded cards live in the page and `localStorage` (`copilot-usage.tab`, `copilot-usage.collapsed`, `copilot-usage.theme`, `copilot-usage.textsize`); the request explorer's filters ride the URL (`?view=requests&...`). Every setting that changes the numbers lives in the server's `config.json` and saves as it changes.
+
+  **Gating.** A feature block that is switched off (Settings → Available features) hides its part of the page and stops its work: the official billing card with the billing token row, and the pace alert with its Settings group. A block this machine cannot run says why under the Features group.
+
+  **Reading the diagrams.** Every list that names a session opens the one session sheet; every list that names a project or a model opens the one request explorer already filtered; the prompt-composition rows and the insights that name a label open the one context drill-down.
+
+  ## Keyboard and deep links
+
+  | Input | Does |
+  | --- | --- |
+  | Arrow keys, Home, End on the nav | move between the four tabs |
+  | Enter or Space on a row or a card heading | opens the row's sheet or folds the card |
+  | Esc | closes the open dialog or the refresh menu |
+  | Arrow Down or Up on the freshness readout | opens the refresh menu on its first or last item |
+  | `/?view=requests&period=…&q=…` | opens the request explorer over that query on load |
+
+walk:
+  date: 2026-11-17
+  build: 5a2781c
+  widths: [390, 1440]
+  themes: [light, dark]
+
+areas:
+  - id: chrome
+    title: Chrome
+    notes: |
+      The header, the period control and the strips above the panes, the nav and the toast: present on every tab.
+  - id: overview
+    title: Overview
+    notes: |
+      The default tab: the four stat tiles, then the cards for the billing cycle, insights, official billing and the data sources.
+  - id: trends
+    title: Trends
+  - id: breakdown
+    title: Breakdown
+  - id: sessions
+    title: Sessions
+  - id: drill
+    title: Drill-ins
+    notes: |
+      Three dialogs hold every drill-in: the session sheet, the context drill-down and the request explorer. Each is reached from several lists; none is reached by a URL except the request explorer.
+  - id: settings
+    title: Settings
+    notes: |
+      | Group | Row | Value shown | Holds |
+      | --- | --- | --- | --- |
+      | Display | **Text size** | Small / Default / Large | a three-way control, applied at once |
+      | Billing cycle | **Allowance** | credits | a number; saves on leaving the field |
+      | | **Reset day** | day of month | 1 to 28; saves on leaving the field |
+      | Models | **Merge and colour** | *Default* or a count | opens the Models sheet |
+      | Data sources | **Start date** | a date | counts nothing older; **Count every record** appears while one is set |
+      | | **Extra storage roots** | *None* or a count | opens the roots sheet |
+      | | **Billing token** | Configured / Not set | read-only status (billing card on) |
+      | | **Clear cache** | none | rebuilds from the files |
+      | Alerts | **Pace alert (Telegram)** | On / Off | status, with **Send test message** when on (pace alert on) |
+      | Available features | one switch per block | ON / OFF, or *Unavailable on this machine* | Copilot CLI sessions, Official billing card, Pace alert, Usage log, Tailscale access |
+
+surfaces:
+  # ---- chrome ----
+  - id: chrome.header
+    area: chrome
+    title: Page header
+    root: data-surface
+    reach:
+      - every tab, at the top
+    holds:
+      - the tab's icon and title
+      - the context line (the period on show, or the danger line when a refresh failed)
+      - the freshness readout with the time of the last refresh
+      - the theme toggle
+      - the Settings gear
+    does:
+      - the freshness readout opens the refresh menu
+      - the theme toggle flips light and dark and repaints the charts and swatches
+      - the gear opens Settings
+    states:
+      - a failed poll keeps the last figures and says "Live data unavailable" in the context line
+    why: one vendored header per page, so the gear is one tap from every tab and Settings never needs a tab
+    links:
+      - to: chrome.refresh-menu
+        via: the freshness readout
+      - to: settings.sheet
+        via: the gear
+
+  - id: chrome.refresh-menu
+    area: chrome
+    title: Refresh menu
+    root: data-surface
+    reach:
+      - the freshness readout
+      - Arrow Down or Up on the readout
+    holds:
+      - Refresh
+      - Force refresh
+    does:
+      - Refresh re-reads the changed files and toasts the request count
+      - Force refresh rebuilds from every file, ignoring the cache
+    states:
+      - a second tap while a refresh runs is ignored; the readout is busy until it returns
+      - a refresh already running elsewhere is joined and says so in the toast
+    why: a force rebuild is rare and slow, so it sits one tap behind the plain refresh in a menu instead of beside it
+    links:
+      - to: chrome.toast
+        via: either item
+
+  - id: chrome.period
+    area: chrome
+    title: Period control
+    root: data-surface
+    reach:
+      - below the header, on every tab
+    holds:
+      - Today, Week, Month, Cycle, All
+    does:
+      - each button re-reads every figure, table and chart for that period
+    states:
+      - a focused date range (from a tapped bar) lights no button
+    why: one period for the whole page, so a figure on one tab never disagrees with another
+
+  - id: chrome.focus-bar
+    area: chrome
+    title: Focus bar
+    root: data-surface
+    reach:
+      - tapping a bar in a Trends chart
+    holds:
+      - the words "Focused on" and the dates
+      - a Back button naming the period it returns to
+    does:
+      - Back returns to the period that was open before the focus
+    states:
+      - hidden unless a bucket is focused
+    why: a tapped bucket narrows every figure to its dates, so the bar names the narrowing and undoes it in one tap
+
+  - id: chrome.coverage-note
+    area: chrome
+    title: Coverage note
+    root: data-surface
+    reach:
+      - appears under the period control when a telemetry start date cuts into the period
+    holds:
+      - one status line
+    states:
+      - partial coverage names the date counting starts from
+      - no coverage says the period ends before the start date, and the tiles show a dash
+    why: a period the start date does not reach has no figures, which is not the same as zero
+
+  - id: chrome.nav
+    area: chrome
+    title: Navigation
+    root: data-surface
+    reach:
+      - every tab
+    holds:
+      - Overview, Trends, Breakdown, Sessions
+    does:
+      - switches the tab, remembers it for the next visit and retitles the header
+    why: Settings is the header gear, not a fifth tab
+    phone: the floating bottom pill, hidden while a dialog is open
+    desktop: the segmented control above the panes
+    links:
+      - to: overview.pane
+        via: Overview
+      - to: trends.pane
+        via: Trends
+      - to: breakdown.pane
+        via: Breakdown
+      - to: sessions.pane
+        via: Sessions
+
+  - id: chrome.footer
+    area: chrome
+    title: Page footer
+    root: data-surface
+    reach:
+      - the bottom of every tab
+    holds:
+      - the build line, with the commit and the build time
+    states:
+      - blank until the version loads, and names `unknown` when the server reports no commit
+
+  - id: chrome.toast
+    area: chrome
+    title: Toast
+    root: data-surface
+    reach:
+      - every save, refresh, cache clear and failed write
+    holds:
+      - one line, in a neutral or error tone
+    does:
+      - dismisses itself
+    states:
+      - drawn in the top layer, so it shows above an open dialog
+    why: each setting saves as it changes, so a toast is the only confirmation
+
+  # ---- overview ----
+  - id: overview.pane
+    area: overview
+    title: Overview tab
+    root: data-surface
+    reach:
+      - the Overview nav tab
+      - the first visit
+    holds:
+      - the tiles, then the cards for the billing cycle, insights, official billing and data sources
+    does:
+      - each card folds from its heading; the folded set is remembered in the browser
+    links:
+      - to: overview.tiles
+      - to: overview.budget
+      - to: overview.insights
+      - to: overview.billing
+      - to: overview.sources
+
+  - id: overview.tiles
+    area: overview
+    title: Stat tiles
+    root: data-surface
+    reach:
+      - the top of the Overview tab
+    holds:
+      - Premium requests (credits) with the dollar equivalent and the change against the previous period
+      - Requests with credits per request and the estimated count
+      - Tokens in with the cache lines
+      - Tokens out with failed requests and effective tokens per credit
+    states:
+      - a dash in every tile when the telemetry start date puts the whole period out of reach
+      - the change chip is hidden for All and Cycle
+    why: credits lead because the credit is the unit the plan bills in; the dollar figure is derived
+
+  - id: overview.budget
+    area: overview
+    title: Billing cycle
+    root: data-surface
+    reach:
+      - the Overview tab
+    holds:
+      - the cycle dates and the day count
+      - a meter with a marker at where a linear burn would be today
+      - credits used against the allowance
+      - the projection for the end of the cycle
+    states:
+      - the meter turns to a warning when the projection passes the allowance and to over when the use does
+      - hidden when no allowance is set
+      - a note says when the telemetry start date cuts the cycle
+    why: the marker shows pace, not only use, so a quiet first week is not mistaken for headroom
+
+  - id: overview.insights
+    area: overview
+    title: Insights
+    root: data-surface
+    reach:
+      - the Overview tab
+    holds:
+      - rule-based findings, each a row
+      - the breakdown coverage line
+    does:
+      - a row opens the view it refers to
+    states:
+      - a placeholder row when there is no data or too little evidence
+      - the line "Nothing stands out in this period." when every rule is quiet
+      - the line "Insights could not be loaded from the dashboard server." when the read failed
+    why: findings are computed from fixed rules on this machine with no model call, and an exception is the only row that wears a chip
+    links:
+      - to: drill.session
+        via: a finding about one session
+      - to: drill.context
+        via: a finding about a prompt label
+      - to: drill.requests
+        via: a finding about a project, a model or a period
+
+  - id: overview.billing
+    area: overview
+    title: Official GitHub billing
+    root: data-surface
+    reach:
+      - the Overview tab
+    holds:
+      - an as-of time
+      - a table of date, model, credits and dollars over the last 14 days
+      - a note with the account-wide total
+    states:
+      - the note carries the server's reason when no token is set or the token is refused
+      - the line "No spend recorded in this window." when the account had none
+      - a count of days that could not be fetched
+      - the line "Could not load billing data from the dashboard server." when the read failed
+      - hidden, with its Settings row, when the official billing card block is off
+    why: the account-wide official spend is the UTC-exact counterpart of the local figures, so it is a card of its own
+
+  - id: overview.sources
+    area: overview
+    title: Data sources
+    root: data-surface
+    reach:
+      - the Overview tab
+    holds:
+      - one row per place Copilot data was found, with the editor, the kind, the session files and request count, the last activity and the path
+    states:
+      - the line "No Copilot data locations found." on a machine with none
+    why: the first place to look when a figure is missing is whether its editor was found
+
+  # ---- trends ----
+  - id: trends.pane
+    area: trends
+    title: Trends tab
+    root: data-surface
+    reach:
+      - the Trends nav tab
+    holds:
+      - the charts card, then the prompt-composition card
+    links:
+      - to: trends.charts
+      - to: trends.mix
+
+  - id: trends.charts
+    area: trends
+    title: Charts
+    root: data-surface
+    reach:
+      - the Trends tab
+    holds:
+      - the window's dates
+      - Older, Newer and Latest
+      - a hint line
+      - the credits-per-model chart
+      - the tokens in and out chart
+    does:
+      - Older, Newer and Latest step through earlier windows of the same period
+    states:
+      - the step buttons are dimmed at the ends of the history
+      - the step buttons are hidden while a bucket is focused
+      - a failed step toasts "Could not load that window. Try again." and keeps the window
+    why: the server owns the windows, so a step is one read and the charts never guess how much history exists
+    links:
+      - to: chrome.focus-bar
+        via: tapping a bar
+      - to: chrome.toast
+        via: a failed step
+
+  - id: trends.bucket-tap
+    area: trends
+    title: Bar tap
+    root:
+      none: a gesture on the charts' canvas, which has no element per bar
+    reach:
+      - tapping or clicking inside a chart's plot area
+    does:
+      - picks the nearest bucket and narrows every figure on the page to its dates
+      - a tap on the legend or the margins does nothing
+    states:
+      - a bucket the start date puts out of reach is ignored
+    links:
+      - to: chrome.focus-bar
+
+  - id: trends.tooltip
+    area: trends
+    title: Chart tooltip
+    root:
+      none: drawn on the canvas by the chart library
+    reach:
+      - hovering a bar, or touching one on a phone
+    holds:
+      - the credits or tokens of each model in the bucket
+      - a coverage footer
+    states:
+      - the footer names a bucket the telemetry start date only partly covers
+
+  - id: trends.mix
+    area: trends
+    title: Where your prompt tokens go
+    root: data-surface
+    reach:
+      - the Trends tab
+    holds:
+      - one bar per composition label with its share and estimated tokens
+      - Who drives this?
+    does:
+      - a label row opens the context drill-down on that label
+      - Who drives this? opens it over the whole prompt
+    states:
+      - hidden when VS Code logged no composition for the period
+    why: the composition is VS Code's own per-request breakdown, weighted by prompt size, so a high tool-definition share shows where to trim
+    links:
+      - to: drill.context
+
+  # ---- breakdown ----
+  - id: breakdown.pane
+    area: breakdown
+    title: Breakdown tab
+    root: data-surface
+    reach:
+      - the Breakdown nav tab
+    holds:
+      - the model and project cards
+      - Export CSV
+    does:
+      - Export CSV downloads the period's requests as a CSV file
+    links:
+      - to: breakdown.models
+      - to: breakdown.projects
+
+  - id: breakdown.models
+    area: breakdown
+    title: By model
+    root: data-surface
+    reach:
+      - the Breakdown tab
+    holds:
+      - a table of model, requests, credits, share and tokens in and out, one coloured swatch per model
+    does:
+      - a model's hover names every spelling merged into it
+    states:
+      - the empty state when the period has no usage
+    why: spellings of one model that differ only in case, spacing or a release date share a row, so a model is counted once
+    links:
+      - to: breakdown.models-empty
+        via: an empty period
+      - to: settings.models-sheet
+        via: Settings → Merge and colour
+
+  - id: breakdown.models-empty
+    area: breakdown
+    title: By model, empty
+    root: data-surface
+    reach:
+      - a period with no usage
+    holds:
+      - "No Copilot usage in this period."
+      - Show all time
+    does:
+      - Show all time switches the period to All
+    states:
+      - the button is hidden when the period is already All
+
+  - id: breakdown.projects
+    area: breakdown
+    title: By project
+    root: data-surface
+    reach:
+      - the Breakdown tab
+    holds:
+      - the request count per mode in the heading
+      - a table of project, requests, credits and tokens in and out
+    states:
+      - the empty state when the period has no usage
+    links:
+      - to: breakdown.projects-empty
+        via: an empty period
+
+  - id: breakdown.projects-empty
+    area: breakdown
+    title: By project, empty
+    root: data-surface
+    reach:
+      - a period with no usage
+    holds:
+      - "No Copilot usage in this period."
+      - Show all time
+    does:
+      - Show all time switches the period to All
+
+  # ---- sessions ----
+  - id: sessions.pane
+    area: sessions
+    title: Sessions tab
+    root: data-surface
+    reach:
+      - the Sessions nav tab
+    holds:
+      - the sessions card, then the requests card
+    links:
+      - to: sessions.list
+      - to: sessions.requests-entry
+
+  - id: sessions.list
+    area: sessions
+    title: Sessions
+    root: data-surface
+    reach:
+      - the Sessions tab
+    holds:
+      - a count in the heading
+      - Cost and Recent
+      - one row per session with its project, time span, request count, editor, credits and flag chips
+      - Show all, or Show fewer
+    does:
+      - Cost and Recent re-sort the list
+      - a row opens the session sheet
+      - Show all expands the preview to every session
+    states:
+      - a preview of the first few sessions until expanded
+      - the empty state when the period has none
+    why: sessions are sorted by cost first because the question the tab answers is what burned the credits
+    links:
+      - to: drill.session
+        via: a row
+      - to: sessions.empty
+        via: an empty period
+
+  - id: sessions.empty
+    area: sessions
+    title: Sessions, empty
+    root: data-surface
+    reach:
+      - a period with no sessions
+    holds:
+      - "No sessions in this period."
+      - Show all time
+    does:
+      - Show all time switches the period to All
+
+  - id: sessions.requests-entry
+    area: sessions
+    title: Requests entry
+    root: data-surface
+    reach:
+      - the Sessions tab
+    holds:
+      - a one-line description
+      - Search requests
+    does:
+      - Search requests opens the request explorer on the page's period
+    links:
+      - to: drill.requests
+        via: Search requests
+
+  # ---- drill-ins ----
+  - id: drill.session
+    area: drill
+    title: Session sheet
+    root: data-surface
+    reach:
+      - a row in Sessions, in the request explorer or in the context drill-down
+      - an insight about one session
+    holds:
+      - the session's title and a close button
+      - the meta line, with the project, editor, time span, requests, credits and their dollar equivalent, cache lines and the estimated count
+      - the rename row
+      - the diagnostics block
+      - the prompt composition of the session
+      - a table of time, prompt, mode, model, tokens in and out, credits and time taken per request
+      - Save name
+    does:
+      - the close button and Esc close it
+    states:
+      - an estimated request is marked ~ and explained in the meta line
+      - an errored request is dimmed and carries a warning glyph
+    why: one sheet for every list that names a session, so a session reads the same wherever it is reached
+    phone: a full-height sheet
+    desktop: a wide centred card
+    links:
+      - to: drill.session-rename
+      - to: drill.session-diagnostics
+
+  - id: drill.session-rename
+    area: drill
+    title: Session rename
+    root: data-surface
+    reach:
+      - the Name row of the session sheet
+    holds:
+      - a name field placeholdered with the parsed title
+      - Restore title, once a custom name is set
+    does:
+      - Save name stays asleep until the name differs from the saved one
+      - Save name stores the name in this dashboard's config, never in Copilot's files
+      - Restore title clears the custom name
+    states:
+      - a failed save toasts "Could not save the name. Try again."
+    why: the name lives in config.json so a rename never touches a file the editor owns
+    links:
+      - to: chrome.toast
+        via: Save name or Restore title
+
+  - id: drill.session-diagnostics
+    area: drill
+    title: Session diagnostics
+    root: data-surface
+    reach:
+      - the session sheet, when the session has a logged prompt size
+    holds:
+      - the largest prompt, the growth from first to last prompt and the share outside the user's own context
+      - one line per flag with its heuristic wording
+    states:
+      - hidden when the session logged no prompt size
+    why: the flags are heuristics, worded as such, and never a verdict
+
+  - id: drill.context
+    area: drill
+    title: Context drill-down
+    root: data-surface
+    reach:
+      - Who drives this?
+      - a label row in Where your prompt tokens go
+      - an insight about a prompt label
+    holds:
+      - the label as the title, and the period
+      - chips for All of the prompt and each label with its share
+      - the coverage line
+      - Projects, Models, Sessions and Requests, each a list of rows with a share
+      - a note
+    does:
+      - a chip reloads the lists for that label
+      - a project or model row opens the request explorer filtered to it
+      - a session or request row opens the session sheet
+    states:
+      - the title shows "loading…" while the read runs
+      - the empty state carries the server's reason
+    why: the shares are estimates weighted by prompt size, so the coverage line says how much of the period has a breakdown
+    links:
+      - to: drill.context-empty
+      - to: drill.session
+        via: a session or request row
+      - to: drill.requests
+        via: a project or model row
+
+  - id: drill.context-empty
+    area: drill
+    title: Context drill-down, empty
+    root: data-surface
+    reach:
+      - the context drill-down, when no breakdown is recorded for the label or the read failed
+    holds:
+      - the reason, or "Could not load the drill-down from the dashboard server."
+
+  - id: drill.requests
+    area: drill
+    title: Request explorer
+    root: data-surface
+    reach:
+      - Search requests
+      - a project, a model or a period row from an insight or the context drill-down
+      - a link with `?view=requests` on load
+    holds:
+      - the title and a close button
+      - its own period control
+      - a search field
+      - a sort select and an order toggle
+      - the Filters disclosure
+      - a summary line
+      - the request rows
+      - Previous, Next and the page number
+    does:
+      - every change reloads the rows and rewrites the URL, so a reload or a shared link lands on the same view
+      - a row opens the session sheet
+      - closing removes the query from the URL
+    states:
+      - the Filters disclosure is folded on a phone unless a filter is set, and open on a desktop
+      - the pager is hidden when there is one page
+      - a request with no billing data reads "unbilled"
+    why: the URL carries every filter so the view is linkable
+    phone: a full-height sheet
+    desktop: a wide centred card
+    links:
+      - to: drill.requests-filters
+      - to: drill.requests-loading
+      - to: drill.requests-empty
+      - to: drill.requests-error
+      - to: drill.session
+        via: a row
+
+  - id: drill.requests-filters
+    area: drill
+    title: Request filters
+    root: data-surface
+    reach:
+      - the Filters disclosure of the request explorer
+    holds:
+      - a count badge of active filters
+      - Project, Model, Mode, Editor and Result selects
+      - Min credits and Max credits
+      - Clear filters
+    does:
+      - each choice narrows the rows; a facet lists only values that exist
+      - Clear filters resets every filter but the period and the search
+    states:
+      - the badge and Clear filters are hidden while no filter is set
+
+  - id: drill.requests-loading
+    area: drill
+    title: Requests, loading
+    root: data-surface
+    reach:
+      - the first load of the request explorer
+    holds:
+      - "Reading requests…"
+    states:
+      - later pages keep the rows on screen instead of returning to this block
+
+  - id: drill.requests-empty
+    area: drill
+    title: Requests, empty
+    root: data-surface
+    reach:
+      - a query that matches nothing
+    holds:
+      - "No requests match these filters."
+
+  - id: drill.requests-error
+    area: drill
+    title: Requests, error
+    root: data-surface
+    reach:
+      - a failed read
+    holds:
+      - "Could not load requests."
+      - Retry
+    does:
+      - Retry reads the same query again
+
+  # ---- settings ----
+  - id: settings.sheet
+    area: settings
+    title: Settings sheet
+    root: data-surface
+    reach:
+      - the header gear
+    holds:
+      - Display, Billing cycle, Models, Data sources, Alerts and Available features
+      - a close button
+    does:
+      - every setting saves as it changes and a toast confirms; there is no Save button
+    states:
+      - opens on stale values when the config read fails
+    why: a setting that changes the numbers saves at once, so the figures behind the sheet are already right when it closes
+    phone: a full-height sheet
+    desktop: a centred card
+    links:
+      - to: settings.display
+      - to: settings.cycle
+      - to: settings.models
+      - to: settings.sources
+      - to: settings.alerts
+      - to: settings.features
+
+  - id: settings.display
+    area: settings
+    title: Display
+    root: data-surface
+    reach:
+      - Settings
+    holds:
+      - Text size, with Small, Default and Large
+    does:
+      - applies at once and is remembered in the browser
+    why: the zoom-lock escape, since the page forbids pinch zoom on a phone
+
+  - id: settings.cycle
+    area: settings
+    title: Billing cycle
+    root: data-surface
+    reach:
+      - Settings
+    holds:
+      - Allowance in credits
+      - Reset day of the month
+      - a footnote with the plan defaults
+    does:
+      - a value saves when the field loses focus
+      - a value out of range snaps to the nearest valid one
+      - an empty or non-numeric value is put back
+    states:
+      - a failed save puts the field back and toasts an error
+
+  - id: settings.models
+    area: settings
+    title: Models
+    root: data-surface
+    reach:
+      - Settings
+    holds:
+      - Merge and colour, with *Default* or a count of merged models and colours
+    does:
+      - opens the Models sheet
+    links:
+      - to: settings.models-sheet
+        via: Merge and colour
+
+  - id: settings.sources
+    area: settings
+    title: Data sources
+    root: data-surface
+    reach:
+      - Settings
+    holds:
+      - Start date
+      - Count every record
+      - Extra storage roots with its count
+      - Billing token with its status
+      - Clear cache
+    does:
+      - Start date leaves every earlier record out of every total
+      - Count every record clears the start date
+      - Extra storage roots opens the roots sheet
+      - Clear cache rebuilds from the files and toasts
+    states:
+      - Count every record exists only while a start date is set
+      - Billing token and its note exist only while the billing card is on; the note names the environment variable to set
+      - an unreadable date is refused and the field returns to its last value
+    links:
+      - to: settings.roots
+        via: Extra storage roots
+
+  - id: settings.alerts
+    area: settings
+    title: Alerts
+    root: data-surface
+    reach:
+      - Settings, while the pace alert block is on
+    holds:
+      - Pace alert (Telegram) with its status
+      - Send test message
+      - a footnote with the reason it is off, when it is
+    does:
+      - Send test message posts to Telegram and toasts the result
+    states:
+      - the group is hidden when the pace alert block is off
+      - Send test message is hidden while the alert is off
+      - the status reads Off with the reason when no bot token or chat is set
+    why: one message per cycle, sent after Telegram accepted it, so a failed send is retried
+
+  - id: settings.features
+    area: settings
+    title: Available features
+    root: data-surface
+    reach:
+      - Settings
+    holds:
+      - a switch each for Copilot CLI sessions, Official billing card, Pace alert and Usage log
+      - Tailscale access
+      - footnotes
+    does:
+      - a switch applies at once, hides or shows its part of the page and stops or starts its work
+      - Tailscale access applies when the server restarts
+    states:
+      - a block this machine cannot run reads "Unavailable on this machine" with the reason under the group
+      - the Tailscale hint reads Off, On, On after restart, Off after restart or Unavailable here
+    why: each switch is for this machine only, so a block that cannot run never looks broken
+
+  - id: settings.roots
+    area: settings
+    title: Extra storage roots sheet
+    root: data-surface
+    reach:
+      - Settings → Extra storage roots
+    holds:
+      - one path per line in a text area
+      - a footnote
+    does:
+      - saves when the field loses focus and again when the sheet closes
+    states:
+      - a failed save puts the previous paths back
+    why: paths are free text and cannot be a one-line row
+
+  - id: settings.models-sheet
+    area: settings
+    title: Models sheet
+    root: data-surface
+    reach:
+      - Settings → Merge and colour
+    holds:
+      - one card per model in the local history, with its swatch, name and request count
+      - Merge into
+      - Colour family and Opacity
+      - the spellings it holds and what it absorbed
+    does:
+      - each choice saves as it changes and toasts
+      - Merge into counts a model under another's name
+      - Colour family and Opacity recolour a model; clearing a choice restores the default
+    states:
+      - a model that is merged into another has no colour choices
+      - a model another is merged into cannot itself be merged
+      - "No models in the local history yet."
+    why: colours follow the provider by default, one shade per model within it

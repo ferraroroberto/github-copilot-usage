@@ -42,6 +42,11 @@
      12. usage track ratchet - scripts/usage_track_ratchet.py: a web control with no constant
                              tracking id, a <dialog> with no data-track-view, a built id or
                              an unwired usage log against the baseline; exit 3 is a failure
+     13. ux surface ratchet  - scripts/ux_surface_ratchet.py: a surface root with no
+                             data-surface id, an id with no entry in docs/ux-surfaces.yaml, an
+                             entry no element carries, a duplicate id, a dangling link or a
+                             docs/ux-surface-map.md page not generated from the map against the
+                             baseline; exit 3 is a failure
 
     Verdict line: the last line on stdout is `GATE-RESULT: PASS` or
     `GATE-RESULT: FAIL`, on every path that can still run code. Never pipe the
@@ -122,6 +127,7 @@ Invoke-Stage "comment ratchet" { & $py "scripts/comment_ratchet.py" }
 Invoke-Stage "conventions ratchet" { & $py "scripts/conventions_ratchet.py" }
 Invoke-Stage "runtime write ratchet" { & $py "scripts/runtime_write_ratchet.py" }
 Invoke-Stage "usage track ratchet" { & $py "scripts/usage_track_ratchet.py" }
+Invoke-Stage "ux surface ratchet" { & $py "scripts/ux_surface_ratchet.py" }
 
 Write-Host ""
 Write-Host "[PASS] all checks green - safe to ship." -ForegroundColor Green

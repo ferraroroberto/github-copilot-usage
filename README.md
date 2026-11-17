@@ -166,6 +166,8 @@ Verification gate (also needs Node, for `jscpd`): `powershell -File scripts/veri
 
 Layout: `app/` (FastAPI server, optional tray, the vanilla-JS dashboard in `app/webapp/static/`) · `src/` (discovery, the jsonl replay parser, aggregation, optional billing client) · `tests/` — see [docs/layout.md](docs/layout.md).
 
+[UX surface map](docs/ux-surface-map.md): every tab, card, sheet, dialog, menu, state and gesture in one checklist with a diagram per area, generated from `docs/ux-surfaces.yaml`.
+
 ## Open from your phone (Tailscale)
 
 Off by default: the server answers on `127.0.0.1` only. Turn on **Settings → Available features → Tailscale access** (or set `"tailnet_access": true`) and restart (`tray.bat --restart`); the server then also serves HTTPS on this machine's Tailscale address, on the same port, with the certificate from `tailscale cert`, and Settings shows the URL to open. It needs the `tailscale` command, a connected tailnet with MagicDNS and HTTPS Certificates enabled. If any of that is missing the server stays on loopback and Settings and the log say which. It never binds `0.0.0.0`, and anyone who can reach that address on your tailnet can use the dashboard and its settings. Details: [docs/setup-and-migration.md](docs/setup-and-migration.md).

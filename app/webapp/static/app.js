@@ -792,11 +792,13 @@ async function runRefresh(force) {
   }
 }
 
-// The freshness readout is the anchor of a one-list floating menu (vendored row-menu).
-createRowMenu().attach('refresh', menuBtn, [
+// The freshness readout is the anchor of a one-list floating menu (vendored row-menu). The vendored
+// component builds the element itself, so its surface id is stamped here, at the call site.
+const refreshMenu = createRowMenu().attach('refresh', menuBtn, [
   { label: 'Refresh', glyph: 'refresh-cw', dataset: { track: 'refresh' }, onTap: () => runRefresh(false) },
   { label: 'Force refresh', glyph: 'rotate-cw', dataset: { track: 'refresh-force' }, onTap: () => runRefresh(true) },
 ]);
+refreshMenu.dataset.surface = 'chrome.refresh-menu';
 
 $('cache-clear').addEventListener('click', async () => {
   try {

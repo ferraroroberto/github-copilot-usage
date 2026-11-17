@@ -19,7 +19,6 @@ from src import aggregate, config, refresh  # noqa: E402
 from src.vscode_parser import RequestRecord  # noqa: E402
 
 NOW = datetime.now(tz=timezone.utc)
-PHONE = {"width": 390, "height": 844}
 DESKTOP = {"width": 1280, "height": 900}
 
 
@@ -51,14 +50,10 @@ def base_url(serve, tmp_path_factory) -> Iterator[str]:
 
 
 @pytest.fixture
-def page(browser, base_url):
-    context = browser.new_context(viewport=PHONE, has_touch=True, is_mobile=True)
-    context.route("**/api/usage/**", lambda route: route.fulfill(status=204))
-    pg = context.new_page()
-    pg.goto(base_url + "/")
-    pg.wait_for_selector("#session-list li", state="attached")
-    yield pg
-    context.close()
+def page(phone_page, base_url):
+    phone_page.goto(base_url + "/")
+    phone_page.wait_for_selector("#session-list li", state="attached")
+    yield phone_page
     config.save({"telemetry_start_date": "", "session_names": {}})
 
 

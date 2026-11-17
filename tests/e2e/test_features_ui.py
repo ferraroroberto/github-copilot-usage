@@ -15,7 +15,7 @@ import pytest
 pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
 
 from src import aggregate, billing, config, refresh  # noqa: E402
-from tests.e2e.test_dashboard_controls_ui import PHONE, _records  # noqa: E402
+from tests.e2e.test_dashboard_controls_ui import _records  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -33,18 +33,14 @@ def base_url(serve, tmp_path_factory) -> Iterator[str]:
 
 
 @pytest.fixture
-def page(browser, base_url):
+def page(phone_page, phone_context, base_url):
     config.save({"features": {}})
-    context = browser.new_context(viewport=PHONE, has_touch=True, is_mobile=True)
-    pg = context.new_page()
-    pg.usage_posts = []  # type: ignore[attr-defined]
-    pg.billing_calls = []  # type: ignore[attr-defined]
-    context.route("**/api/usage/**", lambda route: (pg.usage_posts.append(route.request.url), route.fulfill(status=204)))
-    context.route("**/api/billing*", lambda route: (pg.billing_calls.append(route.request.url), route.continue_()))
-    pg.goto(base_url + "/")
-    pg.wait_for_selector("#session-list li", state="attached")
-    yield pg
-    context.close()
+    phone_page.usage_posts = phone_context.usage_posts  # type: ignore[attr-defined]
+    phone_page.billing_calls = []  # type: ignore[attr-defined]
+    phone_page.route("**/api/billing*", lambda route: (phone_page.billing_calls.append(route.request.url), route.continue_()))
+    phone_page.goto(base_url + "/")
+    phone_page.wait_for_selector("#session-list li", state="attached")
+    yield phone_page
     config.save({"features": {}})
 
 

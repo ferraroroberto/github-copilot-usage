@@ -224,4 +224,5 @@ export function initModelSettings(deps) {
     $('models-dialog').showModal();
   });
   $('models-close').addEventListener('click', () => $('models-dialog').close());
+  $('models-done').addEventListener('click', () => $('models-dialog').close());
 }

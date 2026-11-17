@@ -733,7 +733,7 @@ surfaces:
   # ---- settings ----
   - id: settings.sheet
     area: settings
-    title: Settings sheet
+    title: Settings page
     root: data-surface
     reach:
       - the header gear
@@ -745,8 +745,8 @@ surfaces:
     states:
       - opens on stale values when the config read fails
     why: a setting that changes the numbers saves at once, so the figures behind the sheet are already right when it closes
-    phone: a full-height sheet
-    desktop: a centred card
+    phone: a full-screen page
+    desktop: a centred column at the layout measure
     links:
       - to: settings.display
       - to: settings.cycle

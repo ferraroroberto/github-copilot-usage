@@ -633,18 +633,17 @@
   </div>
 </dialog>
 
-<!-- Settings sheet: the vendored modal; each setting saves as it changes (a toast confirms), so there is no Save button. -->
-<dialog data-surface="settings.sheet" data-track-view="settings" id="settings-dialog" class="detail-dialog">
-  <div class="detail-card">
-  <div class="detail-header">
-    <h2 tabindex="-1" autofocus>Settings</h2>
-    <button data-track="settings-close" class="icon-button detail-close" id="settings-close" type="button" aria-label="Close">
+<!-- Settings: the vendored full page (settings-group); each setting saves as it changes (a toast confirms), so there is no Save button. -->
+<dialog data-surface="settings.sheet" data-track-view="settings" id="settings-dialog" class="settings-page" aria-labelledby="settings-title">
+  <header class="settings-page-head">
+    <h2 class="settings-page-title" id="settings-title" tabindex="-1" autofocus>Settings</h2>
+    <button data-track="settings-close" class="icon-button settings-page-close" id="settings-close" type="button" aria-label="Close settings">
       <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
     </button>
-  </div>
+  </header>
 
-  <div>
-  <h3 class="settings-overline" id="group-display">Display</h3>
+  <div class="settings-page-body">
+  <h3 class="settings-group-label" id="group-display">Display</h3>
   <section class="card settings-group" data-surface="settings.display" aria-labelledby="group-display">
     <div class="settings-row">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-sliders-horizontal"></use></svg>
@@ -657,7 +656,7 @@
     </div>
   </section>
 
-  <h3 class="settings-overline" id="group-cycle">Billing cycle</h3>
+  <h3 class="settings-group-label" id="group-cycle">Billing cycle</h3>
   <section class="card settings-group" data-surface="settings.cycle" aria-labelledby="group-cycle">
     <label class="settings-row">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-gauge"></use></svg>
@@ -678,7 +677,7 @@
   </section>
   <p class="settings-footnote">Monthly allowance: the total in VS Code's Copilot menu ("Credits X / Y used", enter Y). Plan defaults: Business 300 · Enterprise 1000 · Pro 300 · Pro+ 1500; an org pool can be far larger.</p>
 
-  <h3 class="settings-overline" id="group-models">Models</h3>
+  <h3 class="settings-group-label" id="group-models">Models</h3>
   <section class="card settings-group" data-surface="settings.models" aria-labelledby="group-models">
     <button data-track="models-open" id="models-open" class="settings-row" type="button" aria-haspopup="dialog">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-palette"></use></svg>
@@ -689,7 +688,7 @@
   </section>
   <p class="settings-footnote">Spellings of one model that differ only in case, spacing, separators or a release date already share a row. Merge models that are really one, or recolour a model; clearing a choice restores it.</p>
 
-  <h3 class="settings-overline" id="group-sources">Data sources</h3>
+  <h3 class="settings-group-label" id="group-sources">Data sources</h3>
   <section class="card settings-group" data-surface="settings.sources" aria-labelledby="group-sources">
     <label class="settings-row">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-calendar-days"></use></svg>
@@ -721,7 +720,7 @@
   <p class="settings-footnote">Records before the start date are left out of every total; leave it empty to count everything. A period it cuts into is labelled partial coverage.</p>
   <p class="settings-footnote" id="set-pat-note" data-feature-ui="billing_card" hidden></p>
 
-  <h3 class="settings-overline" id="group-alerts" data-feature-ui="pace_alert">Alerts</h3>
+  <h3 class="settings-group-label" id="group-alerts" data-feature-ui="pace_alert">Alerts</h3>
   <section class="card settings-group" data-surface="settings.alerts" aria-labelledby="group-alerts" data-feature-ui="pace_alert">
     <div class="settings-row">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-bell"></use></svg>
@@ -735,7 +734,7 @@
   </section>
   <p class="settings-footnote" id="set-alert-note" data-feature-ui="pace_alert"></p>
 
-  <h3 class="settings-overline" id="group-features">Available features</h3>
+  <h3 class="settings-group-label" id="group-features">Available features</h3>
   <section class="card settings-group" data-surface="settings.features" aria-labelledby="group-features">
     <label class="settings-row">
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-terminal"></use></svg>
@@ -782,11 +781,10 @@
   <p class="settings-footnote" id="features-note" hidden></p>
   <p class="settings-footnote" id="tailnet-note"></p>
   </div>
-  </div>
 </dialog>
 
 <!-- Extra storage roots sheet: the paths are free text, so they cannot be a one-line row. -->
-<dialog data-surface="settings.roots" data-track-view="settings-roots" id="roots-dialog" class="detail-dialog">
+<dialog data-surface="settings.roots" data-track-view="settings-roots" id="roots-dialog" class="detail-dialog settings-sheet">
   <div class="detail-card">
     <div class="detail-header">
       <h2 tabindex="-1" autofocus>Extra storage roots</h2>
@@ -794,14 +792,17 @@
         <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
       </button>
     </div>
-    <label class="roots-field" for="set-roots">One path per line</label>
-    <textarea data-track="setting-roots" id="set-roots" rows="4" placeholder="C:\Users\me\AppData\Roaming\MyCompanyEditor"></textarea>
-    <p class="footnote">Saves when you leave the field.</p>
+    <div class="settings-sheet-body">
+      <label class="roots-field" for="set-roots">One path per line</label>
+      <textarea data-track="setting-roots" id="set-roots" rows="4" placeholder="C:\Users\me\AppData\Roaming\MyCompanyEditor"></textarea>
+      <p class="footnote">Saves when you leave the field.</p>
+    </div>
+    <div class="detail-actions"><button data-track="roots-done" class="button-primary detail-save-btn" id="roots-done" type="button">Done</button></div>
   </div>
 </dialog>
 
 <!-- Models sheet: one card per model from the local history; each choice saves as it changes. -->
-<dialog data-surface="settings.models-sheet" data-track-view="settings-models" id="models-dialog" class="detail-dialog sheet-wide">
+<dialog data-surface="settings.models-sheet" data-track-view="settings-models" id="models-dialog" class="detail-dialog settings-sheet sheet-wide">
   <div class="detail-card">
     <div class="detail-header">
       <h2 tabindex="-1" autofocus>Models</h2>
@@ -809,9 +810,12 @@
         <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
       </button>
     </div>
-    <p class="footnote">Colours follow the provider by default, one shade per model within it. Merging counts a model under another's name; the raw label stays in each request.</p>
-    <p class="muted" id="mdl-empty" hidden>No models in the local history yet.</p>
-    <ul class="mdl-list" id="mdl-list"></ul>
+    <div class="settings-sheet-body">
+      <p class="footnote">Colours follow the provider by default, one shade per model within it. Merging counts a model under another's name; the raw label stays in each request.</p>
+      <p class="muted" id="mdl-empty" hidden>No models in the local history yet.</p>
+      <ul class="mdl-list" id="mdl-list"></ul>
+    </div>
+    <div class="detail-actions"><button data-track="models-done" class="button-primary detail-save-btn" id="models-done" type="button">Done</button></div>
   </div>
 </dialog>
 

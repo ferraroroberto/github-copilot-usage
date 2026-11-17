@@ -58,7 +58,7 @@ flowchart LR
   s5["Navigation"]
   s6["Page footer"]
   s7["Toast"]
-  s38(["Settings sheet · Settings"])
+  s38(["Settings page · Settings"])
   s8(["Overview tab · Overview"])
   s14(["Trends tab · Trends"])
   s19(["Breakdown tab · Breakdown"])
@@ -97,7 +97,7 @@ flowchart LR
 - **Why:** one vendored header per page, so the gear is one tap from every tab and Settings never needs a tab
 - **Leads to:**
   - [Refresh menu](#chromerefresh-menu-refresh-menu) (the freshness readout)
-  - [Settings sheet](#settingssheet-settings-sheet) (the gear)
+  - [Settings page](#settingssheet-settings-page) (the gear)
 
 ### `chrome.refresh-menu` Refresh menu
 
@@ -724,7 +724,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  s38["Settings sheet"]
+  s38["Settings page"]
   s39["Display"]
   s40["Billing cycle"]
   s41["Models"]
@@ -747,7 +747,7 @@ flowchart LR
   s42 -->|"Extra storage roots"| s45
 ```
 
-### `settings.sheet` Settings sheet
+### `settings.sheet` Settings page
 
 - **Root:** `data-surface`
 - **Reach:** the header gear
@@ -756,8 +756,8 @@ flowchart LR
   - a close button
 - **Does:** every setting saves as it changes and a toast confirms; there is no Save button
 - **States:** opens on stale values when the config read fails
-- **Phone:** a full-height sheet
-- **Desktop:** a centred card
+- **Phone:** a full-screen page
+- **Desktop:** a centred column at the layout measure
 - **Why:** a setting that changes the numbers saves at once, so the figures behind the sheet are already right when it closes
 - **Leads to:**
   - [Display](#settingsdisplay-display)
@@ -884,7 +884,7 @@ flowchart LR
 | From | Via | To |
 |---|---|---|
 | [Page header](#chromeheader-page-header) | the freshness readout | [Refresh menu](#chromerefresh-menu-refresh-menu) |
-| [Page header](#chromeheader-page-header) | the gear | [Settings sheet](#settingssheet-settings-sheet) |
+| [Page header](#chromeheader-page-header) | the gear | [Settings page](#settingssheet-settings-page) |
 | [Refresh menu](#chromerefresh-menu-refresh-menu) | either item | [Toast](#chrometoast-toast) |
 | [Navigation](#chromenav-navigation) | Overview | [Overview tab](#overviewpane-overview-tab) |
 | [Navigation](#chromenav-navigation) | Trends | [Trends tab](#trendspane-trends-tab) |
@@ -925,11 +925,11 @@ flowchart LR
 | [Request explorer](#drillrequests-request-explorer) |  | [Requests, empty](#drillrequests-empty-requests-empty) |
 | [Request explorer](#drillrequests-request-explorer) |  | [Requests, error](#drillrequests-error-requests-error) |
 | [Request explorer](#drillrequests-request-explorer) | a row | [Session sheet](#drillsession-session-sheet) |
-| [Settings sheet](#settingssheet-settings-sheet) |  | [Display](#settingsdisplay-display) |
-| [Settings sheet](#settingssheet-settings-sheet) |  | [Billing cycle](#settingscycle-billing-cycle) |
-| [Settings sheet](#settingssheet-settings-sheet) |  | [Models](#settingsmodels-models) |
-| [Settings sheet](#settingssheet-settings-sheet) |  | [Data sources](#settingssources-data-sources) |
-| [Settings sheet](#settingssheet-settings-sheet) |  | [Alerts](#settingsalerts-alerts) |
-| [Settings sheet](#settingssheet-settings-sheet) |  | [Available features](#settingsfeatures-available-features) |
+| [Settings page](#settingssheet-settings-page) |  | [Display](#settingsdisplay-display) |
+| [Settings page](#settingssheet-settings-page) |  | [Billing cycle](#settingscycle-billing-cycle) |
+| [Settings page](#settingssheet-settings-page) |  | [Models](#settingsmodels-models) |
+| [Settings page](#settingssheet-settings-page) |  | [Data sources](#settingssources-data-sources) |
+| [Settings page](#settingssheet-settings-page) |  | [Alerts](#settingsalerts-alerts) |
+| [Settings page](#settingssheet-settings-page) |  | [Available features](#settingsfeatures-available-features) |
 | [Models](#settingsmodels-models) | Merge and colour | [Models sheet](#settingsmodels-sheet-models-sheet) |
 | [Data sources](#settingssources-data-sources) | Extra storage roots | [Extra storage roots sheet](#settingsroots-extra-storage-roots-sheet) |

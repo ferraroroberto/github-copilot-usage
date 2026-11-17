@@ -727,6 +727,7 @@ $('roots-open').addEventListener('click', () => {
 });
 
 $('roots-close').addEventListener('click', () => $('roots-dialog').close());
+$('roots-done').addEventListener('click', () => $('roots-dialog').close());
 
 // Saves on blur and again when the sheet closes (Esc closes it without a blur);
 // the second call finds nothing changed and sends nothing.

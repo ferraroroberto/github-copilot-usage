@@ -23,6 +23,7 @@ import { initTailnet } from './tailnet.js';
 import { createModelColors, initModelSettings, summarizeModelSettings } from './models.js';
 import { createCharts } from './charts.js';
 import { initSections } from './sections.js';
+import { DEFAULT_PERIOD, DEFAULT_SORT, initFilters } from './filters.js';
 import { initSessionName } from './session-name.js';
 import { fetchTrend, initTimeline, render as renderTimeline } from './timeline.js';
 
@@ -48,10 +49,10 @@ const BILLING_POLL_MS = 60_000;
 const SESSIONS_PREVIEW = 12;
 
 const state = {
-  period: 'today',
+  period: DEFAULT_PERIOD,
   summary: null,
   sessions: [],
-  sessionsSort: 'credits',
+  sessionsSort: DEFAULT_SORT,
   sessionsExpanded: false,
   trendOffset: 0,       // how many trend windows back the charts are stepped
   trend: null,          // the older window fetched for that offset; null while the latest is open
@@ -468,14 +469,6 @@ function renderSessions() {
   })).join('');
 }
 
-$('sessions-sort').addEventListener('click', (e) => {
-  const btn = e.target.closest('button[data-sort]');
-  if (!btn) return;
-  state.sessionsSort = btn.dataset.sort;
-  $('sessions-sort').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
-  renderSessions();
-});
-
 $('sessions-more').addEventListener('click', () => {
   state.sessionsExpanded = !state.sessionsExpanded;
   renderSessions();
@@ -593,16 +586,18 @@ function setPeriod(period) {
   state.sessionsExpanded = false;
   state.trendOffset = 0;
   state.trend = null;
-  $('period-seg').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === period)));
+  // The page's period control and the Filters & sort sheet's copy always agree.
+  document.querySelectorAll('#period-seg button, #filters-period button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === period)));
+  filters.paint();
   refresh();
 }
 
-$('period-seg').addEventListener('click', (e) => {
+['period-seg', 'filters-period'].forEach((id) => $(id).addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-period]');
   if (!btn || btn.dataset.period === state.period) return;
   state.returnPeriod = null;
   setPeriod(btn.dataset.period);
-});
+}));
 
 document.querySelectorAll('[data-show-all]').forEach((btn) => btn.addEventListener('click', () => {
   state.returnPeriod = null;
@@ -833,10 +828,11 @@ fetch('/api/version').then((r) => r.json()).then((v) => {
   $('buildReadout').textContent = buildReadoutText(v.git_sha || 'unknown', v.built_at || '');
 }).catch(() => {});
 
+const filters = initFilters({ $, state, periodNames: PERIOD_NAMES, setPeriod, renderSessions });
 initNavTabs({
   storageKey: 'copilot-usage.tab',
   // dynamic-id-exempt: the nav only ever passes one of the four constant data-tab names
-  onChange: (tab) => { paintHeader(tab); usage.trackView(tab); },
+  onChange: (tab) => { paintHeader(tab); filters.showFor(tab); usage.trackView(tab); },
 });
 initSections(document.querySelector('main.app'));
 const showSessionName = initSessionName({ jsonApi, showToast: toast, reopen: openSession, refresh });

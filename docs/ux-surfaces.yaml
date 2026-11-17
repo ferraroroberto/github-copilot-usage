@@ -133,11 +133,17 @@ surfaces:
       - below the header, on every tab
     holds:
       - Today, Week, Month, Cycle, All
+      - on the Sessions tab only, the Filters & sort button beside it, with a count of the values that differ from the defaults
     does:
       - each button re-reads every figure, table and chart for that period
+      - the Filters & sort button opens the Sessions filters sheet
     states:
       - a focused date range (from a tapped bar) lights no button
-    why: one period for the whole page, so a figure on one tab never disagrees with another
+      - the Filters & sort button is hidden on the other three tabs, and its count badge is hidden while the period is Today and the sort is Cost
+    why: one period for the whole page, so a figure on one tab never disagrees with another; it stays visible on Overview, Trends and Breakdown, where it is the only control and the dashboard is read by flipping it
+    links:
+      - to: sessions.filters
+        via: the Filters & sort button
 
   - id: chrome.focus-bar
     area: chrome
@@ -502,11 +508,9 @@ surfaces:
       - the Sessions tab
     holds:
       - a count in the heading
-      - Cost and Recent
       - one row per session with its project, time span, request count, editor, credits and flag chips
       - Show all, or Show fewer
     does:
-      - Cost and Recent re-sort the list
       - a row opens the session sheet
       - Show all expands the preview to every session
     states:
@@ -518,6 +522,27 @@ surfaces:
         via: a row
       - to: sessions.empty
         via: an empty period
+
+  - id: sessions.filters
+    area: sessions
+    title: Sessions filters and sort
+    root: data-surface
+    reach:
+      - the Filters & sort button beside the period control, on the Sessions tab
+    holds:
+      - "Sort: Cost and Recent"
+      - "Period: Today, Week, Month, Cycle, All (the same choice as the control on the page)"
+      - Clear and Done
+    does:
+      - each choice applies at once and the list, the totals and the badge on the button follow
+      - Clear returns the sort to Cost and the period to Today
+      - Done and the close button end the sheet
+    states:
+      - the title and the footer stay pinned and the body scrolls, so Done stays on screen at 390 by 664
+    why: the tab has two controls (the period and the sort), and the fleet rule puts two or more into one sheet with a count on its trigger, so a re-sorted or narrowed list never looks like the whole one
+    links:
+      - to: sessions.list
+        via: Done
 
   - id: sessions.empty
     area: sessions

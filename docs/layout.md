@@ -37,7 +37,7 @@ github-copilot-usage/
 │   ├── runtime_data.py        # vendored byte-for-byte; the runtime-data root and its `FLEET_DATA_ROOT` / `<APP>_DATA_DIR` overrides
 │   └── usage_store.py         # the usage database path, resolved through `runtime_data`; creates nothing
 │
-├── tests/                     # pytest suite, fixtures only — no real logs or credentials; test_python_floor.py holds the 3.9 promise; e2e/ drives the request explorer in a phone-sized browser when Playwright is installed
+├── tests/                     # pytest suite, fixtures only — no real logs or credentials; test_python_floor.py holds the 3.9 promise; e2e/ drives the dashboard in a phone-sized browser when Playwright is installed, through one shared Chromium context and a keep-alive test server so a run leaves few TIME_WAIT sockets, and names a drained port pool as its own failure (conftest.py)
 ├── scripts/
 │   ├── verify-before-ship.ps1 # the local gate: byte-compile, tests, structure, instruction, doc-refs, dead-code, static, docs, comment and conventions ratchets
 │   ├── structure_ratchet.py   # vendored byte-for-byte; see "Structure ratchet" below

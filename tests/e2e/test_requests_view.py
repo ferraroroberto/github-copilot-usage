@@ -18,8 +18,6 @@ from src import aggregate  # noqa: E402
 from src.vscode_parser import RequestRecord  # noqa: E402
 from tests.conftest import TODAY_NOON  # noqa: E402
 
-PHONE = {"width": 390, "height": 844}
-
 
 def _records() -> List[RequestRecord]:
     rows: List[RequestRecord] = []
@@ -58,12 +56,8 @@ def base_url(serve) -> Iterator[str]:
 
 
 @pytest.fixture()
-def page(browser):
-    context = browser.new_context(viewport=PHONE, has_touch=True, is_mobile=True)
-    context.route("**/api/usage/**", lambda route: route.fulfill(status=204))
-    pg = context.new_page()
-    yield pg
-    context.close()
+def page(phone_page):
+    return phone_page
 
 
 def _rows(page) -> int:

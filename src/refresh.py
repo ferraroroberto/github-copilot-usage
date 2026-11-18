@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from src import read_model
 from src.vscode_parser import RequestRecord
 
 _log = logging.getLogger(__name__)
@@ -61,18 +62,20 @@ class Outcome:
     joined: bool
 
 
-def _clear_parser_caches() -> None:
+def _clear_parsed() -> None:
+    """Forget every parsed record, in memory and in the read model; Copilot's files are untouched."""
     # Imported here so a test that swaps the builder never needs the parsers loaded.
     from src import cli_parser, vscode_parser
 
     vscode_parser.clear_caches()
     cli_parser.clear_caches()
+    read_model.model.reset()
 
 
 class SnapshotStore:
     def __init__(self, build: Optional[Build] = None, clear_caches: Optional[Callable[[], None]] = None) -> None:
         self._build = build
-        self._clear_caches = clear_caches or _clear_parser_caches
+        self._clear_caches = clear_caches or _clear_parsed
         # Builds touch the parsers' unlocked dicts, so two never overlap even when a force
         # refresh starts while an incremental one is still running in its thread.
         self._build_lock = threading.Lock()
@@ -155,7 +158,7 @@ class SnapshotStore:
         return (await self.refresh(False)).snapshot
 
     async def clear(self) -> None:
-        """Forget the snapshot, the summaries and the parsers' caches; the next read rebuilds.
+        """Forget the snapshot, the summaries and every parsed record; the next read rebuilds.
 
         An older build still running is dropped when it finishes, because clearing takes the
         newest sequence number.
@@ -206,6 +209,7 @@ def describe(outcome: Outcome) -> Dict[str, Any]:
         "sources": len(snap.sources),
         "built_at": snap.built_at,
         "duration_ms": snap.duration_ms,
+        "read_model": read_model.model.status(),
     }
 
 

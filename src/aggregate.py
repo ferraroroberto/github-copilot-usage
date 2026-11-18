@@ -19,6 +19,7 @@ from calendar import monthrange
 from collections import Counter, defaultdict
 from dataclasses import replace
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from src import (
@@ -26,6 +27,7 @@ from src import (
     config,
     discovery,
     prompt_composition,
+    read_model,
     session_diagnostics,
     vscode_parser,
 )
@@ -60,7 +62,11 @@ _TOP_SESSIONS = 8
 
 
 def gather_records() -> Tuple[List[RequestRecord], List[dict]]:
-    """Scan every discovered source; return (records, per-source stats)."""
+    """Scan every discovered source through the read model; return (records, per-source stats)."""
+    return read_model.model.collect(_gather)
+
+
+def _gather(scan: read_model.Scan) -> Tuple[List[RequestRecord], List[dict]]:
     records: List[RequestRecord] = []
     sources: List[dict] = []
 
@@ -73,13 +79,17 @@ def gather_records() -> Tuple[List[RequestRecord], List[dict]]:
         for entry in files:
             path = entry["path"]
             try:
-                mtime = path.stat().st_mtime
+                st = path.stat()
             except OSError:
-                mtime = 0.0
-            last_mtime = max(last_mtime, mtime)
-            key, name, ppath = vscode_parser.project_from_workspace_dir(entry["workspace_dir"])
-            for rec in vscode_parser.parse_session_file(path, root.ide, key, name, ppath):
-                found.append((rec, mtime, str(path), row))
+                continue
+            last_mtime = max(last_mtime, st.st_mtime)
+            parsed, _meta = scan.records(
+                "vscode:" + str(path),
+                repr((root.ide, st.st_mtime, st.st_size)),
+                lambda path=path, ide=root.ide, wdir=entry["workspace_dir"]: (_parse_chat_log(path, ide, wdir), {}),
+            )
+            for rec in parsed:
+                found.append((rec, st.st_mtime, str(path), row))
         sources.append({
             "ide": root.ide,
             "path": str(root.user_dir),
@@ -106,7 +116,7 @@ def gather_records() -> Tuple[List[RequestRecord], List[dict]]:
     if config.feature_enabled("copilot_cli"):
         cli_dir = discovery.copilot_cli_dir()
         if cli_dir is not None:
-            cli_records, cli_usage = cli_parser.all_records(cli_dir)
+            cli_records, cli_usage = cli_parser.all_records(cli_dir, scan.records)
             records.extend(cli_records)
             sources.append({
                 "ide": "Copilot CLI",
@@ -120,6 +130,11 @@ def gather_records() -> Tuple[List[RequestRecord], List[dict]]:
             })
 
     return records, sources
+
+
+def _parse_chat_log(path: Path, ide: str, workspace_dir: Optional[Path]) -> List[RequestRecord]:
+    key, name, ppath = vscode_parser.project_from_workspace_dir(workspace_dir)
+    return vscode_parser.parse_session_file(path, ide, key, name, ppath)
 
 
 def labels_for(records: List[RequestRecord]) -> ModelLabels:

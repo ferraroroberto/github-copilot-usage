@@ -4,7 +4,8 @@ This is a personal, local tool: app/listeners.py serves it on 127.0.0.1, and on 
 address only when the owner turns that on; it is never bound to 0.0.0.0. All endpoints are read-only over
 Copilot's own log files except POST /api/config, PUT /api/sessions/{id}/name, PUT /api/features/{id} and
 PUT /api/tailnet (all write config.json); the
-refresh and cache-clear endpoints only change this process's in-memory state.
+refresh and cache-clear endpoints only change this process's parsed state and its read model in the
+runtime-data folder.
 """
 
 from __future__ import annotations
@@ -259,7 +260,7 @@ async def api_billing(days: int = Query(14, ge=1, le=30)) -> dict:
 
 
 @app.post("/api/refresh")
-async def api_refresh(force: bool = Query(False, description="clear the parsers' caches and rebuild everything")) -> dict:
+async def api_refresh(force: bool = Query(False, description="drop every parsed record and the read model, then rebuild everything")) -> dict:
     """Rebuild the snapshot now, or join the rebuild in flight; the body says which."""
     try:
         return refresh.describe(await refresh.store.refresh(force))
@@ -270,7 +271,7 @@ async def api_refresh(force: bool = Query(False, description="clear the parsers'
 
 @app.post("/api/cache/clear")
 async def api_cache_clear() -> dict:
-    """Drop the snapshot, the cached summaries and the parsers' caches; the next read rebuilds."""
+    """Drop the snapshot, the cached summaries and every parsed record; the next read rebuilds."""
     await refresh.store.clear()
     return {"ok": True}
 

@@ -20,6 +20,7 @@ github-copilot-usage/
 │   ├── vscode_parser.py       # read-only, mtime-cached parser for VS Code chat session logs
 │   ├── cli_parser.py          # read-only, mtime-cached parser for Copilot CLI session logs
 │   ├── cli_session_store.py   # read-only reader for the Copilot CLI's session-store.db per-call usage
+│   ├── read_model.py          # the persisted read model: parsed records in an indexed SQLite file in the runtime-data folder, re-parsing only new or changed sources
 │   ├── refresh.py             # the shared snapshot of parsed records: one joined rebuild, survives a cancelled request, never overwritten by an older build, plus the summary cached on a content fingerprint
 │   ├── aggregate.py           # period bucketing, per-model and per-session rollups, CSV export
 │   ├── model_labels.py        # conservative model-label grouping, exact aliases, provider families and the validation of the model settings

@@ -14,7 +14,7 @@ import logging
 import socket
 import sys
 import threading
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import uvicorn
 
@@ -69,6 +69,9 @@ class Listeners:
         self._tailnet: Optional[uvicorn.Server] = None
         self._stopping = False
         self._stop_event: Optional[asyncio.Event] = None
+        # Called, from the serving thread, whenever the tailnet address appears or is given up, so a tray
+        # menu that shows it can redraw.
+        self.on_tailnet_change: Optional[Callable[[], None]] = None
 
     @property
     def loopback_url(self) -> str:
@@ -77,6 +80,15 @@ class Listeners:
     @property
     def tailnet_url(self) -> Optional[str]:
         return self.plan.url(self.port)
+
+    def _notify_tailnet_change(self) -> None:
+        callback = self.on_tailnet_change
+        if callback is None:
+            return
+        try:
+            callback()
+        except Exception:  # a menu that cannot redraw must never end the listener that called it
+            _log.warning("⚠️ tailnet access: the change callback failed", exc_info=True)
 
     def start(self) -> None:
         self.plan = tailnet.resolve()
@@ -142,6 +154,7 @@ class Listeners:
             if plan.live:
                 self.plan = plan
                 tailnet.set_serving(plan, self.port)
+                self._notify_tailnet_change()
         if self.plan.live and not self._stopping:
             await self._tailnet_loop()
 
@@ -152,6 +165,7 @@ class Listeners:
             reason = "the Tailscale address could not be bound: %s" % exc
             self.plan = dataclasses.replace(self.plan, host=None, reason=reason)
             tailnet.set_serving(self.plan, self.port)
+            self._notify_tailnet_change()
             return None
         # lifespan is off so the app's startup and shutdown hooks run once, on the loopback server.
         config = uvicorn.Config(

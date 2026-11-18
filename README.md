@@ -122,7 +122,7 @@ Set `COPILOT_USAGE_TELEGRAM_BOT_TOKEN` (from [@BotFather](https://t.me/BotFather
 
 ## Optional: system tray (Windows)
 
-`tray.bat` runs the server under a tray icon (Open dashboard / Restart / Quit) instead of a console window — handy for keeping it always on. It works directly on a fresh clone (it creates the venv and installs everything itself, including two small tray extras: pystray, pillow), so it is a full alternative to `start.bat`. Re-running it is a no-op while the tray lives; `tray.bat --restart` restarts it. Detection is scoped to this repo's `.venv`, so no other Python process is ever touched. Put a shortcut in `shell:startup` to launch on login.
+`tray.bat` runs the server under a tray icon (Open dashboard / Open on private network / Restart / Quit; the private-network item appears only while Tailscale access is live) instead of a console window — handy for keeping it always on. It works directly on a fresh clone (it creates the venv and installs everything itself, including two small tray extras: pystray, pillow), so it is a full alternative to `start.bat`. Re-running it is a no-op while the tray lives; `tray.bat --restart` restarts it. Detection is scoped to this repo's `.venv`, so no other Python process is ever touched. Put a shortcut in `shell:startup` to launch on login.
 
 ## API
 
@@ -172,7 +172,7 @@ Layout: `app/` (FastAPI server, optional tray, the vanilla-JS dashboard in `app/
 
 ## Open from your phone (Tailscale)
 
-Off by default: the server answers on `127.0.0.1` only. Turn on **Settings → Available features → Tailscale access** (or set `"tailnet_access": true`) and restart (`tray.bat --restart`); the server then also serves HTTPS on this machine's Tailscale address, on the same port, with the certificate from `tailscale cert`, and Settings shows the URL to open. It needs the `tailscale` command, a connected tailnet with MagicDNS and HTTPS Certificates enabled. If any of that is missing the server stays on loopback and Settings and the log say which. It never binds `0.0.0.0`, and anyone who can reach that address on your tailnet can use the dashboard and its settings. Details: [docs/setup-and-migration.md](docs/setup-and-migration.md).
+Off by default: the server answers on `127.0.0.1` only. Turn on **Settings → Available features → Tailscale access** (or set `"tailnet_access": true`) and restart (`tray.bat --restart`); the server then also serves HTTPS on this machine's Tailscale address, on the same port, with the certificate from `tailscale cert`, and Settings shows the URL to open (the tray menu has an Open on private network item for the same address). It needs the `tailscale` command, a connected tailnet with MagicDNS and HTTPS Certificates enabled. If any of that is missing the server stays on loopback and Settings and the log say which. It never binds `0.0.0.0`, and anyone who can reach that address on your tailnet can use the dashboard and its settings. Details: [docs/setup-and-migration.md](docs/setup-and-migration.md).
 
 ## Privacy
 

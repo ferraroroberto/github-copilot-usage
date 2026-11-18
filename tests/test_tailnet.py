@@ -198,7 +198,32 @@ def test_a_tailnet_address_that_cannot_bind_leaves_loopback_serving(settings_fil
         while listeners.plan.live and time.time() < deadline:
             time.sleep(0.05)
         assert listeners.plan.live is False and "could not be bound" in str(listeners.plan.reason)
+        assert listeners.tailnet_url is None
         assert tailnet.describe()["live"] is False
+        assert _wait_for(listeners.loopback_url + "health").status_code == 200
+    finally:
+        listeners.stop()
+
+
+def test_the_tray_is_told_when_the_tailnet_address_is_given_up(settings_file, monkeypatch, tmp_path):
+    monkeypatch.setattr(aggregate, "gather_records", lambda: ([], []))
+    unbindable = tailnet.Plan(enabled=True, host="203.0.113.9", name=NAME, cert_file=tmp_path / "c", key_file=tmp_path / "k")
+    monkeypatch.setattr(tailnet, "resolve", lambda: unbindable)
+    listeners = Listeners(_free_port())
+    calls: List[bool] = []
+
+    def boom() -> None:
+        calls.append(True)
+        raise RuntimeError("the menu could not redraw")
+
+    listeners.on_tailnet_change = boom  # a failing callback must not end the listeners
+    listeners.start()
+    try:
+        assert _wait_for(listeners.loopback_url + "api/version").status_code == 200
+        deadline = time.time() + 5
+        while not calls and time.time() < deadline:
+            time.sleep(0.05)
+        assert calls and listeners.tailnet_url is None
         assert _wait_for(listeners.loopback_url + "health").status_code == 200
     finally:
         listeners.stop()

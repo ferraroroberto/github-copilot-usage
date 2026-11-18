@@ -1,7 +1,8 @@
 """Optional Windows/macOS system-tray launcher (pystray).
 
 Runs the uvicorn server in a background thread and puts a small icon in the
-system tray with Open dashboard / Restart server / Quit. Entirely optional:
+system tray with Open dashboard / Open on private network (only while Tailscale
+access is live) / Restart server / Quit. Entirely optional:
 the dashboard works identically via ``python -m app``; this only exists so
 the tool can live quietly in the tray all day.
 
@@ -17,6 +18,7 @@ import os
 import sys
 import webbrowser
 from pathlib import Path
+from typing import Optional
 
 # Under pythonw.exe there is no console: sys.stdout/stderr are None, and
 # anything that touches them (uvicorn's logging setup calls
@@ -58,18 +60,38 @@ def _make_icon_image() -> "Image.Image":
 
 def main() -> None:
     port = int(config.load().get("port", 8377))
-    server = Listeners(port)
-    server.start()
+    icon: Optional["pystray.Icon"] = None
+
+    def redraw_menu() -> None:
+        # Windows rebuilds the menu on every right-click; other backends keep the last one drawn.
+        if icon is not None:
+            icon.update_menu()
+
+    def start_listeners() -> Listeners:
+        listeners = Listeners(port)
+        listeners.on_tailnet_change = redraw_menu
+        listeners.start()
+        return listeners
+
+    server = start_listeners()
     url = server.loopback_url
 
     def on_open(icon, item) -> None:  # noqa: ANN001 - pystray callback shape
         webbrowser.open(url)
 
+    def tailnet_live(item) -> bool:  # noqa: ANN001
+        return server.tailnet_url is not None
+
+    def on_open_tailnet(icon, item) -> None:  # noqa: ANN001
+        tailnet_url = server.tailnet_url
+        if tailnet_url is not None:
+            webbrowser.open(tailnet_url)
+
     def on_restart(icon, item) -> None:  # noqa: ANN001
         nonlocal server
         server.stop()
-        server = Listeners(port)
-        server.start()
+        server = start_listeners()
+        redraw_menu()
 
     def on_quit(icon, item) -> None:  # noqa: ANN001
         server.stop()
@@ -81,6 +103,7 @@ def main() -> None:
         "Copilot Usage — " + url,
         menu=pystray.Menu(
             pystray.MenuItem("Open dashboard", on_open, default=True),
+            pystray.MenuItem("Open on private network", on_open_tailnet, visible=tailnet_live),
             pystray.MenuItem("Restart server", on_restart),
             pystray.MenuItem("Quit", on_quit),
         ),

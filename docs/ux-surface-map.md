@@ -270,7 +270,7 @@ flowchart LR
   - the breakdown coverage line
 - **Does:** a row opens the view it refers to
 - **States:**
-  - a placeholder row when there is no data or too little evidence
+  - a placeholder row when there is no data or no billed credits to attribute
   - the line "Nothing stands out in this period." when every rule is quiet
   - the line "Insights could not be loaded from the dashboard server." when the read failed
 - **Why:** findings are computed from fixed rules on this machine with no model call, and an exception is the only row that wears a chip

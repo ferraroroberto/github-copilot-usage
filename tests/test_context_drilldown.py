@@ -62,7 +62,8 @@ def test_empty_label_drills_into_the_whole_covered_prompt(records):
 
 
 def test_session_contributors_carry_the_diagnostic_flags(rec):
-    big = [rec(i, prompt_tokens=60_000, prompt_details=_details(50)) for i in range(2)]
+    big = [rec(0, prompt_tokens=2_000, prompt_details=_details(50)),
+           rec(1, prompt_tokens=60_000, prompt_details=_details(50))]
     body = context_drilldown.drilldown(big, "all", "")
     assert [f["type"] for f in body["sessions"][0]["flags"]] == ["large_prompt"]
 

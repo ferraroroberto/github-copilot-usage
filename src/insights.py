@@ -2,11 +2,11 @@
 
 Four detectors (top contributors, period-over-period change, budget risk, prompt
 composition) read the same figures the dashboard cards show. No model call, no network.
-Each insight has a stable ``type``, a ``severity`` (``info`` | ``warning`` | ``critical``),
-one short sentence and structured ``evidence`` (period, model, project, session, label)
-the UI turns into a link to the matching view. A detector that lacks the data says nothing
-rather than guess; a period with no or too few requests says so with ``no_data`` or
-``insufficient_evidence``.
+Each insight has a stable ``type``, a ``severity`` (``info`` | ``attention`` | ``warning`` |
+``critical``), one short sentence and structured ``evidence`` (period, model, project,
+session, label) the UI turns into a link to the matching view. A detector that lacks the
+data says nothing rather than guess; the result's ``state`` is always one of ``no_data``,
+``insufficient_data``, ``no_actionable_findings`` or ``ready``.
 """
 
 from __future__ import annotations
@@ -14,28 +14,28 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List
 
-from src import aggregate, context_drilldown
+from src import aggregate, context_drilldown, prompt_composition
 from src.vscode_parser import RequestRecord
 
 TYPES = (
     "top_contributor", "period_change", "budget_risk", "prompt_composition",
-    "no_data", "insufficient_evidence",
+    "no_data", "insufficient_data",
 )
-SEVERITIES = ("critical", "warning", "info")
+SEVERITIES = ("critical", "warning", "attention", "info")
+STATES = ("no_data", "insufficient_data", "no_actionable_findings", "ready")
 
-# Below this many requests no share or trend is worth stating.
-MIN_REQUESTS = 5
-# Billed credits needed before a share of them means anything.
-MIN_CREDITS = 1.0
-# One project or model past this share of the period's credits is "what drives it".
+# The largest model, project and session are named whenever the period billed credits; one
+# at this share of the spend or more is "attention", otherwise plain "info".
 TOP_SHARE_PCT = 50.0
-TOP_SESSION_SHARE_PCT = 30.0
-# A change smaller than this is ordinary variation between two periods.
-CHANGE_PCT = 50.0
-MIN_PREV_CREDITS = 2.0
-COMPOSITION_MIN_PCT = 40.0
-COMPOSITION_MIN_COVERED = 3
-MAX_COMPOSITION_INSIGHTS = 2
+# A change is worth a line when it is at least this many credits and this share of the
+# previous period's spend, so a small period's noise and a large period's drift both stay quiet.
+MIN_CHANGE_CREDITS = 0.5
+MIN_CHANGE_RATIO = 0.20
+# A prompt mix is only stated when enough requests carry one, it covers enough of the
+# period's prompt tokens, and most of what it observed is outside the user's own context.
+COMPOSITION_MIN_COVERED = 2
+COMPOSITION_MIN_TOKENS_PCT = 50.0
+COMPOSITION_MIN_NON_USER_PCT = 70.0
 
 _PREVIOUS = {"today": "yesterday", "week": "the 7 days before", "month": "the 30 days before"}
 
@@ -54,60 +54,52 @@ def _credits(n: float) -> str:
 
 
 def _top_contributors(summary: Dict[str, Any], period: str) -> List[Dict[str, Any]]:
-    totals = summary["totals"]
-    if totals["requests"] < MIN_REQUESTS or totals["credits"] < MIN_CREDITS:
+    credits = summary["totals"]["credits"]
+    if credits <= 0:
         return []
     out: List[Dict[str, Any]] = []
-    credits = totals["credits"]
-
-    models = summary["by_model"]
-    if len(models) > 1 and models[0]["credits_share_pct"] >= TOP_SHARE_PCT:
-        m = models[0]
+    shared = "%(name)s used %(share)s%% of this period's credits (%(spent)s of %(all)s)."
+    # dimension -> (rows, sentence, name field, evidence key field)
+    top = {
+        "model": (summary["by_model"], shared, "model", "model"),
+        "project": (summary["by_project"], shared, "project", "project_key"),
+        "session": (summary["top_sessions"], "One session, \"%(name)s\", used %(share)s%% of this period's credits.",
+                    "title", "session_id"),
+    }
+    for dimension, (rows, template, name_field, key_field) in top.items():
+        if not rows or rows[0]["credits"] <= 0:
+            continue
+        row = rows[0]
+        raw_share = 100.0 * row["credits"] / credits
+        text = template % {
+            "name": row[name_field], "share": round(raw_share, 1),
+            "spent": _credits(row["credits"]), "all": _credits(credits),
+        }
+        key = row[key_field]
         out.append(_insight(
-            "top_contributor", "info",
-            "%s used %s%% of this period's credits (%s of %s)."
-            % (m["model"], m["credits_share_pct"], _credits(m["credits"]), _credits(credits)),
-            period=period, model=m["model"],
+            "top_contributor", "attention" if raw_share >= TOP_SHARE_PCT else "info", text,
+            period=period, **{dimension: key},
         ))
-
-    projects = summary["by_project"]
-    if len(projects) > 1:
-        p = projects[0]
-        share = round(100.0 * p["credits"] / credits, 1)
-        if share >= TOP_SHARE_PCT:
-            out.append(_insight(
-                "top_contributor", "info",
-                "%s used %s%% of this period's credits (%s of %s)."
-                % (p["project"], share, _credits(p["credits"]), _credits(credits)),
-                period=period, project=p["project_key"],
-            ))
-
-    sessions = summary["top_sessions"]
-    if len(sessions) > 1:
-        s = sessions[0]
-        share = round(100.0 * s["credits"] / credits, 1)
-        if share >= TOP_SESSION_SHARE_PCT:
-            out.append(_insight(
-                "top_contributor", "info",
-                'One session, "%s", used %s%% of this period\'s credits.' % (s["title"], share),
-                period=period, session=s["session_id"],
-            ))
     return out
 
 
 def _period_change(summary: Dict[str, Any], period: str) -> List[Dict[str, Any]]:
     prev = summary["prev_totals"]
-    if prev is None or prev["credits"] < MIN_PREV_CREDITS:
+    if prev is None:
         return []
     now = summary["totals"]["credits"]
-    change = 100.0 * (now - prev["credits"]) / prev["credits"]
-    if abs(change) < CHANGE_PCT:
+    before = prev["credits"]
+    delta = round(now - before, 6)
+    if abs(delta) < max(MIN_CHANGE_CREDITS, round(MIN_CHANGE_RATIO * before, 6)):
         return []
-    text = "Credits are %s %d%% on %s (%s vs %s)." % (
-        "up" if change > 0 else "down", round(abs(change)), _PREVIOUS.get(period, "the span before"),
-        _credits(now), _credits(prev["credits"]),
-    )
-    return [_insight("period_change", "warning" if change > 0 else "info", text, period=period)]
+    span = _PREVIOUS.get(period, "the span before")
+    if before > 0:
+        text = "Credits are %s %d%% on %s (%s vs %s)." % (
+            "up" if delta > 0 else "down", round(100.0 * abs(delta) / before), span, _credits(now), _credits(before),
+        )
+    else:
+        text = "Credits are up on %s: %s, against none then." % (span, _credits(now))
+    return [_insight("period_change", "warning" if delta > 0 else "info", text, period=period)]
 
 
 def _budget_risk(summary: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -140,23 +132,24 @@ def _budget_risk(summary: Dict[str, Any]) -> List[Dict[str, Any]]:
 def _prompt_composition(
     summary: Dict[str, Any], cov: Dict[str, Any], period: str,
 ) -> List[Dict[str, Any]]:
-    if cov["requests_covered"] < COMPOSITION_MIN_COVERED:
+    if cov["requests_covered"] < COMPOSITION_MIN_COVERED or (cov["tokens_pct"] or 0) < COMPOSITION_MIN_TOKENS_PCT:
         return []
-    out: List[Dict[str, Any]] = []
-    for row in summary["prompt_mix"]:
-        if row["pct"] < COMPOSITION_MIN_PCT or len(out) >= MAX_COMPOSITION_INSIGHTS:
-            continue
-        is_tools = "tool" in row["label"].lower()
-        text = "%s is about %s%% of prompt tokens (%s%% of this period's tokens carry a breakdown)." % (
-            row["label"], row["pct"], round(cov["tokens_pct"] or 0),
-        )
-        if is_tools:
-            text += " Disabling unused tools and MCP servers shrinks every request."
-        out.append(_insight(
-            "prompt_composition", "warning" if is_tools else "info", text,
-            period=period, label=row["label"],
-        ))
-    return out
+    mix = summary["prompt_mix"]
+    overhead = [row for row in mix if row["category"] != prompt_composition.USER_CATEGORY]
+    non_user_pct = round(sum(row["pct"] for row in overhead), 1)
+    if not overhead or non_user_pct < COMPOSITION_MIN_NON_USER_PCT:
+        return []
+    top = overhead[0]
+    is_tools = "tool" in top["label"].lower()
+    text = (
+        "%s is about %s%% of prompt tokens; %s%% is outside your own context (%s%% of this period's tokens "
+        "carry a breakdown)." % (top["label"], top["pct"], non_user_pct, round(cov["tokens_pct"]))
+    )
+    if is_tools:
+        text += " Disabling unused tools and MCP servers shrinks every request."
+    return [_insight(
+        "prompt_composition", "warning" if is_tools else "info", text, period=period, label=top["label"],
+    )]
 
 
 def build_insights(records: List[RequestRecord], period: str = "week") -> Dict[str, Any]:
@@ -173,18 +166,19 @@ def build_insights(records: List[RequestRecord], period: str = "week") -> Dict[s
     found += _period_change(summary, period)
     found += _prompt_composition(summary, cov, period)
 
-    state = "ok"
     if requests == 0:
         state = "no_data"
         found.append(_insight("no_data", "info", "No Copilot requests in this period.", period=period))
-    elif requests < MIN_REQUESTS:
-        state = "insufficient"
+    elif summary["totals"]["credits"] <= 0:
+        state = "insufficient_data"
         found.append(_insight(
-            "insufficient_evidence", "info",
-            "Only %d %s in this period, not enough to say what drives usage."
+            "insufficient_data", "info",
+            "%d %s in this period billed no credits, so there is no spend to attribute."
             % (requests, "request" if requests == 1 else "requests"),
             period=period,
         ))
+    else:
+        state = "ready" if found else "no_actionable_findings"
     found.sort(key=lambda i: SEVERITIES.index(i["severity"]))
     return {
         "period": period,

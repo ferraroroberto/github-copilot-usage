@@ -8,7 +8,7 @@
 
 import { actionRowHtml, esc, splitMeta } from './rows.js';
 
-const SEVERITY_LABEL = { critical: 'Critical', warning: 'Warning', info: 'Info' };
+const SEVERITY_LABEL = { critical: 'Critical', warning: 'Warning', attention: 'Attention', info: 'Info' };
 // What an insight is about, as the row's title; its sentence is the status line.
 const TYPE_LABEL = {
   top_contributor: 'Biggest contributor',
@@ -18,7 +18,6 @@ const TYPE_LABEL = {
 };
 const FLAG_LABEL = {
   large_prompt: 'Large prompt',
-  growing_prompt: 'Growing prompt',
   high_non_user_share: 'High overhead',
 };
 const PERIOD_LABEL = {
@@ -39,7 +38,7 @@ export function periodLabel(period) {
 }
 
 // Placeholders explain an empty or sparse period; there is no view behind them.
-const STATIC_TYPES = new Set(['no_data', 'insufficient_evidence']);
+const STATIC_TYPES = new Set(['no_data', 'insufficient_data']);
 
 const $ = (id) => document.getElementById(id);
 
@@ -121,7 +120,7 @@ function renderInsights(body) {
   shown = body.insights || [];
   $('insights-card').hidden = false;
   $('insight-list').innerHTML = shown.map(insightRow).join('');
-  $('insight-quiet').hidden = !(body.state === 'ok' && shown.length === 0);
+  $('insight-quiet').hidden = !(body.state === 'no_actionable_findings');
   $('insight-quiet').textContent = 'Nothing stands out in this period.';
   const cov = body.coverage || {};
   $('insights-meta').textContent = cov.requests_total

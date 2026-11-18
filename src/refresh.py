@@ -49,6 +49,9 @@ class Snapshot:
     sources: List[dict]
     generation: int      # the sequence number of the refresh that built it
     fingerprint: str
+    # The read-model scan these records came from, or None when they were not stored
+    # (a read model in memory, or a build that bypasses it).
+    index: Optional[str]
     built_at: float      # unix seconds
     duration_ms: int
     forced: bool
@@ -104,11 +107,13 @@ class SnapshotStore:
             if force:
                 self._clear_caches()
             records, sources = self._gather()
+            index = read_model.model.take_token()
             snap = Snapshot(
                 records=records,
                 sources=sources,
                 generation=seq,
                 fingerprint=fingerprint(records),
+                index=index,
                 built_at=time.time(),
                 duration_ms=int((time.monotonic() - started) * 1000),
                 forced=force,

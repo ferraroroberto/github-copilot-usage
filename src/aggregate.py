@@ -70,8 +70,8 @@ def _gather(scan: read_model.Scan) -> Tuple[List[RequestRecord], List[dict]]:
     records: List[RequestRecord] = []
     sources: List[dict] = []
 
-    # (record, source file mtime, source file path, index of its row in ``sources``)
-    found: List[Tuple[RequestRecord, float, str, int]] = []
+    # (record, source file mtime, source file path, index of its row in ``sources``, source key, ord)
+    found: List[Tuple[RequestRecord, float, str, int, str, int]] = []
     for root in discovery.discover_roots():
         files = discovery.chat_session_files(root)
         row = len(sources)
@@ -83,13 +83,14 @@ def _gather(scan: read_model.Scan) -> Tuple[List[RequestRecord], List[dict]]:
             except OSError:
                 continue
             last_mtime = max(last_mtime, st.st_mtime)
+            key = "vscode:" + str(path)
             parsed, _meta = scan.records(
-                "vscode:" + str(path),
+                key,
                 repr((root.ide, st.st_mtime, st.st_size)),
                 lambda path=path, ide=root.ide, wdir=entry["workspace_dir"]: (_parse_chat_log(path, ide, wdir), {}),
             )
-            for rec in parsed:
-                found.append((rec, st.st_mtime, str(path), row))
+            for ord_, rec in enumerate(parsed):
+                found.append((rec, st.st_mtime, str(path), row, key, ord_))
         sources.append({
             "ide": root.ide,
             "path": str(root.user_dir),
@@ -102,10 +103,11 @@ def _gather(scan: read_model.Scan) -> Tuple[List[RequestRecord], List[dict]]:
         })
 
     # A chat log copied to a second folder is the same requests twice: count each once.
-    losers = vscode_parser.copied_request_losers([(rec, mtime, path) for rec, mtime, path, _ in found])
-    for (rec, _mtime, _path, row), loser in zip(found, losers):
+    losers = vscode_parser.copied_request_losers([(rec, mtime, path) for rec, mtime, path, *_ in found])
+    for (rec, _mtime, _path, row, key, ord_), loser in zip(found, losers):
         if loser:
             sources[row]["duplicates_ignored"] += 1
+            scan.uncount(key, ord_)
         else:
             sources[row]["requests"] += 1
             records.append(rec)
@@ -708,11 +710,12 @@ def records_in_period(records: List[RequestRecord], period: str) -> List[Request
     return [r for r in records if _in_bounds(_local_date(r), lo, hi)]
 
 
-def get_sessions(records: List[RequestRecord], period: str = "all") -> List[dict]:
+def get_sessions(records: List[RequestRecord], period: str = "all", rows: Optional[List[dict]] = None) -> List[dict]:
+    """The period's session rows with their flags; ``rows`` are the rows already built by a query."""
     in_period = records_in_period(records, period)
-    return session_diagnostics.attach_flags(
-        build_sessions(in_period, labels_for(records)), in_period, records,
-    )
+    if rows is None:
+        rows = build_sessions(in_period, labels_for(records))
+    return session_diagnostics.attach_flags(rows, in_period, records)
 
 
 def get_session_detail(records: List[RequestRecord], session_id: str) -> Optional[dict]:

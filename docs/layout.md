@@ -24,7 +24,8 @@ github-copilot-usage/
 │   ├── refresh.py             # the shared snapshot of parsed records: one joined rebuild, survives a cancelled request, never overwritten by an older build, plus the summary cached on a content fingerprint
 │   ├── aggregate.py           # period bucketing, per-model and per-session rollups, CSV export
 │   ├── model_labels.py        # conservative model-label grouping, exact aliases, provider families and the validation of the model settings
-│   ├── request_explorer.py    # the request explorer query: filters, sorting, paging and facet counts over the parsed requests
+│   ├── request_explorer.py    # the request explorer query: filters, sorting, paging and facet counts over the parsed requests (the path used when the read model cannot answer)
+│   ├── index_queries.py       # the request explorer and the session list as SQL over the read model, read from the scan the snapshot came from
 │   ├── prompt_composition.py  # one reading of a request's logged composition: label, category and estimated tokens
 │   ├── context_drilldown.py   # who carries the prompt tokens: top projects, models, sessions and requests, with coverage
 │   ├── session_diagnostics.py # per-session heuristic flags: large prompt, growing prompt, high non-user share

@@ -28,9 +28,11 @@ from src import (
     config,
     context_drilldown,
     features,
+    index_queries,
     insights,
     model_labels,
     pace_alert,
+    read_model,
     refresh,
     request_explorer,
     tailnet,
@@ -161,7 +163,11 @@ async def api_trends(
 async def api_sessions(
     period: str = Query("all", description="today | week | month | cycle | all | range:YYYY-MM-DD..YYYY-MM-DD"),
 ) -> dict:
-    return {"period": period, "sessions": aggregate.get_sessions(await _records(), period)}
+    snap = await refresh.store.snapshot()
+    with read_model.model.reading(snap.index) as conn:
+        rows = index_queries.sessions(conn, snap.index, period) if conn is not None else None
+    records = aggregate.visible(snap.records)
+    return {"period": period, "sessions": aggregate.get_sessions(records, period, rows)}
 
 
 @app.get("/api/sessions/{session_id}")
@@ -210,13 +216,16 @@ async def api_requests(
     page: int = Query(1, ge=1),
     page_size: int = Query(request_explorer.DEFAULT_PAGE_SIZE, ge=1, le=request_explorer.MAX_PAGE_SIZE),
 ) -> dict:
-    records = await _records()
     query = request_explorer.Query.build(
         period=period, project=project, model=model, mode=mode, ide=ide, result=result,
         min_credits=min_credits, max_credits=max_credits, q=q, sort=sort, order=order,
         page=page, page_size=page_size,
     )
-    return request_explorer.explore(records, query)
+    snap = await refresh.store.snapshot()
+    with read_model.model.reading(snap.index) as conn:
+        if conn is not None:
+            return index_queries.explore(conn, snap.index, query)
+    return request_explorer.explore(aggregate.visible(snap.records), query)
 
 
 @app.get("/api/insights")

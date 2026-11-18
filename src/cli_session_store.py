@@ -38,8 +38,6 @@ _SESSION_COLUMNS = ("id", "cwd")
 # dashboard refresh, and a miss just means this poll uses the fallback.
 _CONNECT_TIMEOUT_S = 1.0
 
-_MESSAGE_LIMIT = 200
-
 
 @dataclass
 class UsageCall:
@@ -98,7 +96,7 @@ def _int(value: object) -> int:
 
 
 def _message(raw: object) -> str:
-    return " ".join(str(raw or "").split())[:_MESSAGE_LIMIT]
+    return " ".join(str(raw or "").split())
 
 
 def _read(db_path: Path) -> Tuple[Optional[StoreSnapshot], str]:

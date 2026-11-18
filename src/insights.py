@@ -33,8 +33,6 @@ TOP_SESSION_SHARE_PCT = 30.0
 # A change smaller than this is ordinary variation between two periods.
 CHANGE_PCT = 50.0
 MIN_PREV_CREDITS = 2.0
-# One busy first morning projects absurdly, so the projection waits as pace_alert does.
-BUDGET_MIN_DAYS = 3
 COMPOSITION_MIN_PCT = 40.0
 COMPOSITION_MIN_COVERED = 3
 MAX_COMPOSITION_INSIGHTS = 2
@@ -114,23 +112,31 @@ def _period_change(summary: Dict[str, Any], period: str) -> List[Dict[str, Any]]
 
 def _budget_risk(summary: Dict[str, Any]) -> List[Dict[str, Any]]:
     b = summary["budget"]
-    if not b["allowance_credits"]:
-        return []
-    if (b["used_pct"] or 0) >= 100:
+    risk = b["risk"]
+    used = _credits(b["used_credits"])
+    allowance = _credits(b["allowance_credits"])
+    if risk == "critical":
         return [_insight(
             "budget_risk", "critical",
-            "The cycle allowance is used up: %s of %s credits."
-            % (_credits(b["used_credits"]), _credits(b["allowance_credits"])),
+            "The cycle allowance is used up: %s of %s credits." % (used, allowance),
             period="cycle",
         )]
-    if b["days_elapsed"] >= BUDGET_MIN_DAYS and (b["projected_pct"] or 0) > 100:
-        return [_insight(
+    out: List[Dict[str, Any]] = []
+    if risk == "warning":
+        out.append(_insight(
             "budget_risk", "warning",
             "On pace for %s credits by cycle end, %s%% of the %s allowance."
-            % (_credits(b["projected_credits"]), b["projected_pct"], _credits(b["allowance_credits"])),
+            % (_credits(b["projected_credits"]), b["projected_pct"], allowance),
             period="cycle",
-        )]
-    return []
+        ))
+    # Past the first days a projection always follows 80% used, so the level is stated on its own.
+    if (b["used_pct"] or 0) >= aggregate.BUDGET_ATTENTION_PCT:
+        out.append(_insight(
+            "budget_risk", "info",
+            "%s%% of the cycle allowance is used: %s of %s credits." % (round(b["used_pct"]), used, allowance),
+            period="cycle",
+        ))
+    return out
 
 
 def _prompt_composition(

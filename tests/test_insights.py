@@ -19,6 +19,8 @@ def _budget(**kw) -> dict:
         "projected_credits": 62.0, "projected_pct": 62.0, "note": "",
     }
     base.update(kw)
+    base["risk"] = aggregate.budget_risk_level(
+        base["allowance_credits"], base["used_pct"], base["projected_pct"], base["days_elapsed"])
     return base
 
 
@@ -122,6 +124,36 @@ def test_budget_projection_past_allowance_is_a_warning(rec, monkeypatch):
     [found] = _of_type(insights.build_insights([rec(0)], "week"), "budget_risk")
     assert found["severity"] == "warning"
     assert "124 credits" in found["text"] and "124.0%" in found["text"]
+
+
+def test_budget_at_eighty_percent_used_is_an_info_attention_finding(rec, monkeypatch):
+    _set_budget(monkeypatch, used_credits=80.0, used_pct=80.0, projected_pct=90.0)
+    [found] = _of_type(insights.build_insights([rec(0)], "week"), "budget_risk")
+    assert found["severity"] == "info"
+    assert "80% of the cycle allowance" in found["text"] and "80 of 100" in found["text"]
+
+
+def test_budget_just_under_eighty_percent_says_nothing(rec, monkeypatch):
+    _set_budget(monkeypatch, used_credits=79.0, used_pct=79.0, projected_pct=90.0)
+    assert _of_type(insights.build_insights([rec(0)], "week"), "budget_risk") == []
+
+
+def test_budget_attention_is_listed_beside_a_projection_warning(rec, monkeypatch):
+    _set_budget(monkeypatch, used_credits=85.0, used_pct=85.0, projected_credits=142.0, projected_pct=142.0)
+    found = _of_type(insights.build_insights([rec(0)], "week"), "budget_risk")
+    assert [i["severity"] for i in found] == ["warning", "info"]
+
+
+def test_budget_used_up_is_one_critical_finding_not_two(rec, monkeypatch):
+    _set_budget(monkeypatch, used_credits=100.0, used_pct=100.0, projected_pct=200.0)
+    found = _of_type(insights.build_insights([rec(0)], "week"), "budget_risk")
+    assert [i["severity"] for i in found] == ["critical"]
+
+
+def test_budget_attention_shows_before_the_projection_is_trusted(rec, monkeypatch):
+    _set_budget(monkeypatch, days_elapsed=1, used_credits=85.0, used_pct=85.0, projected_pct=2635.0)
+    [found] = _of_type(insights.build_insights([rec(0)], "week"), "budget_risk")
+    assert found["severity"] == "info"
 
 
 def test_budget_projection_waits_for_the_third_day(rec, monkeypatch):

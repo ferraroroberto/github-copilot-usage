@@ -254,7 +254,7 @@ flowchart LR
   - credits used against the allowance
   - the projection for the end of the cycle
 - **States:**
-  - the meter turns to a warning when the projection passes the allowance and to over when the use does
+  - the meter and a level chip beside the used figure turn to attention at 80% of the allowance used, to a warning when the projection passes the allowance and to critical when the use does
   - hidden when no allowance is set
   - a note says when the telemetry start date cuts the cycle
 - **Why:** the marker shows pace, not only use, so a quiet first week is not mistaken for headroom

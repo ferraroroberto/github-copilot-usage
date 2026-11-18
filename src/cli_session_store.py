@@ -74,7 +74,8 @@ def clear_cache() -> None:
     _cache.clear()
 
 
-def _signature(db_path: Path) -> Optional[tuple]:
+def signature(db_path: Path) -> Optional[tuple]:
+    """(mtime, size) of the database and of its WAL file, or None when the database is absent."""
     sig = []
     for p in (db_path, db_path.with_name(db_path.name + "-wal")):
         try:
@@ -178,7 +179,7 @@ def _read(db_path: Path) -> Tuple[Optional[StoreSnapshot], str]:
 
 def read_store(db_path: Path) -> Tuple[Optional[StoreSnapshot], str]:
     """Return ``(snapshot, "ok")``, or ``(None, reason)`` when it cannot be used."""
-    sig = _signature(db_path)
+    sig = signature(db_path)
     if sig is None:
         return None, "not found"
     key = str(db_path)

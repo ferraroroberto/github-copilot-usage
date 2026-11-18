@@ -60,6 +60,12 @@ def pytest_terminal_summary(terminalreporter) -> None:
             terminalreporter.write_line("  " + nodeid)
 
 
+@pytest.fixture(autouse=True)
+def _isolated_runtime_data(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every test's read model and usage log go to a throwaway folder, never the machine's runtime data."""
+    monkeypatch.setenv("GITHUB_COPILOT_USAGE_DATA_DIR", str(tmp_path_factory.mktemp("runtime-data")))
+
+
 @pytest.fixture
 def tools_heavy() -> list:
     """A composition where tool definitions dominate and the user's own text is 10%."""

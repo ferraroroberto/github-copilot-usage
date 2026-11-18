@@ -37,7 +37,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone, tzinfo
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from src import cli_session_store
 from src.cli_session_store import StoreSnapshot
@@ -411,14 +411,34 @@ def _usage_note(store_reason: str, fallback_sessions: int) -> str:
     return cli_session_store.DB_NAME + " " + store_reason + " — session totals from events.jsonl"
 
 
-def all_records(session_state_dir: Path) -> Tuple[List[RequestRecord], dict]:
-    """Return ``(records, usage)``; ``usage`` says which source fed them and why."""
-    store, reason = cli_session_store.read_store(session_state_dir.parent / cli_session_store.DB_NAME)
-    records: List[RequestRecord] = []
-    if store is not None:
+Parsed = Tuple[List[RequestRecord], Dict[str, Any]]
+# ``cached(key, signature, parse)``: the read model's lookup, or a plain parse when there is none.
+Cached = Callable[[str, str, Callable[[], Parsed]], Parsed]
+
+
+def _parse_now(_key: str, _signature: str, parse: Callable[[], Parsed]) -> Parsed:
+    return parse()
+
+
+def all_records(session_state_dir: Path, cached: Cached = _parse_now) -> Tuple[List[RequestRecord], dict]:
+    """Return ``(records, usage)``; ``usage`` says which source fed them and why.
+
+    The store and each fallback ``events.jsonl`` are separate sources for ``cached``. An events
+    file's signature carries the store's, because the store decides which sessions it covers.
+    """
+    db_path = session_state_dir.parent / cli_session_store.DB_NAME
+    store_sig = repr(cli_session_store.signature(db_path))
+
+    def parse_store() -> Parsed:
+        store, reason = cli_session_store.read_store(db_path)
+        if store is None:
+            return [], {"reason": reason, "available": False}
         if not _store_records_cache or _store_records_cache[0][0] is not store:
             _store_records_cache[:] = [(store, _store_records(store, session_state_dir))]
-        records.extend(_store_records_cache[0][1])
+        return _store_records_cache[0][1], {"reason": reason, "available": True}
+
+    store_records, store_meta = cached("cli-store:" + str(db_path), store_sig, parse_store)
+    records: List[RequestRecord] = list(store_records)
     covered = {r.session_id for r in records}
 
     fallback = 0
@@ -429,18 +449,31 @@ def all_records(session_state_dir: Path) -> Tuple[List[RequestRecord], dict]:
         session_dirs = []
     for sdir in session_dirs:
         events_path = sdir / "events.jsonl"
-        if sdir.name in covered or not events_path.is_file():
+        if sdir.name in covered:
             continue
-        parsed = _cache.get(events_path)
-        if parsed is None:
-            parsed = _parse_events_file(events_path, _read_cwd(sdir))
-            _cache.put(events_path, parsed)
+        try:
+            st = events_path.stat()
+        except OSError:
+            continue
+        parsed, _meta = cached(
+            "cli-events:" + str(events_path),
+            repr((st.st_mtime, st.st_size, store_sig)),
+            lambda sdir=sdir, events_path=events_path: (_events_records(events_path, sdir), {}),
+        )
         if parsed:
             fallback += 1
         records.extend(parsed)
 
     usage = {
-        "usage_source": "session-store" if store is not None else "events.jsonl",
-        "usage_note": _usage_note(reason, fallback),
+        "usage_source": "session-store" if store_meta.get("available") else "events.jsonl",
+        "usage_note": _usage_note(str(store_meta.get("reason") or ""), fallback),
     }
     return records, usage
+
+
+def _events_records(events_path: Path, sdir: Path) -> List[RequestRecord]:
+    parsed = _cache.get(events_path)
+    if parsed is None:
+        parsed = _parse_events_file(events_path, _read_cwd(sdir))
+        _cache.put(events_path, parsed)
+    return parsed

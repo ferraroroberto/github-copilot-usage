@@ -99,7 +99,7 @@ def test_cli_records_are_untouched(monkeypatch):
     monkeypatch.setattr(discovery, "discover_roots", lambda: [])
     monkeypatch.setattr(discovery, "copilot_cli_dir", lambda: Path("."))
     monkeypatch.setattr(config, "feature_enabled", lambda name: True)
-    monkeypatch.setattr(cli_parser, "all_records", lambda d: (twin, {}))
+    monkeypatch.setattr(cli_parser, "all_records", lambda d, cached=None: (twin, {}))
 
     records, sources = aggregate.gather_records()
 

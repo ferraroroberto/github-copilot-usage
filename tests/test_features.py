@@ -95,7 +95,7 @@ def test_copilot_cli_off_skips_its_parser_and_on_restores_it(client, monkeypatch
     monkeypatch.setattr(aggregate, "gather_records", REAL_GATHER)  # run the real gather over a stand-in CLI folder
     monkeypatch.setattr(discovery, "discover_roots", lambda: [])
     monkeypatch.setattr(discovery, "copilot_cli_dir", lambda: tmp_path)
-    monkeypatch.setattr(cli_parser, "all_records", lambda d: (calls.append(d) or [], {}))
+    monkeypatch.setattr(cli_parser, "all_records", lambda d, cached=None: (calls.append(d) or [], {}))
 
     _put(client, "copilot_cli", False)
     assert REAL_GATHER() == ([], []) and calls == []

@@ -75,8 +75,8 @@ export function render(state) {
   $('trend-nav').hidden = focused;
   $('trend-range').textContent = rangeText(win);
   $('trend-hint').textContent = focused
-    ? 'Tap a bar to narrow the focus to that bucket.'
-    : 'Tap a bar to focus the dashboard on those dates.';
+    ? 'Tap a bar or point to narrow the focus to that bucket.'
+    : 'Tap a bar or point to focus the dashboard on those dates.';
   $('trend-older').disabled = !(win && win.has_older);
   $('trend-newer').disabled = !(win && win.has_newer);
   $('trend-latest').disabled = !state.trendOffset;

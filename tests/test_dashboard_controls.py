@@ -237,3 +237,42 @@ def test_the_csv_filename_of_a_range_is_safe(served):
     resp = served.get("/api/export.csv", params={"period": f"range:{_day(3)}..{_day(0)}"})
     disposition = resp.headers["content-disposition"]
     assert ":" not in disposition.split("filename=")[1] and ".." not in disposition
+
+
+# ---- efficiency and cache per bucket ----
+
+
+def _bucket(client, days_ago: int, period: str = "today") -> dict:
+    series = client.get("/api/trends", params={"period": period}).json()["time_series"]
+    return next(b for b in series if b["date"] == _day(days_ago))
+
+
+def test_a_bucket_carries_its_tokens_per_credit_and_cache_buckets(served, monkeypatch, rec):
+    records = [
+        rec(0, days_ago=2, credits=2.0, prompt_tokens=1000, completion_tokens=100,
+            cache_read_tokens=500, cache_write_tokens=200),
+        rec(1, days_ago=2, model="other-model", credits=2.0, prompt_tokens=600, completion_tokens=100,
+            cache_read_tokens=300, cache_write_tokens=0),
+    ]
+    monkeypatch.setattr(aggregate, "gather_records", lambda: (list(records), [{"ide": "Code"}]))
+    monkeypatch.setattr(refresh, "store", refresh.SnapshotStore())
+    bucket = _bucket(served, 2)
+    assert bucket["cache_read_tokens"] == 800 and bucket["cache_write_tokens"] == 200
+    # input 1600 - write 200 + 10% of 800 read = 1480; output 200 + 10% of 200 write = 220; / 4 credits
+    assert bucket["tokens_per_credit"] == 425.0
+
+
+def test_a_bucket_that_billed_nothing_or_recorded_no_cache_count_is_null_not_zero(served, monkeypatch, rec):
+    records = [
+        rec(0, days_ago=2, credits=None, cache_read_tokens=None, cache_write_tokens=None),
+        rec(1, days_ago=3, credits=0.0, cache_read_tokens=0, cache_write_tokens=0),
+    ]
+    monkeypatch.setattr(aggregate, "gather_records", lambda: (list(records), [{"ide": "Code"}]))
+    monkeypatch.setattr(refresh, "store", refresh.SnapshotStore())
+    unbilled = _bucket(served, 2)
+    assert unbilled["tokens_per_credit"] is None
+    assert unbilled["cache_read_tokens"] is None and unbilled["cache_write_tokens"] is None
+    free = _bucket(served, 3)
+    assert free["tokens_per_credit"] is None and free["cache_read_tokens"] == 0
+    empty = _bucket(served, 5)
+    assert empty["models"] == {} and empty["tokens_per_credit"] is None and empty["cache_read_tokens"] is None

@@ -344,6 +344,8 @@ flowchart LR
   - a hint line
   - the credits-per-model chart
   - the tokens in and out chart
+  - the tokens-per-credit chart
+  - the cache read and write chart
 - **Does:** Older, Newer and Latest step through earlier windows of the same period
 - **States:**
   - the step buttons are dimmed at the ends of the history
@@ -370,8 +372,11 @@ flowchart LR
 - **Reach:** hovering a bar, or touching one on a phone
 - **Holds:**
   - the credits or tokens of each model in the bucket
+  - the bucket's tokens per credit, or its cache read and write
   - a coverage footer
-- **States:** the footer names a bucket the telemetry start date only partly covers
+- **States:**
+  - a series with nothing in the bucket is left out of the tooltip
+  - the footer names a bucket the telemetry start date only partly covers
 
 ### `trends.mix` Where your prompt tokens go
 

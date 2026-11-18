@@ -1,4 +1,5 @@
-/* The two trend charts (Chart.js, vendored): credits per model as stacked bars, tokens in / out as lines.
+/* The four trend charts (Chart.js, vendored): credits per model as stacked bars; tokens in / out,
+ * tokens per credit and cache read / write as lines.
  *
  * The window drawn is the one the timeline holds (the latest from the summary, or an older one);
  * a bucket the telemetry start date does not reach is a gap, never a zero, and a tap on a
@@ -56,8 +57,9 @@ function rebudgetTicks(chart) {
   chart.options.scales.x.ticks.maxTicksLimit = tickBudget();
 }
 
-// Options both charts share: one tooltip per bucket, a coverage footer and a tap that focuses the bucket.
-function commonOptions(env, ts, scales, label) {
+// Options every chart shares: one tooltip per bucket, a coverage footer and a tap that focuses the bucket.
+// ``hideZero`` leaves a series that holds nothing in a bucket out of that bucket's tooltip.
+function commonOptions(env, ts, scales, label, hideZero) {
   const { state, cssVar } = env;
   return {
     responsive: true,
@@ -75,81 +77,134 @@ function commonOptions(env, ts, scales, label) {
     scales,
     plugins: {
       legend: legendOptions(cssVar),
-      tooltip: { callbacks: { label, footer: (items) => coverageFooter(items, ts) } },
+      tooltip: {
+        filter: (item) => item.parsed.y != null && !(hideZero && item.parsed.y === 0),
+        callbacks: { label, footer: (items) => coverageFooter(items, ts) },
+      },
     },
   };
 }
 
-// Returns the function that (re)draws both charts from the current trend.
+// A bucket with no recorded figure is a gap in the line, not a zero.
+const gapOr = (b, v) => (b.coverage === 'none' || v == null ? null : v);
+
+// Colour is never the only cue: each line also differs in dash, point shape and fill.
+function lineSet(labels, label, data, color, extra) {
+  return {
+    label,
+    data,
+    borderColor: color,
+    tension: 0.3, borderWidth: 2,
+    pointRadius: labels.length > 10 ? 0 : 4, pointHoverRadius: 5,
+    ...extra,
+  };
+}
+
+function lineScales({ cssVar, fmtTok }) {
+  const scales = axisOptions(cssVar, fmtTok, true);
+  scales.x.stacked = false;
+  scales.y.stacked = false;
+  return scales;
+}
+
+// Each draw replaces the chart it held on the canvas, so a new window or theme never stacks charts.
+function mount(env, held, key, canvasId, config) {
+  if (held[key]) held[key].destroy();
+  held[key] = new Chart(env.$(canvasId), config);
+}
+
+function drawCredits(env, held, ts, labels) {
+  const { colors, cssVar, fmtCredits, fmtTok } = env;
+  const surface = cssVar('--card');
+  // Model set across the window, family by family in stable rank order.
+  const models = colors.stackOrder([...new Set(ts.flatMap((b) => Object.keys(b.models || {})))]);
+  const datasets = models
+    .map((m) => ({
+      label: m,
+      data: ts.map((b) => (b.coverage === 'none' ? null : (b.models?.[m]?.credits) || 0)),
+      backgroundColor: colors.colorOf(m),
+      borderColor: surface,          // 2px surface gap between stacked segments
+      borderWidth: 1,
+      borderRadius: 3,
+      maxBarThickness: 34,
+    }))
+    .filter((d) => d.data.some((v) => v > 0));
+
+  mount(env, held, 'credits', 'chart-credits', {
+    type: 'bar',
+    data: { labels, datasets },
+    options: commonOptions(env, ts, axisOptions(cssVar, fmtTok, false),
+      (ctx) => ' ' + ctx.dataset.label + ': ' + fmtCredits(ctx.parsed.y) + ' cr', true),
+  });
+}
+
+function drawTokens(env, held, ts, labels) {
+  const theme = env.currentTheme();
+  const sumField = (b, f) => {
+    if (b.coverage === 'none') return null;
+    const slots = Object.values(b.models || {});
+    const known = slots.map((m) => m[f]).filter((v) => v != null);
+    if (slots.length && !known.length) return null;
+    return known.reduce((acc, v) => acc + v, 0);
+  };
+  const line = (label, field, color, extra) =>
+    lineSet(labels, label, ts.map((b) => sumField(b, field)), color, extra);
+  const inColor = seriesColor(theme, 0);
+  const outColor = seriesColor(theme, 1);
+
+  mount(env, held, 'tokens', 'chart-tokens', {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        line('Tokens in', 'prompt_tokens', inColor, { backgroundColor: inColor + '2e', fill: true, pointStyle: 'circle' }),
+        line('Tokens out', 'completion_tokens', outColor, { backgroundColor: outColor + '2e', fill: true, pointStyle: 'rectRot', borderDash: [10, 4] }),
+        line('Cache read (not in tokens in)', 'cache_read_tokens', seriesColor(theme, 2), { borderDash: [2, 4], fill: false, pointStyle: 'triangle' }),
+      ],
+    },
+    options: commonOptions(env, ts, lineScales(env), tokenLabel(env)),
+  });
+}
+
+// Value per credit over time: a bucket that billed nothing has no efficiency and stays a gap.
+function drawEfficiency(env, held, ts, labels) {
+  const color = seriesColor(env.currentTheme(), 0);
+  mount(env, held, 'efficiency', 'chart-efficiency', {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        lineSet(labels, 'Tokens per credit', ts.map((b) => gapOr(b, b.tokens_per_credit)), color,
+          { backgroundColor: color + '2e', fill: true, pointStyle: 'circle' }),
+      ],
+    },
+    options: commonOptions(env, ts, lineScales(env), tokenLabel(env)),
+  });
+}
+
+function drawCache(env, held, ts, labels) {
+  const theme = env.currentTheme();
+  mount(env, held, 'cache', 'chart-cache', {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        lineSet(labels, 'Cache read', ts.map((b) => gapOr(b, b.cache_read_tokens)), seriesColor(theme, 2),
+          { borderDash: [2, 4], fill: false, pointStyle: 'triangle' }),
+        lineSet(labels, 'Cache write', ts.map((b) => gapOr(b, b.cache_write_tokens)), seriesColor(theme, 1),
+          { fill: false, pointStyle: 'rect' }),
+      ],
+    },
+    options: commonOptions(env, ts, lineScales(env), tokenLabel(env)),
+  });
+}
+
+const tokenLabel = ({ fmtTok }) => (ctx) => ' ' + ctx.dataset.label + ': ' + fmtTok(ctx.parsed.y);
+
+// Returns the function that (re)draws every chart from the current trend.
 export function createCharts(env) {
-  const { $, state, colors, currentTheme, cssVar, fmtCredits, fmtTok } = env;
-  let creditChart = null;
-  let tokenChart = null;
-
-  function drawCredits(ts, labels) {
-    const surface = cssVar('--card');
-    // Model set across the window, family by family in stable rank order.
-    const models = colors.stackOrder([...new Set(ts.flatMap((b) => Object.keys(b.models || {})))]);
-    const datasets = models
-      .map((m) => ({
-        label: m,
-        data: ts.map((b) => (b.coverage === 'none' ? null : (b.models?.[m]?.credits) || 0)),
-        backgroundColor: colors.colorOf(m),
-        borderColor: surface,          // 2px surface gap between stacked segments
-        borderWidth: 1,
-        borderRadius: 3,
-        maxBarThickness: 34,
-      }))
-      .filter((d) => d.data.some((v) => v > 0));
-
-    if (creditChart) creditChart.destroy();
-    creditChart = new Chart($('chart-credits'), {
-      type: 'bar',
-      data: { labels, datasets },
-      options: commonOptions(env, ts, axisOptions(cssVar, fmtTok, false),
-        (ctx) => ' ' + ctx.dataset.label + ': ' + fmtCredits(ctx.parsed.y) + ' cr'),
-    });
-  }
-
-  function drawTokens(ts, labels) {
-    const theme = currentTheme();
-    // A bucket whose requests recorded no such figure is a gap in the line, not a zero.
-    const sumField = (b, f) => {
-      if (b.coverage === 'none') return null;
-      const slots = Object.values(b.models || {});
-      const known = slots.map((m) => m[f]).filter((v) => v != null);
-      if (slots.length && !known.length) return null;
-      return known.reduce((acc, v) => acc + v, 0);
-    };
-    // Colour is never the only cue: each line also differs in dash, point shape and fill.
-    const line = (label, field, color, extra) => ({
-      label,
-      data: ts.map((b) => sumField(b, field)),
-      borderColor: color,
-      tension: 0.3, borderWidth: 2,
-      pointRadius: labels.length > 10 ? 0 : 4, pointHoverRadius: 5,
-      ...extra,
-    });
-    const inColor = seriesColor(theme, 0);
-    const outColor = seriesColor(theme, 1);
-    const scales = axisOptions(cssVar, fmtTok, true);
-    scales.x.stacked = false;
-    scales.y.stacked = false;
-
-    if (tokenChart) tokenChart.destroy();
-    tokenChart = new Chart($('chart-tokens'), {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          line('Tokens in', 'prompt_tokens', inColor, { backgroundColor: inColor + '2e', fill: true, pointStyle: 'circle' }),
-          line('Tokens out', 'completion_tokens', outColor, { backgroundColor: outColor + '2e', fill: true, pointStyle: 'rectRot', borderDash: [10, 4] }),
-          line('Cache read (not in tokens in)', 'cache_read_tokens', seriesColor(theme, 2), { borderDash: [2, 4], fill: false, pointStyle: 'triangle' }),
-        ],
-      },
-      options: commonOptions(env, ts, scales, (ctx) => ' ' + ctx.dataset.label + ': ' + fmtTok(ctx.parsed.y)),
-    });
-  }
+  const { $, state } = env;
+  const held = {};
 
   return function renderCharts() {
     const trend = currentTrend(state);
@@ -158,7 +213,9 @@ export function createCharts(env) {
     card.hidden = !ts.length;
     if (!ts.length) return;
     const labels = ts.map((b) => b.label);
-    drawCredits(ts, labels);
-    drawTokens(ts, labels);
+    drawCredits(env, held, ts, labels);
+    drawTokens(env, held, ts, labels);
+    drawEfficiency(env, held, ts, labels);
+    drawCache(env, held, ts, labels);
   };
 }

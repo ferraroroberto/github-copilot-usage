@@ -54,13 +54,14 @@ function detailBlock(r, i, fmt) {
     ? `<h4 class="req-sub">In context · ${fmtNum(items.length)}</h4><ul class="ctx-chips">${
       items.map((name) => `<li title="${esc(name)}">${esc(name)}</li>`).join('')}</ul>`
     : '';
-  const notes = [usageNote(r), promptNote(r)].filter(Boolean)
-    .map((text) => `<p class="footnote">${esc(text)}</p>`).join('');
+  const note = (text) => (text ? `<p class="footnote">${esc(text)}</p>` : '');
+  // The prompt comes first: tapping the row must show what the row's one-line title cut off.
   return `<li class="req-detail" id="sd-req-${i}" hidden>
-    <dl class="req-facts">${grid}</dl>
-    <h4 class="req-sub">Prompt</h4>
+    <h4 class="req-sub req-sub-first">Prompt</h4>
     <p class="req-prompt">${r.message ? esc(r.message) : '<span class="muted">(no prompt text)</span>'}</p>
-    ${context}${notes}
+    ${note(promptNote(r))}
+    <dl class="req-facts">${grid}</dl>
+    ${context}${note(usageNote(r))}
   </li>`;
 }
 

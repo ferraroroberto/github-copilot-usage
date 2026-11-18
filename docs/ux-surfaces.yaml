@@ -866,15 +866,18 @@ surfaces:
       - Extra storage roots with its count
       - Billing token with its status
       - Clear cache
+      - Health check with its last result, and a sentence under the group with the slowest check
     does:
       - Start date leaves every earlier record out of every total
       - Count every record clears the start date
       - Extra storage roots opens the roots sheet
       - Clear cache rebuilds from the files and toasts
+      - Health check times the real API over a temporary copy of the read model and reports against a budget, never changing the live data
     states:
       - Count every record exists only while a start date is set
       - Billing token and its note exist only while the billing card is on; the note names the environment variable to set
       - an unreadable date is refused and the field returns to its last value
+      - Health check reads Not run, Running (the row is disabled while it polls), Passed, Over budget, Failed, Incomplete or Unavailable with the reason; a second tap while one runs toasts that one is running
     links:
       - to: settings.roots
         via: Extra storage roots

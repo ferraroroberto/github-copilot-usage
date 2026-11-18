@@ -103,6 +103,27 @@ def db_path() -> Path:
     return runtime_db_path(APP, DB_FILENAME)
 
 
+def open_file(path: Path, read_only: bool = True) -> sqlite3.Connection:
+    """A connection to a copy of the read model (the health check's), never to the live file."""
+    if read_only:
+        # runtime-write-exempt: opened read-only (mode=ro)
+        return sqlite3.connect("%s?mode=ro" % path.resolve().as_uri(), uri=True, timeout=_CONNECT_TIMEOUT_S)
+    # runtime-write-exempt: the caller names a file in its own temporary folder
+    return sqlite3.connect(str(path), timeout=_CONNECT_TIMEOUT_S)
+
+
+def backup_live(target: Path) -> None:
+    """An online, consistent copy of the live file in ``target``; the live file is opened read-only."""
+    src = open_file(db_path())
+    dst = open_file(target, read_only=False)
+    try:
+        src.backup(dst)
+        dst.execute("PRAGMA journal_mode=DELETE")
+    finally:
+        dst.close()
+        src.close()
+
+
 def _row(source_id: int, ord_: int, rec: RequestRecord) -> tuple:
     values: List[Any] = [source_id, ord_]
     for name in _RECORD_FIELDS:

@@ -21,6 +21,7 @@ import { commitUrl, composeUrl, readDash } from './url-state.js';
 import { initRequestList, renderRequestList } from './request-list.js';
 import { flagChips, initInsights, refreshInsights, renderDiagnostics } from './insights.js';
 import { initFeatures } from './features.js';
+import { initHealthCheck } from './health-check.js';
 import { initTailnet } from './tailnet.js';
 import { createModelColors, initModelSettings, summarizeModelSettings } from './models.js';
 import { createCharts } from './charts.js';
@@ -824,6 +825,7 @@ const features = initFeatures({
 features.onChange(syncUsageLog);
 await features.load();
 initTailnet({ jsonApi, showToast: toast }).load();
+initHealthCheck({ $, jsonApi, showToast: toast }).load();
 
 fetch('/api/version').then((r) => r.json()).then((v) => {
   $('buildReadout').textContent = buildReadoutText(v.git_sha || 'unknown', v.built_at || '');

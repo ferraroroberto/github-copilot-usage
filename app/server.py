@@ -6,6 +6,7 @@ Copilot's own log files except POST /api/config, PUT /api/sessions/{id}/name, PU
 PUT /api/tailnet (all write config.json); the
 refresh and cache-clear endpoints only change this process's parsed state and its read model in the
 runtime-data folder.
+POST /api/health-check works on a temporary copy of the read model and writes only its own result file there.
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ from src import (
     config,
     context_drilldown,
     features,
+    health_check,
     index_queries,
     insights,
     model_labels,
@@ -283,6 +285,20 @@ async def api_cache_clear() -> dict:
     """Drop the snapshot, the cached summaries and every parsed record; the next read rebuilds."""
     await refresh.store.clear()
     return {"ok": True}
+
+
+@app.get("/api/health-check")
+async def api_health_check_get() -> dict:
+    """Whether a read-model health check is running, and the last result."""
+    return health_check.status()
+
+
+@app.post("/api/health-check", status_code=202)
+async def api_health_check_post() -> dict:
+    """Start a health check over a disposable copy of the read model; 409 while one is running."""
+    if not health_check.start():
+        raise HTTPException(status_code=409, detail="a health check is already running")
+    return health_check.status()
 
 
 @app.get("/api/config")

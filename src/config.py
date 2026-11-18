@@ -26,7 +26,8 @@ from src import model_labels
 _log = logging.getLogger(__name__)
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
-CONFIG_PATH: Path = PROJECT_ROOT / "config.json"
+# A health-check run points this at its own copy, so saving settings there never touches the real file.
+CONFIG_PATH: Path = Path(os.environ.get("COPILOT_USAGE_CONFIG") or PROJECT_ROOT / "config.json")
 ENV_PATH: Path = PROJECT_ROOT / ".env"
 
 DEFAULTS: Dict[str, Any] = {
@@ -244,6 +245,7 @@ def save(updates: Dict[str, Any]) -> Dict[str, Any]:
     with _lock:
         current.update(cleaned)
         on_disk = {k: current[k] for k in DEFAULTS}
+        # runtime-write-exempt: the settings file, at the repo root or the path a health-check run names
         CONFIG_PATH.write_text(
             json.dumps(on_disk, indent=2) + "\n", encoding="utf-8"
         )

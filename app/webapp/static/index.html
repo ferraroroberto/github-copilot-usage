@@ -760,9 +760,15 @@
       <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-eraser"></use></svg>
       <span class="settings-row-label">Clear cache</span>
     </button>
+    <button data-track="health-check" id="health-check" class="settings-row" type="button">
+      <svg class="icon settings-row-icon" aria-hidden="true"><use href="#i-activity"></use></svg>
+      <span class="settings-row-label">Health check</span>
+      <span class="settings-row-value" id="health-check-value">Not run</span>
+    </button>
   </section>
   <p class="settings-footnote">Records before the start date are left out of every total; leave it empty to count everything. A period it cuts into is labelled partial coverage.</p>
   <p class="settings-footnote" id="set-pat-note" data-feature-ui="billing_card" hidden></p>
+  <p class="settings-footnote" id="health-check-note">Not run yet.</p>
 
   <h3 class="settings-group-label" id="group-alerts" data-feature-ui="pace_alert">Alerts</h3>
   <section class="card settings-group" data-surface="settings.alerts" aria-labelledby="group-alerts" data-feature-ui="pace_alert">

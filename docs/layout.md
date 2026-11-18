@@ -7,10 +7,11 @@ github-copilot-usage/
 │   ├── server.py              # FastAPI routes (JSON API + serves the dashboard); no parsing logic
 │   ├── listeners.py           # the sockets served: loopback over HTTP always, the Tailscale address over HTTPS when opted in, on one event loop
 │   ├── tray.py                # optional Windows tray icon (pystray) that owns the listeners
+│   ├── health_check_run.py    # the health check's child process: the real API in process over the copy, discovery replaced by a replay, billing off, outbound sockets blocked
 │   ├── build_info.py          # short commit + process start time for the footer
 │   ├── version.py             # single source of the version reported by /health
 │   └── webapp/
-│       └── static/            # the vanilla-JS SPA: index.html (the four tab panes under one page header), app.js, rows.js (the one list-row renderer: sessions, insights, requests and the drill-down all draw the vendored action-row through it), requests.js (the request explorer view), request-list.js (the session sheet's request rows and their inline detail), insights.js (the insights card, session diagnostics and the context drill-down), features.js (Settings → Available features: the switches and what hides while a block is off), tailnet.js (the Tailscale access row in that group), models.js (model colours by provider family and the Settings sheet that merges models and overrides a colour), charts.js (the two trend charts), timeline.js (trend windows, the focused date range and the coverage note), tokens.js (token figures as printed: a count the source did not record is a dash, never 0), sections.js (collapsible cards), session-name.js (the rename row of the session sheet), styles.css, PWA manifest + icons, vendored Chart.js
+│       └── static/            # the vanilla-JS SPA: index.html (the four tab panes under one page header), app.js, rows.js (the one list-row renderer: sessions, insights, requests and the drill-down all draw the vendored action-row through it), requests.js (the request explorer view), request-list.js (the session sheet's request rows and their inline detail), insights.js (the insights card, session diagnostics and the context drill-down), features.js (Settings → Available features: the switches and what hides while a block is off), tailnet.js (the Tailscale access row in that group), health-check.js (Settings → Data sources: the read-model health check row and its result sentence), models.js (model colours by provider family and the Settings sheet that merges models and overrides a colour), charts.js (the two trend charts), timeline.js (trend windows, the focused date range and the coverage note), tokens.js (token figures as printed: a count the source did not record is a dash, never 0), sections.js (collapsible cards), session-name.js (the rename row of the session sheet), styles.css, PWA manifest + icons, vendored Chart.js
 │
 ├── src/                       # logic layer (never imports `app`)
 │   ├── config.py              # config.json + env loading, thread-safe settings
@@ -21,6 +22,7 @@ github-copilot-usage/
 │   ├── cli_parser.py          # read-only, mtime-cached parser for Copilot CLI session logs
 │   ├── cli_session_store.py   # read-only reader for the Copilot CLI's session-store.db per-call usage
 │   ├── read_model.py          # the persisted read model: parsed records in an indexed SQLite file in the runtime-data folder, re-parsing only new or changed sources
+│   ├── health_check.py        # the Settings health check: an online backup of the read model into a temporary folder, a child process over it, one bounded result file
 │   ├── refresh.py             # the shared snapshot of parsed records: one joined rebuild, survives a cancelled request, never overwritten by an older build, plus the summary cached on a content fingerprint
 │   ├── aggregate.py           # period bucketing, per-model and per-session rollups, CSV export
 │   ├── model_labels.py        # conservative model-label grouping, exact aliases, provider families and the validation of the model settings

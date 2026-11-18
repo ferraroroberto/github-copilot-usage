@@ -64,30 +64,44 @@ def gather_records() -> Tuple[List[RequestRecord], List[dict]]:
     records: List[RequestRecord] = []
     sources: List[dict] = []
 
+    # (record, source file mtime, source file path, index of its row in ``sources``)
+    found: List[Tuple[RequestRecord, float, str, int]] = []
     for root in discovery.discover_roots():
         files = discovery.chat_session_files(root)
-        root_records: List[RequestRecord] = []
+        row = len(sources)
         last_mtime = 0.0
         for entry in files:
             path = entry["path"]
             try:
-                last_mtime = max(last_mtime, path.stat().st_mtime)
+                mtime = path.stat().st_mtime
             except OSError:
-                pass
+                mtime = 0.0
+            last_mtime = max(last_mtime, mtime)
             key, name, ppath = vscode_parser.project_from_workspace_dir(entry["workspace_dir"])
-            root_records.extend(
-                vscode_parser.parse_session_file(path, root.ide, key, name, ppath)
-            )
-        records.extend(root_records)
+            for rec in vscode_parser.parse_session_file(path, root.ide, key, name, ppath):
+                found.append((rec, mtime, str(path), row))
         sources.append({
             "ide": root.ide,
             "path": str(root.user_dir),
             "origin": root.origin,
             "kind": "vscode",
             "session_files": len(files),
-            "requests": len(root_records),
+            "requests": 0,
+            "duplicates_ignored": 0,
             "last_activity": _iso_or_none(last_mtime),
         })
+
+    # A chat log copied to a second folder is the same requests twice: count each once.
+    losers = vscode_parser.copied_request_losers([(rec, mtime, path) for rec, mtime, path, _ in found])
+    for (rec, _mtime, _path, row), loser in zip(found, losers):
+        if loser:
+            sources[row]["duplicates_ignored"] += 1
+        else:
+            sources[row]["requests"] += 1
+            records.append(rec)
+    ignored = sum(s["duplicates_ignored"] for s in sources)
+    if ignored:
+        _log.info("ℹ️ gather: ignored %d request(s) read from a copied chat log", ignored)
 
     if config.feature_enabled("copilot_cli"):
         cli_dir = discovery.copilot_cli_dir()

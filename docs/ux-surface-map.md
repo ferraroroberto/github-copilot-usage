@@ -297,8 +297,10 @@ flowchart LR
 - **Root:** `data-surface`
 - **Reach:** the Overview tab
 - **Holds:** one row per place Copilot data was found, with the editor, the kind, the session files and request count, the last activity and the path
-- **States:** the line "No Copilot data locations found." on a machine with none
-- **Why:** the first place to look when a figure is missing is whether its editor was found
+- **States:**
+  - the line "No Copilot data locations found." on a machine with none
+  - a row that gives the count of duplicate requests ignored, shown only above zero, when a chat log copied to a second folder was read from the newer file once
+- **Why:** the first place to look when a figure is missing or looks doubled is whether its editor was found and read once
 
 ## Trends
 

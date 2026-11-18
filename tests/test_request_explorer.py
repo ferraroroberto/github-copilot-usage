@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from typing import List
 
@@ -81,6 +82,29 @@ def test_no_filter_returns_every_request_of_the_period_newest_first():
 ])
 def test_each_filter_narrows_the_rows(kw, expected):
     assert _ids(_run(**kw)) == expected
+
+
+@pytest.mark.parametrize("q, expected", [
+    ("claude-SONNET", ["req-02", "req-05"]),             # the resolved model
+    ("COPILOT/GPT-5", ["req-01", "req-02", "req-03", "req-04", "req-05"]),  # the requested model
+    ("beta", ["req-04", "req-05"]),                      # the project name
+    ("EDIT", ["req-05"]),                                # the mode
+    ("insiders", ["req-04"]),                            # the editor
+    ("vscode", ["req-01", "req-02", "req-03", "req-04", "req-05"]),  # the source
+    ("REQ-04", ["req-04"]),                              # the request id
+])
+def test_text_search_reads_project_model_mode_editor_source_and_request_id(q, expected):
+    assert _ids(_run(q=q)) == expected
+
+
+def test_a_renamed_session_is_found_by_its_original_title_and_its_custom_name():
+    records = [
+        replace(r, session_title="My own name", parsed_title="Alpha session") if r.session_id == "sess-a" else r
+        for r in _fixture()
+    ]
+    for needle in ("alpha session", "MY OWN NAME"):
+        body = explore(records, Query.build(period="week", q=needle))
+        assert _ids(body) == ["req-01", "req-02", "req-03"]
 
 
 def test_credit_range_applies_to_billed_requests_only():

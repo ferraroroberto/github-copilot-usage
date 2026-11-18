@@ -36,6 +36,12 @@ T = TypeVar("T")
 
 # A row's place in storage order, as one integer a MIN() can pick a first row by.
 _POS = "(source_id * 4294967296 + ord)"
+# The columns a text search reads: ``request_explorer.search_fields`` minus ``parsed_title``,
+# which is a read-time field; the stored ``session_title`` already is the log's own title.
+_TEXT_COLUMNS = (
+    "message", "session_title", "session_id", "project_name",
+    "model", "model_requested", "mode", "ide", "source", "request_id",
+)
 _MODE = "(CASE WHEN mode = '' THEN 'unknown' ELSE mode END)"
 _RESULT = "(CASE WHEN error THEN 'error' ELSE 'ok' END)"
 _TOKENS = (
@@ -147,12 +153,12 @@ def _other_filters(conn: sqlite3.Connection, q: Query, view: _View) -> _Where:
         where.add("credits <= ?", q.max_credits)
     if q.text:
         # Python's lower(), not SQLite's ASCII-only one, so a search matches as before.
-        def text_hit(needle: str, message: str, title: str, session_id: str) -> int:
-            title = view.names.get(session_id, title)
-            return int(needle in message.lower() or needle in title.lower() or needle in session_id.lower())
+        # The same fields as ``request_explorer.search_fields``, plus the session's custom name.
+        def row_hit(needle: str, session_id: str, *fields: Optional[str]) -> int:
+            return int(request_explorer.text_hit(needle, (view.names.get(session_id),) + fields))
 
-        conn.create_function("text_hit", 4, text_hit, deterministic=True)
-        where.add("text_hit(?, message, session_title, session_id)", q.text.lower())
+        conn.create_function("text_hit", 2 + len(_TEXT_COLUMNS), row_hit, deterministic=True)
+        where.add("text_hit(?, session_id, %s)" % ", ".join(_TEXT_COLUMNS), q.text.lower())
     return where
 
 

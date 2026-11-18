@@ -16,7 +16,7 @@ unbilled requests stay in the result.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from src import aggregate
 from src.model_labels import ModelLabels
@@ -126,15 +126,25 @@ def _credit_range_ok(q: Query, r: RequestRecord) -> bool:
     return q.max_credits is None or r.credits <= q.max_credits
 
 
-def _text_ok(needle: str, r: RequestRecord) -> bool:
-    if not needle:
-        return True
-    needle = needle.lower()
+def text_hit(needle: str, fields: Iterable[Optional[str]]) -> bool:
+    """True when the lowercased ``needle`` is inside any field: the one rule both query paths share."""
+    return any(needle in (value or "").lower() for value in fields)
+
+
+def search_fields(r: RequestRecord) -> Tuple[Optional[str], ...]:
+    """What a text search reads: the prompt, the session's names, id and project, both models, mode, editor, source and request id.
+
+    A renamed session holds its custom name in ``session_title`` and the title its log carried in
+    ``parsed_title``, so either one finds it.
+    """
     return (
-        needle in r.message.lower()
-        or needle in r.session_title.lower()
-        or needle in r.session_id.lower()
+        r.message, r.session_title, r.parsed_title, r.session_id, r.project_name,
+        r.model, r.model_requested, r.mode, r.ide, r.source, r.request_id,
     )
+
+
+def _text_ok(needle: str, r: RequestRecord) -> bool:
+    return not needle or text_hit(needle.lower(), search_fields(r))
 
 
 def _failed_filters(q: Query, r: RequestRecord, value: Dict[str, Callable[[RequestRecord], str]]) -> List[str]:

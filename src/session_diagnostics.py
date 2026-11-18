@@ -81,6 +81,22 @@ def non_user_cut(records: List[RequestRecord]) -> Optional[float]:
     return shares[rank - 1]
 
 
+def _prompt_growth(sized: List[RequestRecord]) -> List[Dict[str, Any]]:
+    """Each sized prompt in order with its percentage change from the previous one.
+
+    The first entry has no previous prompt, so its ``change_pct`` is None; N sized requests
+    give N entries and N-1 changes.
+    """
+    out: List[Dict[str, Any]] = []
+    previous: Optional[int] = None
+    for r in sized:
+        change = None if not previous else round(100.0 * (r.prompt_tokens - previous) / previous, 1)
+        out.append({"request_id": r.request_id, "ts": r.ts.isoformat(), "prompt_tokens": r.prompt_tokens,
+                    "change_pct": change})
+        previous = r.prompt_tokens
+    return out
+
+
 def diagnose(session_records: List[RequestRecord], high_non_user_cut: Optional[float] = None) -> Dict[str, Any]:
     """Diagnostics and flags for the requests of one session.
 
@@ -131,6 +147,7 @@ def diagnose(session_records: List[RequestRecord], high_non_user_cut: Optional[f
         "first_prompt_tokens": first,
         "last_prompt_tokens": last,
         "growth_ratio": growth,
+        "prompt_growth": _prompt_growth(sized),
         "non_user_pct": non_user,
         "flags": flags,
     }

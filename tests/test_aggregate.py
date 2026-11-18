@@ -166,6 +166,7 @@ def test_cache_buckets_and_estimates_reach_totals_and_detail():
     est = detail["requests_detail"][0]
     assert est["usage_estimated"] is True and est["usage_source"] == "events.jsonl-allocated"
     assert est["uncached_input_tokens"] == 200
+    assert est["source"] == "cli"
     assert detail["usage_sources"] == ["events.jsonl-allocated", "vscode"]
 
 

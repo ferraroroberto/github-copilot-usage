@@ -19,13 +19,17 @@ export function splitMeta(text, tail = '', chips = '') {
 }
 
 // `share` (0-100) draws the drill-down's proportion bar under the status line.
-export function actionRowHtml({ track, data = {}, title, blank = '', meta = '', share = null }) {
+// `expands` names the element id the row shows and hides inline, instead of opening a sheet.
+export function actionRowHtml({ track, data = {}, title, blank = '', meta = '', share = null, expands = '' }) {
   const attrs = Object.entries(data).map(([key, value]) => ` data-${key}="${esc(value)}"`).join('');
   const bar = share === null
     ? ''
     : `<span class="mix-track cx-bar"><span class="mix-fill" style="width:${Math.min(100, Math.max(0, share))}%"></span></span>`;
+  const popup = expands
+    ? ` aria-expanded="false" aria-controls="${esc(expands)}"`
+    : ' aria-haspopup="dialog"';
   // dynamic-id-exempt: every call site passes one constant id, so the usage log still sees a fixed set
-  const open = `<button type="button" class="action-row-main" data-track="${track}"${attrs} aria-haspopup="dialog">`;
+  const open = `<button type="button" class="action-row-main" data-track="${track}"${attrs}${popup}>`;
   return `
     <li class="action-row">
       ${open}

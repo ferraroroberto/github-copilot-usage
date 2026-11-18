@@ -337,14 +337,20 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .rq-sortbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--gutter); margin-bottom: 4px; }
 .rq-sortbar .rq-order { height: 44px; }
 .rq-filter-box { margin-top: 8px; }
-.rq-filter-box > summary {
+.rq-filter-box > summary, .growth-box > summary {
   display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; list-style: none;
   font-size: var(--font-label); font-weight: 700;
 }
-.rq-filter-box > summary::-webkit-details-marker { display: none; }
+.rq-filter-box > summary::-webkit-details-marker, .growth-box > summary::-webkit-details-marker { display: none; }
 .rq-chevron { width: 16px; height: 16px; margin-left: auto; color: var(--fg-muted); transition: transform 0.15s ease; }
-.rq-filter-box[open] > summary .rq-chevron { transform: rotate(90deg); }
-.rq-filter-box[open] > summary { border-bottom: 1px solid var(--border-muted); margin-bottom: 10px; }
+.rq-filter-box[open] > summary .rq-chevron, .growth-box[open] > summary .rq-chevron { transform: rotate(90deg); }
+.rq-filter-box[open] > summary, .growth-box[open] > summary { border-bottom: 1px solid var(--border-muted); margin-bottom: 10px; }
+/* Prompt size per request: index, time, size and the change from the one before. */
+.growth-list { list-style: none; margin: 0 0 10px; padding: 0; font-size: var(--font-label); }
+.growth-list li { display: grid; grid-template-columns: 3.2em 1fr auto 4.5em; gap: 8px; padding: 6px 0; }
+.growth-list li + li { border-top: 1px solid var(--border-muted); }
+.growth-n, .growth-time { color: var(--fg-muted); }
+.growth-size, .growth-change { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* ---- insights and the context drill-down ----
  * A severity or flag is always spelled out as text, never left to its colour alone. */
@@ -379,18 +385,15 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .cx-item-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cx-items-empty { margin: 8px 0 4px; font-size: var(--font-label); color: var(--fg-muted); }
 .cx-items-empty[hidden] { display: none; }
-/* The session sheet's per-request context toggle and its row of names. */
-.ctx-toggle {
-  position: relative; margin: 0 6px 0 0; padding: 0 8px; min-height: 24px;
-  font: inherit; font-size: var(--font-label); font-weight: 600; color: var(--accent-text);
-  background: var(--accent-soft); border: 1px solid var(--accent-border-soft); border-radius: var(--r-pill); cursor: pointer;
-}
-.ctx-toggle::before { content: ""; position: absolute; inset: -10px -4px; }
-.ctx-row[hidden] { display: none; }
-.ctx-row td { padding-top: 0; }
-/* The table scrolls sideways on a phone; the names wrap at the visible width and stay put while it scrolls. */
-#sd-table-wrap { container-type: inline-size; }
-.ctx-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; position: sticky; left: 0; width: 100cqw; box-sizing: border-box; }
+/* A session sheet request opens inline: a fact grid, the stored prompt and the names it carried. */
+.req-detail { padding: 4px 14px 14px; border-top: 1px solid var(--line-muted); }
+.req-detail[hidden] { display: none; }
+.req-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px 14px; margin: 8px 0 0; }
+.req-facts dt { font-size: var(--font-label); color: var(--fg-muted); }
+.req-facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.req-sub { margin: 14px 0 6px; font-size: var(--font-label); color: var(--fg-muted); font-weight: 700; }
+.req-prompt { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ctx-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .ctx-chips li {
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   padding: 2px 8px; font-size: var(--font-label); color: var(--fg-muted);

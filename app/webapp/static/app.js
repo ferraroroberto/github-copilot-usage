@@ -17,6 +17,7 @@ import { showToast as showFleetToast } from './_vendored/toast/toast.js';
 import { createRowMenu } from './_vendored/row-menu/row-menu.js';
 import { actionRowHtml, esc, splitMeta } from './rows.js';
 import { initRequests } from './requests.js';
+import { initRequestList, renderRequestList } from './request-list.js';
 import { flagChips, initInsights, refreshInsights, renderDiagnostics } from './insights.js';
 import { initFeatures } from './features.js';
 import { initTailnet } from './tailnet.js';
@@ -484,29 +485,6 @@ $('session-list').addEventListener('click', (e) => {
   if (row) openSession(row.dataset.sid);
 });
 
-// A request's attached files, tools and attachments (names only) sit in a row under it, opened
-// by a button so the table keeps its width on a phone.
-function contextToggle(r, i) {
-  const n = (r.context_items || []).length;
-  if (!n) return '';
-  return `<button data-track="session-context-toggle" class="ctx-toggle" type="button" data-ctx="${i}" aria-expanded="false" aria-controls="sd-ctx-${i}">${fmtNum(n)} in context</button> `;
-}
-
-function contextRow(r, i) {
-  const items = r.context_items || [];
-  if (!items.length) return '';
-  return `<tr class="ctx-row" id="sd-ctx-${i}" hidden><td colspan="8"><ul class="ctx-chips">${
-    items.map((name) => `<li title="${esc(name)}">${esc(name)}</li>`).join('')}</ul></td></tr>`;
-}
-
-$('sd-table').addEventListener('click', (e) => {
-  const btn = e.target.closest('button[data-ctx]');
-  if (!btn) return;
-  const open = btn.getAttribute('aria-expanded') !== 'true';
-  btn.setAttribute('aria-expanded', String(open));
-  $('sd-ctx-' + btn.dataset.ctx).hidden = !open;
-});
-
 async function openSession(sid) {
   let detail;
   try {
@@ -535,28 +513,12 @@ async function openSession(sid) {
       <div class="mix-track"><div class="mix-fill" style="width:${Math.min(100, row.pct)}%"></div></div>
     </div>`).join('') : '';
 
-  const tbody = $('sd-table').querySelector('tbody');
-  tbody.innerHTML = (detail.requests_detail || []).map((r, i) => {
-    const est = r.usage_estimated ? '~' : '';
-    const tok = (n) => (n == null ? '—' : est + fmtTok(n));
-    const rowTitle = r.usage_source === 'unavailable' ? 'The Copilot CLI recorded no token counts for this request'
-      : r.usage_estimated ? 'Estimated: allocated from session totals (' + r.usage_source + ')' : '';
-    return `
-    <tr${r.error ? ' style="opacity:0.6"' : ''}${rowTitle ? ' title="' + esc(rowTitle) + '"' : ''}>
-      <td class="num">${fmtTime(r.ts)}</td>
-      <td class="td-trunc" title="${esc(r.message)}">${contextToggle(r, i)}${esc(r.message) || '<span class="muted">—</span>'}${r.error ? ' <svg class="inline-glyph glyph-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="errored"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>' : ''}</td>
-      <td>${esc(r.mode)}</td>
-      <td class="td-trunc" title="${esc(r.model)}">${esc(r.model)}</td>
-      <td class="num" title="${esc(tokBreakdown(r))}">${tok(r.prompt_tokens)}</td>
-      <td class="num">${tok(r.completion_tokens)}</td>
-      <td class="num">${r.credits === null ? '—' : est + fmtCredits(r.credits)}</td>
-      <td class="num">${r.elapsed_ms === null ? '—' : (r.elapsed_ms / 1000).toFixed(1) + 's'}</td>
-    </tr>${contextRow(r, i)}`;
-  }).join('');
+  renderRequestList($('sd-requests'), detail.requests_detail || [], { fmtTime, fmtCredits });
 
   if (!$('session-dialog').open) $('session-dialog').showModal();
 }
 
+initRequestList($('sd-requests'));
 $('sd-close').addEventListener('click', () => $('session-dialog').close());
 
 // ---- billing ----

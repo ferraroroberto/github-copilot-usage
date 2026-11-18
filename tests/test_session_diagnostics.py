@@ -39,6 +39,28 @@ def test_growing_prompt_needs_enough_requests_ratio_and_rise(rec):
     assert _types(session_diagnostics.diagnose(flat)) == []
 
 
+def test_prompt_growth_lists_n_sized_requests_with_n_minus_one_changes(rec):
+    sizes = [10_000, 15_000, 12_000, 12_000]
+    diag = session_diagnostics.diagnose([rec(i, prompt_tokens=n) for i, n in enumerate(sizes)])
+    growth = diag["prompt_growth"]
+    assert [g["prompt_tokens"] for g in growth] == sizes
+    assert [g["change_pct"] for g in growth] == [None, 50.0, -20.0, 0.0]
+    assert sum(1 for g in growth if g["change_pct"] is not None) == len(sizes) - 1
+
+
+def test_prompt_growth_leaves_out_unsized_and_estimated_requests(rec):
+    records = [
+        rec(0, prompt_tokens=8_000),
+        rec(1, prompt_tokens=None),
+        rec(2, prompt_tokens=9_000, usage_estimated=True),
+        rec(3, prompt_tokens=10_000),
+    ]
+    growth = session_diagnostics.diagnose(records)["prompt_growth"]
+    assert [g["prompt_tokens"] for g in growth] == [8_000, 10_000]
+    assert growth[1]["change_pct"] == 25.0
+    assert session_diagnostics.diagnose([])["prompt_growth"] == []
+
+
 def _population(rec, user_pcts, days_ago: int = 0) -> list:
     """One three-request session per entry of ``user_pcts``, each with that user-context share."""
     return [

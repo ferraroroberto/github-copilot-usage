@@ -554,12 +554,8 @@
     </form>
     <div id="sd-diagnostics" data-surface="drill.session-diagnostics" hidden></div>
     <div id="sd-mix"></div>
-    <div class="table-wrap" id="sd-table-wrap">
-      <table id="sd-table">
-        <thead><tr><th>Time</th><th>Prompt</th><th>Mode</th><th>Model</th><th class="num">In</th><th class="num">Out</th><th class="num">Credits</th><th class="num">Took</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
+    <h3 class="chart-title">Requests</h3>
+    <div class="card action-list"><ul class="action-rows" id="sd-requests"></ul></div>
     <div class="detail-actions">
       <button data-track="session-rename-save" id="sd-save" class="button-primary detail-save-btn" type="submit" form="sd-rename" disabled>Save name</button>
     </div>

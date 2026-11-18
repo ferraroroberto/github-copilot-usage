@@ -185,28 +185,51 @@ function paintFreshness(at) {
   $('menu-btn').setAttribute('aria-label', 'Updated ' + time + '. Refresh options');
 }
 
+// Loads are numbered as they start. A response is drawn only while no newer load has been drawn,
+// so a slow poll never paints over a newer visibility, period or refresh-menu load.
+let loadSeq = 0;
+let drawnSeq = 0;
+let loadsInFlight = 0;
+let lastLoadedAt = 0;   // when a load last succeeded; 0 until the first one lands
+
 async function refresh() {
   const period = encodeURIComponent(state.period);
   const offset = state.trendOffset;
+  const seq = ++loadSeq;
+  loadsInFlight += 1;
   try {
     const [summary, sessions, trend] = await Promise.all([
       jsonApi('/api/summary?period=' + period),
       jsonApi('/api/sessions?period=' + period),
       fetchTrend(state),
     ]);
-    state.summary = summary;
-    state.sessions = sessions.sessions || [];
-    if (offset === state.trendOffset) state.trend = trend;
-    render();
-    paintFreshness(new Date());
-    paintHeadStatus(false);
+    if (seq > drawnSeq) {
+      drawnSeq = seq;
+      state.summary = summary;
+      state.sessions = sessions.sessions || [];
+      if (offset === state.trendOffset) state.trend = trend;
+      render();
+      lastLoadedAt = Date.now();
+      paintFreshness(new Date());
+      paintHeadStatus(false);
+    }
   } catch (exc) {
-    paintHeadStatus(true);
+    if (seq > drawnSeq) paintHeadStatus(true);   // a failure of a superseded load says nothing new
     console.error(exc);
+  } finally {
+    loadsInFlight -= 1;
   }
   refreshInsights();
   fetchBilling().catch(() => {});
 }
+
+// Hidden tabs have their timers throttled or suspended, so the figures can be older than one poll
+// on return. A tab that comes back to a stale view loads once; a load already running is that load.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (loadsInFlight > 0 || Date.now() - lastLoadedAt <= POLL_MS) return;
+  refresh();
+});
 
 let _billingFetched = 0;
 async function fetchBilling() {

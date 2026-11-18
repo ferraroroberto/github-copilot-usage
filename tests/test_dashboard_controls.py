@@ -260,6 +260,9 @@ def test_a_bucket_carries_its_tokens_per_credit_and_cache_buckets(served, monkey
     assert bucket["cache_read_tokens"] == 800 and bucket["cache_write_tokens"] == 200
     # input 1600 - write 200 + 10% of 800 read = 1480; output 200 + 10% of 200 write = 220; / 4 credits
     assert bucket["tokens_per_credit"] == 425.0
+    # the figures the Efficiency tooltip lists beside the ratio
+    assert bucket["effective_input_tokens"] == 1480 and bucket["effective_output_tokens"] == 220
+    assert bucket["credits"] == 4.0
 
 
 def test_a_bucket_that_billed_nothing_or_recorded_no_cache_count_is_null_not_zero(served, monkeypatch, rec):
@@ -270,7 +273,7 @@ def test_a_bucket_that_billed_nothing_or_recorded_no_cache_count_is_null_not_zer
     monkeypatch.setattr(aggregate, "gather_records", lambda: (list(records), [{"ide": "Code"}]))
     monkeypatch.setattr(refresh, "store", refresh.SnapshotStore())
     unbilled = _bucket(served, 2)
-    assert unbilled["tokens_per_credit"] is None
+    assert unbilled["tokens_per_credit"] is None and unbilled["credits"] == 0
     assert unbilled["cache_read_tokens"] is None and unbilled["cache_write_tokens"] is None
     free = _bucket(served, 3)
     assert free["tokens_per_credit"] is None and free["cache_read_tokens"] == 0

@@ -236,6 +236,8 @@ code {
 .chart-title { font-size: var(--font-label); font-weight: 700; color: var(--fg-muted); margin: 14px 0 6px; }
 .chart-title:first-of-type { margin-top: 4px; }
 .chart-wrap { position: relative; height: 220px; }
+/* A note between a chart's title and its plot keeps clear of the top axis label. */
+.chart-title + .footnote { margin: 0 0 10px; }
 
 /* ---- prompt mix ---- */
 .mix-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 8px 0; }

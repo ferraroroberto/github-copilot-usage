@@ -1,5 +1,5 @@
 /* The four trend charts (Chart.js, vendored): credits per model as stacked bars; tokens in / out,
- * tokens per credit and cache read / write as lines.
+ * tokens per credit as bars; cache read / write as lines.
  *
  * The window drawn is the one the timeline holds (the latest from the summary, or an older one);
  * a bucket the telemetry start date does not reach is a gap, never a zero, and a tap on a
@@ -58,8 +58,9 @@ function rebudgetTicks(chart) {
 }
 
 // Options every chart shares: one tooltip per bucket, a coverage footer and a tap that focuses the bucket.
-// ``hideZero`` leaves a series that holds nothing in a bucket out of that bucket's tooltip.
-function commonOptions(env, ts, scales, label, hideZero) {
+// ``hideZero`` leaves a series that holds nothing in a bucket out of that bucket's tooltip;
+// ``keepGaps`` keeps an empty bar's tooltip so it can say why the bar is missing.
+function commonOptions(env, ts, scales, label, { hideZero = false, keepGaps = false } = {}) {
   const { state, cssVar } = env;
   return {
     responsive: true,
@@ -78,7 +79,7 @@ function commonOptions(env, ts, scales, label, hideZero) {
     plugins: {
       legend: legendOptions(cssVar),
       tooltip: {
-        filter: (item) => item.parsed.y != null && !(hideZero && item.parsed.y === 0),
+        filter: (item) => (keepGaps || item.parsed.y != null) && !(hideZero && item.parsed.y === 0),
         callbacks: { label, footer: (items) => coverageFooter(items, ts) },
       },
     },
@@ -134,7 +135,7 @@ function drawCredits(env, held, ts, labels) {
     type: 'bar',
     data: { labels, datasets },
     options: commonOptions(env, ts, axisOptions(cssVar, fmtTok, false),
-      (ctx) => ' ' + ctx.dataset.label + ': ' + fmtCredits(ctx.parsed.y) + ' cr', true),
+      (ctx) => ' ' + ctx.dataset.label + ': ' + fmtCredits(ctx.parsed.y) + ' cr', { hideZero: true }),
   });
 }
 
@@ -166,19 +167,47 @@ function drawTokens(env, held, ts, labels) {
   });
 }
 
-// Value per credit over time: a bucket that billed nothing has no efficiency and stays a gap.
+// Why a bucket has no tokens-per-credit bar: nothing billed, or its token counts were not recorded.
+function efficiencyGapReason(b) {
+  if (b.coverage === 'none') return 'No figure: before your telemetry start date';
+  if (!b.credits) return 'No bar: no billed credits in this bucket';
+  return 'No bar: token counts were not recorded for this bucket';
+}
+
+// The tooltip's lines for one bucket: what the bar divides, then the ratio.
+function efficiencyLabel({ fmtTok, fmtCredits }, ts) {
+  return (ctx) => {
+    const b = ts[ctx.dataIndex];
+    if (ctx.parsed.y == null) return ' ' + efficiencyGapReason(b);
+    return [
+      ' Effective input: ' + fmtTok(b.effective_input_tokens),
+      ' Effective output: ' + fmtTok(b.effective_output_tokens),
+      ' Credits: ' + fmtCredits(b.credits),
+      ' Tokens per credit: ' + fmtTok(ctx.parsed.y),
+    ];
+  };
+}
+
+// Effective input + output per credit, one bar per bucket in the "Tokens in" colours; a bucket
+// with no figure is left empty, never drawn as zero.
 function drawEfficiency(env, held, ts, labels) {
   const color = seriesColor(env.currentTheme(), 0);
   mount(env, held, 'efficiency', 'chart-efficiency', {
-    type: 'line',
+    type: 'bar',
     data: {
       labels,
-      datasets: [
-        lineSet(labels, 'Tokens per credit', ts.map((b) => gapOr(b, b.tokens_per_credit)), color,
-          { backgroundColor: color + '2e', fill: true, pointStyle: 'circle' }),
-      ],
+      datasets: [{
+        label: 'Tokens per credit',
+        data: ts.map((b) => gapOr(b, b.tokens_per_credit)),
+        backgroundColor: color + '2e',
+        borderColor: color,
+        borderWidth: 2,
+        borderRadius: 3,
+        maxBarThickness: 34,
+      }],
     },
-    options: commonOptions(env, ts, lineScales(env), tokenLabel(env)),
+    options: commonOptions(env, ts, axisOptions(env.cssVar, env.fmtTok, true),
+      efficiencyLabel(env, ts), { keepGaps: true }),
   });
 }
 

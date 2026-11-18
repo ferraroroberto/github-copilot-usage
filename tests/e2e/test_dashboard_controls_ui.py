@@ -156,6 +156,14 @@ def test_the_trend_steps_through_older_windows_and_a_bucket_tap_focuses_the_dash
     for chart in ("chart-efficiency", "chart-cache"):
         assert page.locator("#" + chart).is_visible()
         assert page.evaluate("id => Chart.getChart(id).data.labels", chart) == older_labels
+    # Efficiency is bars in the "Tokens in" blue edge and fill; a bucket with no credits is empty, not zero.
+    eff = page.evaluate(
+        "(() => { const t = Chart.getChart('chart-tokens').data.datasets[0];"
+        " const e = Chart.getChart('chart-efficiency'); const d = e.data.datasets[0];"
+        " return {type: e.config.type, same: d.borderColor === t.borderColor && d.backgroundColor === t.backgroundColor,"
+        " zero: d.data.filter((v) => v === 0).length}; })()"
+    )
+    assert eff == {"type": "bar", "same": True, "zero": 0}
     page.click("#trend-latest")
     page.wait_for_function("document.querySelector('#trend-latest').disabled === true")
     assert page.locator("#trend-range").inner_text() == latest_range

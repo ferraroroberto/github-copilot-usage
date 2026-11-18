@@ -550,10 +550,12 @@ def _bucket_key(unit: str, d: date) -> date:
 
 
 def _bucket_totals(slots: Dict[str, dict]) -> Dict[str, Any]:
-    """A bucket's efficiency and cache buckets across its models.
+    """A bucket's efficiency (with its inputs) and cache buckets across its models.
 
     Each is ``None`` rather than 0 where nothing backs it: no request recorded the cache
     count, or the bucket billed no credits, so the charts draw a gap instead of a false low.
+    ``credits`` is always a number: the efficiency tooltip tells a bucket that billed nothing
+    from one whose token counts went unrecorded.
     """
     totals: Dict[str, Any] = {field: None for field in _TOKEN_FIELDS}
     credits = 0.0
@@ -566,6 +568,9 @@ def _bucket_totals(slots: Dict[str, dict]) -> Dict[str, Any]:
         totals["cache_read_tokens"], totals["cache_write_tokens"], round(credits, 4),
     )
     return {
+        "credits": round(credits, 4),
+        "effective_input_tokens": metrics["effective_input_tokens"],
+        "effective_output_tokens": metrics["effective_output_tokens"],
         "tokens_per_credit": metrics["tokens_per_credit"],
         "cache_read_tokens": totals["cache_read_tokens"],
         "cache_write_tokens": totals["cache_write_tokens"],

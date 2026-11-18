@@ -20,6 +20,11 @@ Two sources, best first:
 input plus cache-write); cache-read stays in ``cache_read_tokens``. Credits =
 nano AI-usage units / 1e9.
 
+Prompt text is kept whole (the CLI logs it whole; lists truncate with CSS).
+A timestamp with no zone is host-local time; one with ``Z`` or an offset keeps
+its instant. A prompt replayed on resume carries the same ``interactionId`` and
+counts once.
+
 ``workspace.yaml`` is trivially flat, so the single ``cwd:`` line is read with
 a string scan instead of pulling in a YAML dependency.
 """
@@ -29,9 +34,9 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone, tzinfo
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from src import cli_session_store
 from src.cli_session_store import StoreSnapshot
@@ -49,8 +54,6 @@ def clear_caches() -> None:
     _cache.clear()
     _store_records_cache.clear()
     cli_session_store.clear_cache()
-
-_MESSAGE_LIMIT = 200
 
 
 @dataclass
@@ -78,10 +81,22 @@ def _read_cwd(session_dir: Path) -> Optional[str]:
     return None
 
 
+def _host_tz() -> Optional[tzinfo]:
+    """The zone a timestamp without one is read in; ``None`` is the host's own local zone."""
+    return None
+
+
 def _parse_ts(raw: Optional[str]) -> datetime:
+    """An instant in UTC: an aware value keeps its instant, a naive one is host-local time."""
     try:
-        return datetime.fromisoformat(str(raw).rstrip("Z")).replace(tzinfo=timezone.utc)
-    except (ValueError, TypeError):
+        text = str(raw).strip()
+        if text.endswith(("Z", "z")):
+            text = text[:-1] + "+00:00"
+        parsed = datetime.fromisoformat(text)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=_host_tz())
+        return parsed.astimezone(timezone.utc)
+    except (ValueError, TypeError, OverflowError, OSError):
         return datetime.now(tz=timezone.utc)
 
 
@@ -225,6 +240,7 @@ def _allocate(
 def _parse_events_file(path: Path, cwd: Optional[str]) -> List[RequestRecord]:
     session_id = path.parent.name
     prompts: List[Tuple[datetime, str]] = []
+    seen_interactions: Set[str] = set()
     checkpoints: List[Tuple[datetime, float]] = []
     shutdown: Optional[Tuple[datetime, dict]] = None
     current_model: Optional[str] = None
@@ -243,7 +259,13 @@ def _parse_events_file(path: Path, cwd: Optional[str]) -> List[RequestRecord]:
                 kind = obj.get("type")
                 data = obj.get("data") if isinstance(obj.get("data"), dict) else {}
                 if kind == "user.message":
-                    text = " ".join(str(data.get("content") or "").split())[:_MESSAGE_LIMIT]
+                    # A resumed session replays its prompts; one interaction is one prompt.
+                    interaction = data.get("interactionId")
+                    if interaction:
+                        if str(interaction) in seen_interactions:
+                            continue
+                        seen_interactions.add(str(interaction))
+                    text = " ".join(str(data.get("content") or "").split())
                     prompts.append((_parse_ts(obj.get("timestamp")), text))
                 elif kind == "session.usage_checkpoint":
                     checkpoints.append((_parse_ts(obj.get("timestamp")), float(data.get("totalNanoAiu") or 0)))

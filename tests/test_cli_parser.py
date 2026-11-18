@@ -223,3 +223,70 @@ def test_in_flight_session_uses_last_checkpoint_as_estimate(tmp_path):
     assert r.model == "model-c"
     assert r.usage_estimated and r.usage_source == "events.jsonl-checkpoint"
     assert r.credits == pytest.approx(0.7)
+
+
+def test_cli_prompt_is_kept_whole_in_both_sources_while_vscode_stays_capped(tmp_path):
+    long_text = "word " * 200  # 1,000 characters
+    state = _copilot_home(tmp_path)
+    _write_events(state, SID, [
+        _prompt("2026-03-01T10:00:00Z", long_text),
+        _shutdown("2026-03-01T10:05:00Z", {"model-a": _metrics(10, 1, 0, 0, 1_000_000_000)}),
+    ])
+    events_only, _ = cli_parser.all_records(state)
+    assert events_only[0].message == long_text.strip()
+    assert len(events_only[0].message) == 999
+
+    from src import vscode_parser
+    assert len(vscode_parser._message_text({"message": {"text": long_text}})) == 200
+
+    store_state = _copilot_home(tmp_path / "store")
+    _make_db(store_state, _ROWS[:1], [(SID, 0, long_text, "2026-03-01T10:00:00.000Z")])
+    from_store, _ = cli_parser.all_records(store_state)
+    assert len(from_store[0].message) == 999
+
+
+def test_naive_timestamp_is_host_local_time_and_aware_keeps_its_instant(monkeypatch):
+    from datetime import timedelta, timezone
+
+    monkeypatch.setattr(cli_parser, "_host_tz", lambda: timezone(timedelta(hours=1)))
+
+    naive = cli_parser._parse_ts("2026-01-05T23:30:00")
+    assert (naive.hour, naive.minute, naive.day) == (22, 30, 5) and naive.utcoffset() == timedelta(0)
+    assert cli_parser._parse_ts("2026-01-05T23:30:00Z").hour == 23
+    assert cli_parser._parse_ts("2026-01-05T23:30:00.123Z").hour == 23
+    offset = cli_parser._parse_ts("2026-01-05T23:30:00+05:00")
+    assert (offset.hour, offset.day) == (18, 5)
+    # Space-separated naive values (a local rendering) are local too.
+    assert cli_parser._parse_ts("2026-01-05 23:30:00").hour == 22
+
+
+def test_unparseable_timestamp_falls_back_to_now():
+    from datetime import datetime, timedelta, timezone
+
+    got = cli_parser._parse_ts("not a time")
+    assert abs(datetime.now(tz=timezone.utc) - got) < timedelta(seconds=5)
+    assert abs(datetime.now(tz=timezone.utc) - cli_parser._parse_ts(None)) < timedelta(seconds=5)
+
+
+def test_replayed_prompt_with_the_same_interaction_id_counts_once(tmp_path):
+    state = _copilot_home(tmp_path)
+
+    def prompt(ts, text, interaction):
+        ev = _prompt(ts, text)
+        if interaction:
+            ev["data"]["interactionId"] = interaction
+        return ev
+
+    _write_events(state, SID, [
+        prompt("2026-03-01T10:00:00Z", "p1", "i-1"),
+        prompt("2026-03-01T11:00:00Z", "p2", "i-2"),
+        prompt("2026-03-01T11:00:00Z", "p2", "i-2"),  # replayed on resume
+        prompt("2026-03-01T12:00:00Z", "no id", None),
+        prompt("2026-03-01T12:00:00Z", "no id", None),  # without an id nothing is merged
+        _shutdown("2026-03-01T13:00:00Z", {"model-a": _metrics(100, 10, 0, 0, 4_000_000_000)}),
+    ])
+
+    records, _ = cli_parser.all_records(state)
+
+    assert sorted(r.message for r in records) == ["no id", "no id", "p1", "p2"]
+    assert sum(r.credits for r in records) == pytest.approx(4.0)

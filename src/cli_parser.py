@@ -12,8 +12,9 @@ Two sources, best first:
    are cumulative across resumes, so only the last one counts. When there is no
    shutdown yet, the last cumulative ``session.usage_checkpoint`` gives the
    credits so far. Those totals are spread over the session's
-   ``user.message`` prompts and marked ``usage_estimated`` — weighted by each
-   prompt's checkpoint delta when checkpoints exist, evenly otherwise. A single
+   ``user.message`` prompts and marked ``usage_estimated``: each checkpoint's
+   delta (and the shutdown remainder past the last one) is split over the prompts
+   in its interval by their assistant output tokens, evenly without that hint. A single
    prompt, or no prompt at all, keeps the exact totals unmarked.
 
 ``prompt_tokens`` on these records is the comparable input volume (uncached
@@ -232,14 +233,49 @@ def _split_int(total: Optional[int], weights: List[float]) -> List[Optional[int]
     return parts
 
 
-def _prompt_weights(prompts: List[datetime], checkpoints: List[Tuple[datetime, float]]) -> List[float]:
-    """Each checkpoint's credit delta goes to the latest prompt at or before it."""
+def _spread(prompts: List[datetime], hints: List[int], start: Optional[datetime], end: Optional[datetime]) -> List[Tuple[int, float]]:
+    """Shares (prompt index, fraction) for the credits of one interval ``(start, end]``.
+
+    Prompts inside the interval split it by their assistant output tokens, evenly when none
+    carries a hint. An interval with no prompt falls back to the prompts before ``end``, then to
+    the last prompt, so a delta is never dropped.
+    """
+    members = [i for i, p in enumerate(prompts) if (start is None or p > start) and (end is None or p <= end)]
+    if not members:
+        members = [i for i, p in enumerate(prompts) if end is None or p <= end]
+    if not members:
+        members = [len(prompts) - 1]
+    weights = [float(hints[i]) for i in members]
+    if sum(weights) <= 0:
+        weights = [1.0] * len(members)
+    total = sum(weights)
+    return [(i, w / total) for i, w in zip(members, weights)]
+
+
+def _prompt_weights(
+    prompts: List[datetime],
+    hints: List[int],
+    checkpoints: List[Tuple[datetime, float]],
+    session_total: Optional[float] = None,
+) -> List[float]:
+    """Credit weight per prompt: each checkpoint delta is spread over the prompts in its interval.
+
+    A checkpoint below the highest total so far is ignored. ``session_total`` (the shutdown's
+    credits) adds the remainder past the last checkpoint over the prompts after it.
+    """
     weights = [0.0] * len(prompts)
+    start: Optional[datetime] = None
     prev = 0.0
     for ts, total in checkpoints:
-        idx = max((i for i, p in enumerate(prompts) if p <= ts), default=0)
-        weights[idx] += max(total - prev, 0.0)
-        prev = max(prev, total)
+        if total < prev:
+            continue
+        if total > prev:
+            for idx, share in _spread(prompts, hints, start, ts):
+                weights[idx] += (total - prev) * share
+        start, prev = ts, total
+    if session_total is not None and session_total > prev:
+        for idx, share in _spread(prompts, hints, start, None):
+            weights[idx] += (session_total - prev) * share
     return weights if sum(weights) > 0 else [1.0] * len(prompts)
 
 
@@ -277,6 +313,8 @@ def _parse_events_file(path: Path, cwd: Optional[str]) -> List[RequestRecord]:
     session_id = path.parent.name
     prompts: List[Tuple[datetime, str]] = []
     seen_interactions: Set[str] = set()
+    output_hints: List[int] = []
+    seen_messages: Set[str] = set()
     checkpoints: List[Tuple[datetime, float]] = []
     shutdown: Optional[Tuple[datetime, dict]] = None
     current_model: Optional[str] = None
@@ -303,6 +341,16 @@ def _parse_events_file(path: Path, cwd: Optional[str]) -> List[RequestRecord]:
                         seen_interactions.add(str(interaction))
                     text = " ".join(str(data.get("content") or "").split())
                     prompts.append((_parse_ts(obj.get("timestamp")), text))
+                    output_hints.append(0)
+                elif kind == "assistant.message":
+                    # Output tokens only weight the prompt the reply answers; a replayed message counts once.
+                    message_id = data.get("messageId")
+                    if message_id:
+                        if str(message_id) in seen_messages:
+                            continue
+                        seen_messages.add(str(message_id))
+                    if prompts:
+                        output_hints[-1] += optional_int(data.get("outputTokens")) or 0
                 elif kind == "session.usage_checkpoint":
                     checkpoints.append((_parse_ts(obj.get("timestamp")), float(data.get("totalNanoAiu") or 0)))
                 elif kind == "session.model_change" and data.get("newModel"):
@@ -330,7 +378,10 @@ def _parse_events_file(path: Path, cwd: Optional[str]) -> List[RequestRecord]:
                 nano_aiu=float(metrics.get("totalNanoAiu") or 0),
             ))
         if len(prompts) > 1:
-            return _allocate(session_id, cwd, totals, prompts, _prompt_weights([p[0] for p in prompts], checkpoints), "events.jsonl-allocated")
+            weights = _prompt_weights(
+                [p[0] for p in prompts], output_hints, checkpoints, sum(u.nano_aiu for u in totals),
+            )
+            return _allocate(session_id, cwd, totals, prompts, weights, "events.jsonl-allocated")
         ts, message = prompts[0] if prompts else (end_ts, "")
         return [
             _record(session_id, cwd, session_id + ":" + u.model, ts, message, u, None, "events.jsonl", False)
@@ -340,8 +391,9 @@ def _parse_events_file(path: Path, cwd: Optional[str]) -> List[RequestRecord]:
     if checkpoints:
         usage = _Usage(model=current_model or "unknown", nano_aiu=checkpoints[-1][1])
         if not prompts:
-            prompts = [(checkpoints[-1][0], "")]
-        return _allocate(session_id, cwd, [usage], prompts, _prompt_weights([p[0] for p in prompts], checkpoints), _CHECKPOINT_SOURCE)
+            prompts, output_hints = [(checkpoints[-1][0], "")], [0]
+        weights = _prompt_weights([p[0] for p in prompts], output_hints, checkpoints)
+        return _allocate(session_id, cwd, [usage], prompts, weights, _CHECKPOINT_SOURCE)
     return []
 
 

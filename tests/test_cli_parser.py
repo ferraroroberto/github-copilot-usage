@@ -403,3 +403,114 @@ def test_store_row_with_null_tokens_is_unknown_not_zero(tmp_path):
 
     assert r.prompt_tokens is None and r.completion_tokens is None
     assert r.usage_source == "unavailable"
+
+
+def _reply(ts: str, message_id: str, out: int) -> dict:
+    return {"type": "assistant.message", "timestamp": ts, "data": {"messageId": message_id, "outputTokens": out}}
+
+
+def _credits_by_prompt(state: Path) -> dict:
+    records, _ = cli_parser.all_records(state)
+    return {r.message: r.credits for r in records}
+
+
+def test_checkpoint_delta_is_split_over_its_interval_by_output_tokens(tmp_path):
+    state = _copilot_home(tmp_path)
+    _write_events(state, SID, [
+        _prompt("2026-03-01T10:00:00Z", "p1"), _reply("2026-03-01T10:00:05Z", "m1", 100),
+        _prompt("2026-03-01T10:10:00Z", "p2"), _reply("2026-03-01T10:10:05Z", "m2", 300),
+        _prompt("2026-03-01T10:20:00Z", "p3"),
+        _checkpoint("2026-03-01T10:30:00Z", 4_000_000_000),
+        _prompt("2026-03-01T11:00:00Z", "p4"), _reply("2026-03-01T11:00:05Z", "m4", 50),
+        _checkpoint("2026-03-01T11:10:00Z", 6_000_000_000),
+        _shutdown("2026-03-01T12:00:00Z", {"model-a": _metrics(100, 10, 0, 0, 6_000_000_000)}),
+    ])
+
+    credits = _credits_by_prompt(state)
+
+    assert credits["p1"] == pytest.approx(1.0)
+    assert credits["p2"] == pytest.approx(3.0)
+    assert "p3" not in credits or credits["p3"] == pytest.approx(0.0)
+    assert credits["p4"] == pytest.approx(2.0)
+
+
+def test_interval_without_output_hints_splits_evenly(tmp_path):
+    state = _copilot_home(tmp_path)
+    _write_events(state, SID, [
+        _prompt("2026-03-01T10:00:00Z", "p1"),
+        _prompt("2026-03-01T10:10:00Z", "p2"),
+        _prompt("2026-03-01T10:20:00Z", "p3"),
+        _checkpoint("2026-03-01T10:30:00Z", 3_000_000_000),
+        _shutdown("2026-03-01T12:00:00Z", {"model-a": _metrics(100, 10, 0, 0, 3_000_000_000)}),
+    ])
+
+    assert [round(c, 6) for c in _credits_by_prompt(state).values()] == [1.0, 1.0, 1.0]
+
+
+def test_a_decreasing_checkpoint_is_ignored(tmp_path):
+    state = _copilot_home(tmp_path)
+    _write_events(state, SID, [
+        _prompt("2026-03-01T10:00:00Z", "p1"),
+        _checkpoint("2026-03-01T10:05:00Z", 3_000_000_000),
+        _prompt("2026-03-01T10:10:00Z", "p2"),
+        _checkpoint("2026-03-01T10:15:00Z", 1_000_000_000),
+        _shutdown("2026-03-01T12:00:00Z", {"model-a": _metrics(100, 10, 0, 0, 3_000_000_000)}),
+    ])
+
+    credits = _credits_by_prompt(state)
+
+    assert credits["p1"] == pytest.approx(3.0)
+    assert credits.get("p2", 0.0) == pytest.approx(0.0)
+
+
+def test_shutdown_remainder_goes_to_the_prompts_after_the_last_checkpoint(tmp_path):
+    state = _copilot_home(tmp_path)
+    _write_events(state, SID, [
+        _prompt("2026-03-01T10:00:00Z", "p1"),
+        _checkpoint("2026-03-01T10:05:00Z", 2_000_000_000),
+        _prompt("2026-03-01T10:10:00Z", "p2"), _reply("2026-03-01T10:10:05Z", "m2", 10),
+        _prompt("2026-03-01T10:20:00Z", "p3"), _reply("2026-03-01T10:20:05Z", "m3", 30),
+        _shutdown("2026-03-01T12:00:00Z", {"model-a": _metrics(100, 10, 0, 0, 6_000_000_000)}),
+    ])
+
+    credits = _credits_by_prompt(state)
+
+    assert credits["p1"] == pytest.approx(2.0)
+    assert credits["p2"] == pytest.approx(1.0)
+    assert credits["p3"] == pytest.approx(3.0)
+    assert sum(credits.values()) == pytest.approx(6.0)
+
+
+def test_interval_with_no_prompt_falls_back_to_earlier_prompts_then_the_last(tmp_path):
+    state = _copilot_home(tmp_path)
+    _write_events(state, SID, [
+        _checkpoint("2026-03-01T09:00:00Z", 1_000_000_000),
+        _prompt("2026-03-01T10:00:00Z", "p1"),
+        _prompt("2026-03-01T10:10:00Z", "p2"),
+        _checkpoint("2026-03-01T10:20:00Z", 3_000_000_000),
+        _checkpoint("2026-03-01T10:30:00Z", 4_000_000_000),
+        _shutdown("2026-03-01T12:00:00Z", {"model-a": _metrics(100, 10, 0, 0, 4_000_000_000)}),
+    ])
+
+    credits = _credits_by_prompt(state)
+
+    # 1 credit before any prompt lands on the last prompt; the 2 credits to 10:20 split over both
+    # prompts, and the 1 credit of the empty 10:20-10:30 interval splits over the earlier prompts.
+    assert credits["p1"] == pytest.approx(1.5)
+    assert credits["p2"] == pytest.approx(2.5)
+    assert sum(credits.values()) == pytest.approx(4.0)
+
+
+def test_replayed_assistant_message_counts_once_and_totals_stay_exact(tmp_path):
+    state = _copilot_home(tmp_path)
+    _write_events(state, SID, [
+        _prompt("2026-03-01T10:00:00Z", "p1"), _reply("2026-03-01T10:00:05Z", "m1", 100), _reply("2026-03-01T10:00:06Z", "m1", 100),
+        _prompt("2026-03-01T10:10:00Z", "p2"), _reply("2026-03-01T10:10:05Z", "m2", 100),
+        _shutdown("2026-03-01T12:00:00Z", {"model-a": _metrics(1001, 11, 400, 200, 7_000_000_001)}),
+    ])
+
+    records, _ = cli_parser.all_records(state)
+
+    assert [round(r.credits, 6) for r in sorted(records, key=lambda r: r.ts)] == [3.5, 3.5]
+    assert sum(r.completion_tokens for r in records) == 11
+    assert sum(r.cache_read_tokens for r in records) == 400

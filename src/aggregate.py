@@ -767,7 +767,7 @@ def get_sessions(records: List[RequestRecord], period: str = "all", rows: Option
     in_period = records_in_period(records, period)
     if rows is None:
         rows = build_sessions(in_period, labels_for(records))
-    return session_diagnostics.attach_flags(rows, in_period, records)
+    return session_diagnostics.attach_flags(rows, in_period)
 
 
 def get_session_detail(records: List[RequestRecord], session_id: str) -> Optional[dict]:
@@ -808,7 +808,7 @@ def get_session_detail(records: List[RequestRecord], session_id: str) -> Optiona
         for r in sess
     ]
     header["prompt_mix"] = prompt_mix(sess)
-    header["diagnostics"] = session_diagnostics.diagnose(sess, session_diagnostics.non_user_cut(records))
+    header["diagnostics"] = session_diagnostics.diagnose(sess)
     return header
 
 

@@ -1,4 +1,4 @@
-"""Insights over synthetic records: one group of tests per insight type, plus the thin-evidence states."""
+"""Insights over synthetic records: one group of tests per insight type, each threshold at and just past its boundary, and the four states."""
 
 from __future__ import annotations
 
@@ -37,69 +37,108 @@ def _set_budget(monkeypatch, **kw) -> None:
 # ---- top_contributor ----
 
 
+def _by_dim(body: dict) -> dict:
+    return {
+        ("session" if "session" in i["evidence"] else "model" if "model" in i["evidence"] else "project"): i
+        for i in _of_type(body, "top_contributor")
+    }
+
+
 def test_top_model_and_project_name_their_share(rec):
     records = [rec(i, model="claude-sonnet-4.5", project_key="e:\\beta", project_name="beta",
                    session_id="s-%d" % i, credits=3.0) for i in range(4)]
     records += [rec(10 + i, session_id="s-x%d" % i, credits=1.0) for i in range(4)]
-    body = insights.build_insights(records, "all")
+    by_dim = _by_dim(insights.build_insights(records, "all"))
 
-    found = _of_type(body, "top_contributor")
-    by_dim = {("model" if "model" in i["evidence"] else "project"): i for i in found
-              if "session" not in i["evidence"]}
     assert by_dim["model"]["evidence"] == {"period": "all", "model": "claude-sonnet-4.5"}
     assert "75.0%" in by_dim["model"]["text"] and "12 of 16" in by_dim["model"]["text"]
     assert by_dim["project"]["evidence"] == {"period": "all", "project": "e:\\beta"}
-    assert all(i["severity"] == "info" for i in found)
+    assert by_dim["model"]["severity"] == by_dim["project"]["severity"] == "attention"
 
 
 def test_top_session_names_the_session(rec):
     records = [rec(0, session_id="big", session_title="The big one", credits=8.0)]
     records += [rec(1 + i, session_id="s-%d" % i, credits=1.0) for i in range(4)]
-    found = [i for i in _of_type(insights.build_insights(records, "all"), "top_contributor")
-             if "session" in i["evidence"]]
-    assert len(found) == 1
-    assert found[0]["evidence"] == {"period": "all", "session": "big"}
-    assert "The big one" in found[0]["text"] and "66.7%" in found[0]["text"]
+    found = _by_dim(insights.build_insights(records, "all"))["session"]
+    assert found["evidence"] == {"period": "all", "session": "big"}
+    assert "The big one" in found["text"] and "66.7%" in found["text"]
 
 
-def test_no_top_contributor_when_there_is_a_single_group(rec):
-    body = insights.build_insights([rec(i, session_id="s-%d" % i) for i in range(6)], "all")
-    assert [i for i in _of_type(body, "top_contributor") if "session" not in i["evidence"]] == []
+def test_the_largest_contributor_is_named_whenever_the_period_has_credits(rec):
+    """One request, one model, one project, one session: each is still the largest, at 100%."""
+    by_dim = _by_dim(insights.build_insights([rec(0, credits=0.3)], "all"))
+    assert set(by_dim) == {"model", "project", "session"}
+    assert all(i["severity"] == "attention" for i in by_dim.values())
 
 
-def test_no_top_contributor_when_credits_are_too_thin(rec):
-    records = [rec(0, model="a", credits=0.3)] + [rec(i, model="b", credits=0.1) for i in range(1, 6)]
+def test_a_period_without_billed_credits_names_no_contributor(rec):
+    records = [rec(i, credits=0.0, session_id="s-%d" % i) for i in range(6)]
     assert _of_type(insights.build_insights(records, "all"), "top_contributor") == []
+
+
+@pytest.mark.parametrize(
+    "credits, severity",
+    [
+        ([50.0, 25.0, 25.0], "attention"),      # exactly half the spend
+        ([49.96, 25.02, 25.02], "info"),        # rounds to 50.0 for display, still under half
+    ],
+)
+def test_a_contributor_is_attention_at_half_the_spend_and_info_just_below(rec, credits, severity):
+    records = [
+        rec(i, model="m-%d" % i, project_key="p-%d" % i, project_name="p-%d" % i, session_id="s-%d" % i, credits=c)
+        for i, c in enumerate(credits)
+    ]
+    by_dim = _by_dim(insights.build_insights(records, "all"))
+    assert {k: v["severity"] for k, v in by_dim.items()} == {"model": severity, "project": severity, "session": severity}
 
 
 # ---- period_change ----
 
 
+def _two_periods(rec, now: float, before: float) -> list:
+    """Credits today and yesterday, each on one request (before == 0 leaves yesterday empty)."""
+    records = [rec(0, session_id="now", credits=now)]
+    if before:
+        records.append(rec(0, days_ago=1, session_id="before", credits=before))
+    return records
+
+
 def test_credits_up_against_yesterday_is_a_warning(rec):
-    records = [rec(i, session_id="s-%d" % i, credits=2.0) for i in range(5)]               # 10 today
-    records += [rec(i, days_ago=1, session_id="p-%d" % i, credits=1.0) for i in range(4)]  # 4 yesterday
-    [found] = _of_type(insights.build_insights(records, "today"), "period_change")
+    [found] = _of_type(insights.build_insights(_two_periods(rec, 10.0, 4.0), "today"), "period_change")
     assert found["severity"] == "warning"
     assert found["evidence"] == {"period": "today"}
     assert "up 150% on yesterday (10 vs 4)" in found["text"]
 
 
 def test_credits_down_is_informational(rec):
-    records = [rec(i, session_id="s-%d" % i, credits=1.0) for i in range(5)]               # 5 today
-    records += [rec(i, days_ago=1, session_id="p-%d" % i, credits=4.0) for i in range(5)]  # 20 yesterday
-    [found] = _of_type(insights.build_insights(records, "today"), "period_change")
+    [found] = _of_type(insights.build_insights(_two_periods(rec, 5.0, 20.0), "today"), "period_change")
     assert found["severity"] == "info"
     assert "down 75% on yesterday" in found["text"]
 
 
-def test_small_change_or_thin_previous_period_says_nothing(rec):
-    steady = [rec(i, session_id="s-%d" % i, credits=1.0) for i in range(5)]
-    steady += [rec(i, days_ago=1, session_id="p-%d" % i, credits=1.2) for i in range(5)]
-    assert _of_type(insights.build_insights(steady, "today"), "period_change") == []
+@pytest.mark.parametrize(
+    "now, before, shown",
+    [
+        (12.0, 10.0, True),        # exactly 20% of the previous spend (2 credits)
+        (11.9, 10.0, False),       # just under
+        (8.0, 10.0, True),         # a fall counts the same way
+        (8.1, 10.0, False),
+        (3.0, 2.5, True),          # a small period: the 0.5-credit floor is the larger cut
+        (2.9, 2.5, False),
+        (2.0, 2.5, True),
+        (0.5, 0.0, True),          # nothing before: the period itself must reach 0.5 credits
+        (0.4, 0.0, False),
+    ],
+)
+def test_a_change_shows_from_the_larger_of_half_a_credit_and_a_fifth_of_the_previous_spend(rec, now, before, shown):
+    found = _of_type(insights.build_insights(_two_periods(rec, now, before), "today"), "period_change")
+    assert bool(found) is shown
 
-    thin_prev = [rec(i, session_id="s-%d" % i, credits=5.0) for i in range(5)]
-    thin_prev += [rec(0, days_ago=1, session_id="p-0", credits=0.5)]
-    assert _of_type(insights.build_insights(thin_prev, "today"), "period_change") == []
+
+def test_a_change_from_nothing_states_it_without_a_percentage(rec):
+    [found] = _of_type(insights.build_insights(_two_periods(rec, 3.0, 0.0), "today"), "period_change")
+    assert found["severity"] == "warning"
+    assert "%" not in found["text"] and "against none" in found["text"]
 
 
 def test_cycle_and_all_have_no_previous_period(rec):
@@ -186,41 +225,49 @@ def test_budget_on_track_or_without_allowance_says_nothing(rec, monkeypatch):
 # ---- prompt_composition ----
 
 
+def _mix(user_pct: int, label: str = "Tool Definitions") -> list:
+    return [{"category": "System", "label": label, "percentageOfPrompt": 100 - user_pct},
+            {"category": "User Context", "label": "Messages", "percentageOfPrompt": user_pct}]
+
+
 def test_tool_heavy_prompts_warn_with_the_action(rec, tools_heavy):
     records = [rec(i, session_id="s-%d" % i, prompt_details=tools_heavy) for i in range(4)]
-    found = _of_type(insights.build_insights(records, "all"), "prompt_composition")
-    [tools] = [i for i in found if i["evidence"]["label"] == "Tool Definitions"]
+    [tools] = _of_type(insights.build_insights(records, "all"), "prompt_composition")
     assert tools["severity"] == "warning"
     assert tools["evidence"] == {"period": "all", "label": "Tool Definitions"}
-    assert "70.0%" in tools["text"] and "MCP servers" in tools["text"]
-    assert [i["evidence"]["label"] for i in found] == ["Tool Definitions"]    # 20% and 10% stay quiet
+    assert "70.0%" in tools["text"] and "90.0% is outside your own context" in tools["text"]
+    assert "MCP servers" in tools["text"]
 
 
-def test_other_dominant_label_is_informational(rec):
-    details = [{"category": "System", "label": "System Instructions", "percentageOfPrompt": 60},
-               {"category": "User Context", "label": "Messages", "percentageOfPrompt": 40}]
-    records = [rec(i, session_id="s-%d" % i, prompt_details=details) for i in range(4)]
+def test_another_dominant_overhead_label_is_informational(rec):
+    records = [rec(i, session_id="s-%d" % i, prompt_details=_mix(20, "System Instructions")) for i in range(4)]
+    [found] = _of_type(insights.build_insights(records, "all"), "prompt_composition")
+    assert (found["evidence"]["label"], found["severity"]) == ("System Instructions", "info")
+
+
+@pytest.mark.parametrize("user_pct, shown", [(30, True), (31, False)])
+def test_composition_needs_seventy_percent_outside_the_users_own_context(rec, user_pct, shown):
+    records = [rec(i, session_id="s-%d" % i, prompt_details=_mix(user_pct)) for i in range(4)]
+    assert bool(_of_type(insights.build_insights(records, "all"), "prompt_composition")) is shown
+
+
+@pytest.mark.parametrize("covered, shown", [(2, True), (1, False)])
+def test_composition_needs_two_covered_requests(rec, tools_heavy, covered, shown):
+    records = [rec(i, session_id="s-%d" % i, prompt_details=tools_heavy) for i in range(covered)]
+    assert bool(_of_type(insights.build_insights(records, "all"), "prompt_composition")) is shown
+
+
+@pytest.mark.parametrize("uncovered, shown", [(2, True), (3, False)])
+def test_composition_needs_half_the_prompt_tokens_covered(rec, tools_heavy, uncovered, shown):
+    records = [rec(i, session_id="s-%d" % i, prompt_details=tools_heavy) for i in range(2)]   # 20k covered
+    records += [rec(10 + i, session_id="u-%d" % i) for i in range(uncovered)]                  # 10k each, none
     found = _of_type(insights.build_insights(records, "all"), "prompt_composition")
-    assert [(i["evidence"]["label"], i["severity"]) for i in found] == [
-        ("System Instructions", "info"), ("Messages", "info"),
-    ]
+    assert bool(found) is shown
+    if shown:
+        assert "50% of this period's tokens carry a breakdown" in found[0]["text"]
 
 
-def test_composition_needs_enough_covered_requests(rec, tools_heavy):
-    records = [rec(i, session_id="s-%d" % i, prompt_details=tools_heavy) for i in range(2)]
-    records += [rec(10 + i, session_id="u-%d" % i) for i in range(6)]       # no composition logged
-    assert _of_type(insights.build_insights(records, "all"), "prompt_composition") == []
-
-
-def test_composition_text_states_its_coverage(rec, tools_heavy):
-    records = [rec(i, session_id="s-%d" % i, prompt_details=tools_heavy) for i in range(3)]
-    records += [rec(10 + i, session_id="u-%d" % i) for i in range(3)]       # half the tokens uncovered
-    [tools] = [i for i in _of_type(insights.build_insights(records, "all"), "prompt_composition")
-               if i["evidence"]["label"] == "Tool Definitions"]
-    assert "50% of this period's tokens carry a breakdown" in tools["text"]
-
-
-# ---- thin evidence, ordering, endpoint ----
+# ---- states, ordering, endpoint ----
 
 
 def test_empty_period_is_no_data(rec):
@@ -230,17 +277,29 @@ def test_empty_period_is_no_data(rec):
     assert body["insights"][0]["evidence"] == {"period": "today"}
 
 
-def test_sparse_period_is_insufficient_evidence(rec):
-    body = insights.build_insights([rec(0), rec(1)], "all")
-    assert body["state"] == "insufficient"
-    assert [i["type"] for i in body["insights"]] == ["insufficient_evidence"]
-    assert "Only 2 requests" in body["insights"][0]["text"]
+def test_requests_that_billed_nothing_are_insufficient_data(rec):
+    body = insights.build_insights([rec(0, credits=0.0), rec(1, credits=0.0)], "all")
+    assert body["state"] == "insufficient_data"
+    assert [i["type"] for i in body["insights"]] == ["insufficient_data"]
+    assert "2 requests" in body["insights"][0]["text"]
 
 
-def test_quiet_period_with_enough_requests_has_no_insights(rec):
+def test_a_period_with_credits_is_ready_even_with_one_request(rec):
+    body = insights.build_insights([rec(0)], "all")
+    assert body["state"] == "ready"
+    assert len(_of_type(body, "top_contributor")) == 3
+
+
+def test_a_period_where_every_rule_is_quiet_has_no_actionable_findings(rec, monkeypatch):
+    monkeypatch.setattr(insights, "_top_contributors", lambda summary, period: [])
     body = insights.build_insights([rec(i, session_id="s-%d" % i) for i in range(6)], "all")
-    assert body["state"] == "ok"
+    assert body["state"] == "no_actionable_findings"
     assert body["insights"] == []
+
+
+def test_state_is_always_one_of_the_declared_four(rec):
+    for records in ([], [rec(0, credits=0.0)], [rec(0)]):
+        assert insights.build_insights(records, "all")["state"] in insights.STATES
 
 
 def test_insights_are_ordered_by_severity_and_use_declared_vocabulary(rec, monkeypatch, tools_heavy):
@@ -264,6 +323,6 @@ def test_api_insights_endpoint(rec, monkeypatch, tools_heavy):
     records = [rec(i, session_id="s-%d" % i, prompt_details=tools_heavy) for i in range(5)]
     monkeypatch.setattr(aggregate, "gather_records", lambda: (records, []))
     body = TestClient(app).get("/api/insights", params={"period": "all"}).json()
-    assert body["state"] == "ok"
+    assert body["state"] == "ready"
     assert body["coverage"]["requests_covered"] == 5
     assert _of_type(body, "prompt_composition")

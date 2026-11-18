@@ -14,6 +14,12 @@ written by another schema is moved aside (one ``.bad`` copy is kept) and rebuilt
 file cannot be used at all, the scan parses in memory as before and ``status()`` carries the
 reason, so the dashboard still serves every record and the refresh reply says why nothing
 was kept.
+
+A record the scan leaves out of the totals (a request read again from a copied chat log) is
+stored with ``counted = 0``, so the counted rows are exactly the records the scan returned.
+Each scan that changes the stored rows writes a new ``scan`` token to ``meta`` in the same
+transaction; ``reading(token)`` serves a query only while the file still holds that scan, so
+an answer read from the file always matches the snapshot built from the same scan.
 """
 
 from __future__ import annotations
@@ -24,10 +30,12 @@ import os
 import sqlite3
 import threading
 import time
+import uuid
+from contextlib import contextmanager
 from dataclasses import fields
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypeVar
+from typing import Any, Callable, Dict, Iterator, List, Optional, Set, Tuple, TypeVar
 
 from src import config
 from src.runtime_data import runtime_db_path
@@ -38,7 +46,7 @@ _log = logging.getLogger(__name__)
 
 DB_FILENAME = "read_model.sqlite3"
 # Bump when the tables change shape; a file with another version is moved aside and rebuilt.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 _CONNECT_TIMEOUT_S = 5.0
 
 Parsed = Tuple[List[RequestRecord], Dict[str, Any]]
@@ -66,8 +74,10 @@ CREATE TABLE IF NOT EXISTS records (
     %s,
     ts_epoch REAL NOT NULL,
     local_date TEXT NOT NULL,
+    counted INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (source_id, ord)
 );
+CREATE INDEX IF NOT EXISTS records_uncounted ON records(source_id, ord) WHERE counted = 0;
 CREATE INDEX IF NOT EXISTS records_local_date ON records(local_date);
 CREATE INDEX IF NOT EXISTS records_session ON records(session_id);
 CREATE INDEX IF NOT EXISTS records_project ON records(project_key);
@@ -132,6 +142,8 @@ class Scan:
         if conn is not None:
             self._manifest = {k: (i, s) for i, k, s in conn.execute("SELECT id, key, signature FROM sources")}
         self._seen: Set[str] = set()
+        self._ids: Dict[str, int] = {k: i for k, (i, _s) in self._manifest.items()}
+        self._uncounted: Set[Tuple[int, int]] = set()
         self.parsed = 0
         self.reused = 0
         self.dropped = 0
@@ -162,19 +174,40 @@ class Scan:
                 (key, signature, json.dumps(meta, sort_keys=True), time.time()),
             )
             source_id = int(cur.lastrowid)
+            self._ids[key] = source_id
             conn.executemany(_INSERT_RECORD, [_row(source_id, i, r) for i, r in enumerate(records)])
 
-    def finish(self) -> None:
-        """Delete every source this scan did not visit."""
+    def uncount(self, key: str, ord_: int) -> None:
+        """Leave record ``ord_`` of source ``key`` out of the totals (it was returned by ``records``)."""
+        source_id = self._ids.get(key)
+        if source_id is not None:
+            self._uncounted.add((source_id, ord_))
+
+    def finish(self) -> Optional[str]:
+        """Delete every source this scan did not visit and store which records count.
+
+        Returns the token of the stored scan, or None when nothing is stored.
+        """
         if self._conn is None:
-            return
+            return None
+        conn = self._conn
         gone = [(i,) for k, (i, _s) in self._manifest.items() if k not in self._seen]
-        if gone:
-            with self._conn:
-                self._conn.executemany("DELETE FROM sources WHERE id = ?", gone)
+        stored = set(conn.execute("SELECT source_id, ord FROM records WHERE counted = 0"))
+        token_row = conn.execute("SELECT value FROM meta WHERE key = 'scan'").fetchone()
+        token = token_row[0] if token_row else None
+        if gone or self.parsed or stored != self._uncounted or token is None:
+            token = uuid.uuid4().hex
+            with conn:
+                conn.executemany("DELETE FROM sources WHERE id = ?", gone)
+                conn.execute("UPDATE records SET counted = 1 WHERE counted = 0")
+                conn.executemany(
+                    "UPDATE records SET counted = 0 WHERE source_id = ? AND ord = ?", sorted(self._uncounted),
+                )
+                conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('scan', ?)", (token,))
         self.dropped = len(gone)
         for key in [k for k in self._model._memo if k not in self._seen]:
             del self._model._memo[key]
+        return token
 
 
 class ReadModel:
@@ -188,6 +221,7 @@ class ReadModel:
         self._drop = False
         self._scans = 0
         self._status: Dict[str, Any] = {"state": "not scanned"}
+        self._token: Optional[str] = None
 
     # -- public ----------------------------------------------------------------
 
@@ -199,8 +233,9 @@ class ReadModel:
             if self._memo_for != path:
                 self._memo.clear()
                 self._memo_for = path
+            self._token = None
             try:
-                result, scan = self._persisted(path, visit)
+                result, scan, self._token = self._persisted(path, visit)
                 self._status = {"state": "persisted", "path": str(path)}
             except ReadModelUnusable as exc:
                 self._memo.clear()
@@ -222,6 +257,28 @@ class ReadModel:
         with self._lock:
             self._memo.clear()
             self._drop = True
+            self._token = None
+
+    def take_token(self) -> Optional[str]:
+        """The token of the last stored scan, once: a build that ran no scan gets None."""
+        with self._lock:
+            token, self._token = self._token, None
+            return token
+
+    @contextmanager
+    def reading(self, token: Optional[str]) -> Iterator[Optional[sqlite3.Connection]]:
+        """A read-only connection inside one read transaction while the file holds scan ``token``.
+
+        Yields None when there is no token, the file cannot be read, or a newer scan has
+        replaced that one; the caller then answers from the snapshot's records instead.
+        """
+        conn = self._read_connection(token) if token is not None else None
+        try:
+            yield conn
+        finally:
+            if conn is not None:
+                conn.rollback()
+                conn.close()
 
     def status(self) -> Dict[str, Any]:
         """Whether the last scan kept its records on disk, and how many sources it parsed."""
@@ -230,7 +287,7 @@ class ReadModel:
 
     # -- internals -------------------------------------------------------------
 
-    def _persisted(self, path: Path, visit: Callable[[Scan], T]) -> Tuple[T, Scan]:
+    def _persisted(self, path: Path, visit: Callable[[Scan], T]) -> Tuple[T, Scan, Optional[str]]:
         for attempt in (1, 2):
             conn = self._open(path)
             try:
@@ -240,8 +297,8 @@ class ReadModel:
                     self._drop = False
                 scan = Scan(self, conn)
                 result = visit(scan)
-                scan.finish()
-                return result, scan
+                token = scan.finish()
+                return result, scan, token
             except sqlite3.DatabaseError as exc:
                 if attempt == 2:
                     raise ReadModelUnusable("rebuilt and still failing: %s" % exc) from exc
@@ -305,6 +362,30 @@ class ReadModel:
                 conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('layout', ?)", (_LAYOUT,))
                 conn.execute("PRAGMA user_version = %d" % SCHEMA_VERSION)
         return None
+
+    def _read_connection(self, token: str) -> Optional[sqlite3.Connection]:
+        path = self._path()
+        if not path.exists():
+            return None
+        conn: Optional[sqlite3.Connection] = None
+        try:
+            # runtime-write-exempt: opened read-only (mode=ro) on the path from db_path()
+            conn = sqlite3.connect(
+                "%s?mode=ro" % path.as_uri(), uri=True, timeout=_CONNECT_TIMEOUT_S,
+                isolation_level=None, check_same_thread=False,
+            )
+            conn.execute("BEGIN")
+            row = conn.execute("SELECT value FROM meta WHERE key = 'scan'").fetchone()
+        except sqlite3.Error as exc:
+            if conn is not None:
+                conn.close()
+            _log.info("ℹ️ read model not readable, answering from the snapshot: %s", exc)
+            return None
+        if row is None or row[0] != token:
+            conn.rollback()
+            conn.close()
+            return None
+        return conn
 
     def _move_aside(self, path: Path, reason: str) -> None:
         self._memo.clear()

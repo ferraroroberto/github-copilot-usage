@@ -55,6 +55,11 @@ _MAX_RANGE_DAYS_DAILY = 62
 _MAX_RANGE_WEEKS = 52
 _TOP_SESSIONS = 8
 
+# Share of the cycle allowance used before the budget needs a look, ahead of any projection.
+BUDGET_ATTENTION_PCT = 80.0
+# One busy first morning projects absurdly, so a projection only raises the risk from this day.
+BUDGET_PROJECTION_MIN_DAYS = 3
+
 
 # ---------------------------------------------------------------------------
 # Gathering
@@ -611,6 +616,21 @@ def _time_series(
 # ---------------------------------------------------------------------------
 
 
+def budget_risk_level(
+    allowance: int, used_pct: Optional[float], projected_pct: Optional[float], days_elapsed: int,
+) -> str:
+    """``none`` | ``attention`` | ``warning`` | ``critical`` for a cycle's use against its allowance."""
+    if not allowance or used_pct is None:
+        return "none"
+    if used_pct >= 100:
+        return "critical"
+    if days_elapsed >= BUDGET_PROJECTION_MIN_DAYS and (projected_pct or 0) > 100:
+        return "warning"
+    if used_pct >= BUDGET_ATTENTION_PCT:
+        return "attention"
+    return "none"
+
+
 def budget_status(records: List[RequestRecord], today: Optional[date] = None) -> dict:
     today = today or date.today()
     cfg = config.load()
@@ -635,6 +655,8 @@ def budget_status(records: List[RequestRecord], today: Optional[date] = None) ->
     days_total = (end - start).days + 1
     days_elapsed = (today - start).days + 1
     projected = used / days_elapsed * days_total if days_elapsed else used
+    used_pct = round(100.0 * used / allowance, 1) if allowance else None
+    projected_pct = round(100.0 * projected / allowance, 1) if allowance else None
 
     return {
         "cycle_start": start.isoformat(),
@@ -643,9 +665,10 @@ def budget_status(records: List[RequestRecord], today: Optional[date] = None) ->
         "days_total": days_total,
         "allowance_credits": allowance,
         "used_credits": round(used, 2),
-        "used_pct": round(100.0 * used / allowance, 1) if allowance else None,
+        "used_pct": used_pct,
         "projected_credits": round(projected, 1),
-        "projected_pct": round(100.0 * projected / allowance, 1) if allowance else None,
+        "projected_pct": projected_pct,
+        "risk": budget_risk_level(allowance, used_pct, projected_pct, days_elapsed),
         "coverage": span_coverage(start, today, telemetry_start(cfg)),
         "note": "local data from this machine only",
     }

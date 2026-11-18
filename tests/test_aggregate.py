@@ -107,6 +107,29 @@ def test_cycle_start_respects_reset_day(monkeypatch):
     assert aggregate.cycle_start(date(2026, 7, 10)) == date(2026, 6, 15)
 
 
+@pytest.mark.parametrize("allowance, used_pct, projected_pct, days, expected", [
+    (100, 79.0, 90.0, 10, "none"),
+    (100, 80.0, 90.0, 10, "attention"),
+    (100, 50.0, 101.0, 10, "warning"),
+    (100, 50.0, 400.0, 2, "none"),
+    (100, 85.0, 2600.0, 2, "attention"),
+    (100, 100.0, 120.0, 10, "critical"),
+    (0, None, None, 10, "none"),
+])
+def test_budget_risk_level(allowance, used_pct, projected_pct, days, expected):
+    assert aggregate.budget_risk_level(allowance, used_pct, projected_pct, days) == expected
+
+
+def test_budget_status_carries_the_risk_level(monkeypatch):
+    today = date(2026, 7, 2)
+    monkeypatch.setattr(aggregate.config, "load", lambda: {"monthly_credits": 10, "cycle_reset_day": 1})
+    used = _rec(ts=datetime(2026, 7, 1, 12, 0), credits=8.5)
+    assert aggregate.budget_status([used], today)["risk"] == "attention"
+    monkeypatch.setattr(aggregate.config, "load", lambda: {"monthly_credits": 0, "cycle_reset_day": 1})
+    quiet = aggregate.budget_status([used], today)
+    assert quiet["risk"] == "none" and quiet["used_pct"] is None and quiet["projected_pct"] is None
+
+
 def test_export_csv_shape():
     csv_text = aggregate.export_csv([_rec()], "all")
     lines = csv_text.strip().splitlines()

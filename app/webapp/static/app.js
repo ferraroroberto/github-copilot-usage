@@ -345,6 +345,8 @@ function budgetNote(b, startDate) {
   return note.dataset.base;
 }
 
+const RISK_LABEL = { attention: 'Attention', warning: 'Warning', critical: 'Critical' };
+
 function renderBudget(b, coverage) {
   if (!b) { $('budget-card').hidden = true; return; }
   $('budget-card').hidden = false;
@@ -355,8 +357,13 @@ function renderBudget(b, coverage) {
   const pct = Math.min(100, b.used_pct || 0);
   const fill = $('budget-fill');
   fill.style.width = pct + '%';
-  fill.className = 'budget-fill'
-    + ((b.used_pct || 0) >= 100 ? ' over' : (b.projected_pct || 0) > 100 ? ' warn' : '');
+  const risk = b.risk || 'none';
+  fill.className = 'budget-fill' + (risk === 'none' ? '' : ' ' + risk);
+  // The level is spelled out as text beside the used figure, never left to the meter's colour.
+  const chip = $('budget-risk');
+  chip.hidden = risk === 'none';
+  chip.className = 'sev sev-' + risk;
+  chip.textContent = RISK_LABEL[risk] || '';
 
   const marker = $('budget-today-marker');
   marker.style.left = Math.min(100, (b.days_elapsed / b.days_total) * 100) + '%';

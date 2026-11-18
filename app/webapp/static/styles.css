@@ -218,13 +218,15 @@ code {
   background: var(--success);
   transition: width 0.3s ease;
 }
-.budget-fill.warn { background: var(--attention); }
-.budget-fill.over { background: var(--danger); }
+.budget-fill.attention, .budget-fill.warning { background: var(--attention); }
+.budget-fill.critical { background: var(--danger); }
 .budget-marker { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--fg-muted); opacity: 0.7; }
 /* Two stacked lines, each holding its height before its value lands, so the card does not
  * grow when a phone-width legend would wrap. */
 .budget-legend { display: grid; gap: 2px; margin-top: 8px; font-size: var(--font-label); font-weight: 600; }
 .budget-legend > span { min-height: 1.5em; }
+.budget-used-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
+.budget-used-row .sev { align-self: center; }
 
 /* ---- charts ---- */
 .chart-title { font-size: var(--font-label); font-weight: 700; color: var(--fg-muted); margin: 14px 0 6px; }
@@ -353,7 +355,7 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
   background: var(--canvas-subtle); border: 1px solid var(--border-muted);
   border-radius: var(--r-pill); padding: 1px 8px;
 }
-.sev-warning, .flag { color: var(--attention-text); border-color: var(--attention); }
+.sev-attention, .sev-warning, .flag { color: var(--attention-text); border-color: var(--attention); }
 .sev-critical { color: var(--danger-text); border-color: var(--danger); }
 .flag-list { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; font-size: var(--font-label); }
 .mix-pick {

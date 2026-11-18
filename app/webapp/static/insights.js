@@ -179,6 +179,19 @@ function fillLists(body) {
       + ' · ' + r.project + ' · ' + r.model)).join('');
 }
 
+// Files, tools and attachments by how many requests carried them: names only, no content.
+function renderContextItems(items, requestsTotal) {
+  const { fmtNum } = deps;
+  $('cx-items-empty').hidden = items.length > 0;
+  $('cx-items-empty').textContent = items.length
+    ? '' : 'No attached files, tools or attachments were logged for this period.';
+  $('cx-items-list').innerHTML = items.map((it) => `
+    <li class="mix-row">
+      <div class="mix-top"><span class="cx-item-name" title="${esc(it.label)}">${esc(it.label)}</span><span class="pct">${fmtNum(it.requests)} ${it.requests === 1 ? 'request' : 'requests'}</span></div>
+      <div class="mix-track"><div class="mix-fill" style="width:${requestsTotal ? Math.min(100, 100 * it.requests / requestsTotal) : 0}%"></div></div>
+    </li>`).join('');
+}
+
 function coverageText(cov) {
   const { fmtNum } = deps;
   if (!cov.requests_total) return '';
@@ -194,6 +207,7 @@ function renderContext(body) {
   $('cx-meta').textContent = periodLabel(body.period);
   renderChips(body.labels || []);
   $('cx-coverage').textContent = coverageText(body.coverage);
+  renderContextItems(body.context_items || [], (body.coverage || {}).requests_total || 0);
   $('cx-note').textContent = body.note || '';
   const ok = body.state === 'ok';
   $('cx-body').hidden = !ok;

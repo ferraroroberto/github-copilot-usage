@@ -33,6 +33,11 @@ _log = logging.getLogger(__name__)
 # Top-level session-snapshot fields we keep.
 _SESSION_META_FIELDS = ("sessionId", "customTitle", "creationDate")
 
+# A context label is a name, not a document: the cap bounds its length, and the list stays
+# shallow so one request with a huge attachment set cannot bloat the cached records.
+CONTEXT_LABEL_MAX = 160
+_CONTEXT_ITEMS_MAX = 100
+
 
 @dataclass
 class RequestRecord:
@@ -56,6 +61,9 @@ class RequestRecord:
     credits: Optional[float]    # None = request never got billing data
     elapsed_ms: Optional[int]
     prompt_details: List[dict] = field(default_factory=list)
+    # Names of what rode along in the prompt (attached files, tools, other attachments): labels
+    # only, never their content.
+    context_items: List[str] = field(default_factory=list)
     error: bool = False
     # prompt_tokens is the comparable input volume: uncached input plus
     # cache-write. Cache-read is kept apart so it never inflates that volume.
@@ -269,6 +277,57 @@ def _mode(req: dict) -> str:
     return ""
 
 
+def _prompt_details(req: dict) -> List[dict]:
+    """The logged composition entries whose percentage is a number from 0 to 100."""
+    details = req.get("promptTokenDetails")
+    if not isinstance(details, list):
+        return []
+    kept: List[dict] = []
+    for d in details:
+        pct = d.get("percentageOfPrompt") if isinstance(d, dict) else None
+        if isinstance(pct, (int, float)) and not isinstance(pct, bool) and 0 <= pct <= 100:
+            kept.append(d)
+    return kept
+
+
+def _variable_name(var: dict) -> str:
+    """The display name of one attached variable: its name, else the basename of its path."""
+    for key in ("name", "fullName"):
+        v = var.get(key)
+        if isinstance(v, str) and v.strip():
+            return v
+    value = var.get("value")
+    if isinstance(value, dict):
+        inner = value.get("uri")
+        value = inner if isinstance(inner, (dict, str)) else value
+    if isinstance(value, dict):
+        value = value.get("path") or value.get("fsPath")
+    if not isinstance(value, str) or "\n" in value:
+        return ""  # a multi-line string is pasted text, never a name
+    path = decode_file_uri(value) if "://" in value else value
+    return (path or "").replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
+
+
+def _context_items(req: dict) -> List[str]:
+    """Names of the files, tools and attachments in the request's variable data; never contents."""
+    data = req.get("variableData")
+    variables = data.get("variables") if isinstance(data, dict) else None
+    if not isinstance(variables, list):
+        return []
+    seen: set = set()
+    out: List[str] = []
+    for var in variables:
+        if not isinstance(var, dict):
+            continue
+        label = " ".join(_variable_name(var).split())[:CONTEXT_LABEL_MAX]
+        if label and label not in seen:
+            seen.add(label)
+            out.append(label)
+            if len(out) >= _CONTEXT_ITEMS_MAX:
+                break
+    return out
+
+
 def _has_error(req: dict) -> bool:
     result = req.get("result") or {}
     return bool(result.get("errorDetails"))
@@ -326,7 +385,6 @@ def parse_session_file(
         if not title and message:
             title = message[:80]
 
-        details = req.get("promptTokenDetails")
         records.append(
             RequestRecord(
                 ide=ide,
@@ -346,7 +404,8 @@ def parse_session_file(
                 completion_tokens=int(completion_tokens or 0),
                 credits=float(credits) if credits is not None else None,
                 elapsed_ms=int(req["elapsedMs"]) if isinstance(req.get("elapsedMs"), (int, float)) else None,
-                prompt_details=details if isinstance(details, list) else [],
+                prompt_details=_prompt_details(req),
+                context_items=_context_items(req),
                 error=_has_error(req),
                 usage_source="vscode",
             )

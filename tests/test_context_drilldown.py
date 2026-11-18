@@ -113,3 +113,30 @@ def test_api_context_endpoint(records, monkeypatch):
     assert body["state"] == "ok"
     assert body["label"] == "Tool Definitions"
     assert body["projects"][0]["project"] == "beta"
+
+
+def test_context_items_rank_by_requests_and_are_capped_to_twenty(rec):
+    records = [
+        rec(0, context_items=["a.py", "tool-x"]),
+        rec(1, context_items=["a.py", "a.py"]),            # a repeat inside one request counts once
+        rec(2, context_items=["a.py"] + ["f%02d" % i for i in range(30)]),
+        rec(3, days_ago=40, context_items=["old.py"]),    # outside the week
+    ]
+    body = context_drilldown.drilldown(records, "week", "")
+    items = body["context_items"]
+
+    assert items[0] == {"label": "a.py", "requests": 3}
+    assert len(items) == context_drilldown.CONTEXT_ITEMS_TOP == 20
+    assert all(i["label"] != "old.py" for i in items)
+    assert [i["requests"] for i in items] == sorted((i["requests"] for i in items), reverse=True)
+
+
+def test_context_items_present_even_when_no_composition_is_logged(rec):
+    body = context_drilldown.drilldown([rec(0, context_items=["b.md"])], "all", "")
+    assert body["state"] == "no_data"
+    assert body["context_items"] == [{"label": "b.md", "requests": 1}]
+
+
+def test_period_without_context_items_returns_an_empty_list(records):
+    assert context_drilldown.drilldown(records, "all", "")["context_items"] == []
+    assert context_drilldown.drilldown([], "all", "")["context_items"] == []

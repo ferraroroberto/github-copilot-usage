@@ -587,9 +587,11 @@ surfaces:
       - the diagnostics block
       - the prompt composition of the session
       - a table of time, prompt, mode, model, tokens in and out, credits and time taken per request
+      - on a request that logged any, an "N in context" button that opens a row of the names of its attached files, tools and attachments
       - Save name
     does:
       - the close button and Esc close it
+      - the "N in context" button shows or hides that request's names
     states:
       - an estimated request is marked ~ and explained in the meta line
       - an errored request is dimmed and carries a warning glyph
@@ -645,6 +647,7 @@ surfaces:
       - the label as the title, and the period
       - chips for All of the prompt and each label with its share
       - the coverage line
+      - the files, tools and attachments that rode along most often
       - Projects, Models, Sessions and Requests, each a list of rows with a share
       - a note
     does:
@@ -656,11 +659,25 @@ surfaces:
       - the empty state carries the server's reason
     why: the shares are estimates weighted by prompt size, so the coverage line says how much of the period has a breakdown
     links:
+      - to: drill.context-items
       - to: drill.context-empty
       - to: drill.session
         via: a session or request row
       - to: drill.requests
         via: a project or model row
+
+  - id: drill.context-items
+    area: drill
+    title: Context items
+    root: data-surface
+    reach:
+      - the context drill-down, above Projects
+    holds:
+      - up to twenty names of attached files, tools and attachments, each with the number of the period's requests that carried it and a proportion bar
+    states:
+      - a period with none logged says so in one line
+      - the names alone are kept, never the content, and the list ignores the selected label
+    why: the composition says which category of the prompt is large; the names say which tools and files ride along on every request
 
   - id: drill.context-empty
     area: drill

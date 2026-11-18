@@ -110,10 +110,6 @@ def test_requests_open_in_place_with_every_bucket_and_the_sheet_lists_prompt_gro
     assert sum(1 for c in changes if c != "first") == 3
 
 
-def _width(page, selector: str) -> float:
-    return page.locator(selector).first.bounding_box()["width"]
-
-
 def test_the_sheet_is_as_wide_as_the_page_column_and_the_prompt_opens_first(page, base_url):
     _open_sheet(page, base_url)
     row = page.locator("#sd-requests button[data-req='0']")
@@ -125,12 +121,36 @@ def test_the_sheet_is_as_wide_as_the_page_column_and_the_prompt_opens_first(page
     figures = page.locator("#sd-req-0 .req-facts").bounding_box()
     assert prompt["y"] < figures["y"]
 
-    # the wide sheet lines up with the cards behind it at a phone, a tablet and a desktop width
-    for width, height in ((390, 844), (800, 900), (1440, 900)):
+    # the wide sheet lines up with the cards behind it at a phone and a tablet width
+    for width, height in ((390, 844), (800, 900)):
         page.set_viewport_size({"width": width, "height": height})
         page.locator("#sd-close").click()
         page.wait_for_selector("#session-dialog", state="hidden")
-        card = _width(page, "#pane-sessions .card")
+        card = page.locator("#pane-sessions .card").first.bounding_box()
         page.click("#session-list button[data-sid]")
         page.wait_for_selector("#session-dialog", state="visible")
-        assert abs(_width(page, "#session-dialog") - card) <= 1, width
+        sheet = page.locator("#session-dialog").bounding_box()
+        assert abs(sheet["width"] - card["width"]) <= 1, width
+        assert abs(sheet["x"] - card["x"]) <= 1, width
+
+
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_on_a_desktop_the_sheet_shares_the_page_columns_edges_beside_the_side_nav(browser, base_url, scheme):
+    # a fine pointer is what gives the wide layout its side nav, so this needs a desktop context, not the phone one
+    context = browser.new_context(viewport={"width": 1440, "height": 900}, color_scheme=scheme)
+    context.route("**/api/usage/**", lambda route: route.fulfill(status=204))
+    page = context.new_page()
+    try:
+        _open_sheet(page, base_url)
+        for width in (1440, 1100, 1024):
+            page.set_viewport_size({"width": width, "height": 900})
+            page.locator("#sd-close").click()
+            page.wait_for_selector("#session-dialog", state="hidden")
+            card = page.locator("#pane-sessions .card").first.bounding_box()
+            page.click("#session-list button[data-sid]")
+            page.wait_for_selector("#session-dialog", state="visible")
+            sheet = page.locator("#session-dialog").bounding_box()
+            assert abs(sheet["x"] - card["x"]) <= 1, width
+            assert abs(sheet["x"] + sheet["width"] - card["x"] - card["width"]) <= 1, width
+    finally:
+        context.close()

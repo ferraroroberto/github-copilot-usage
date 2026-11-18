@@ -549,6 +549,29 @@ def _bucket_key(unit: str, d: date) -> date:
     return date(d.year, d.month, 1)
 
 
+def _bucket_totals(slots: Dict[str, dict]) -> Dict[str, Any]:
+    """A bucket's efficiency and cache buckets across its models.
+
+    Each is ``None`` rather than 0 where nothing backs it: no request recorded the cache
+    count, or the bucket billed no credits, so the charts draw a gap instead of a false low.
+    """
+    totals: Dict[str, Any] = {field: None for field in _TOKEN_FIELDS}
+    credits = 0.0
+    for slot in slots.values():
+        credits += slot["credits"]
+        for field in _TOKEN_FIELDS:
+            totals[field] = _add_known(totals[field], slot[field])
+    metrics = token_metrics(
+        totals["prompt_tokens"], totals["completion_tokens"],
+        totals["cache_read_tokens"], totals["cache_write_tokens"], round(credits, 4),
+    )
+    return {
+        "tokens_per_credit": metrics["tokens_per_credit"],
+        "cache_read_tokens": totals["cache_read_tokens"],
+        "cache_write_tokens": totals["cache_write_tokens"],
+    }
+
+
 def _time_series(
     records: List[RequestRecord], period: str, today: date, labels: ModelLabels,
     offset: int, start: Optional[date],
@@ -597,6 +620,7 @@ def _time_series(
             "end": spans[b][1].isoformat(),
             "coverage": span_coverage(spans[b][0], spans[b][1], start),
             "models": bmap[b],
+            **_bucket_totals(bmap[b]),
         }
         for b in buckets
     ]

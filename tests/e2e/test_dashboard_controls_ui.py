@@ -151,6 +151,11 @@ def test_the_trend_steps_through_older_windows_and_a_bucket_tap_focuses_the_dash
     page.wait_for_function("document.querySelector('#trend-latest').disabled === false")
     assert page.locator("#trend-range").inner_text() != latest_range
     assert page.locator("#trend-newer").is_enabled()
+    # The tokens-per-credit and cache charts are drawn from the same window as the credits chart.
+    older_labels = page.evaluate("Chart.getChart('chart-credits').data.labels")
+    for chart in ("chart-efficiency", "chart-cache"):
+        assert page.locator("#" + chart).is_visible()
+        assert page.evaluate("id => Chart.getChart(id).data.labels", chart) == older_labels
     page.click("#trend-latest")
     page.wait_for_function("document.querySelector('#trend-latest').disabled === true")
     assert page.locator("#trend-range").inner_text() == latest_range

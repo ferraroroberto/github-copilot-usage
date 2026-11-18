@@ -26,6 +26,7 @@ import { initSections } from './sections.js';
 import { DEFAULT_PERIOD, DEFAULT_SORT, initFilters } from './filters.js';
 import { initSessionName } from './session-name.js';
 import { fetchTrend, initTimeline, render as renderTimeline } from './timeline.js';
+import { cacheLine, fmtNum, fmtTok, tokBreakdown, unknownTokensNote } from './tokens.js';
 
 // Local-only usage log (views, taps, device class); same-origin, no content recorded. It runs only
 // while its feature block is on, and switching the block starts or stops it with no reload.
@@ -106,36 +107,6 @@ paintTextSize();
 // ---------------------------------------------------------------------------
 // Formatting
 // ---------------------------------------------------------------------------
-
-function fmtNum(n) {
-  if (n === undefined || n === null) return '—';
-  return Number(n).toLocaleString();
-}
-
-// One-line token breakdown for a row's tooltip; cache buckets stay separate from input volume.
-function tokBreakdown(r) {
-  return 'uncached in ' + fmtNum(r.uncached_input_tokens)
-    + ' · cache read ' + fmtNum(r.cache_read_tokens)
-    + ' · cache write ' + fmtNum(r.cache_write_tokens)
-    + ' · out ' + fmtNum(r.completion_tokens)
-    + ' · total in ' + fmtNum(r.total_input_tokens)
-    + ' · effective ' + fmtNum(r.effective_input_tokens) + ' in / ' + fmtNum(r.effective_output_tokens) + ' out'
-    + (r.tokens_per_credit == null ? '' : ' · ' + fmtNum(r.tokens_per_credit) + ' tok/credit');
-}
-
-function cacheLine(r) {
-  const bits = [];
-  if (r.cache_read_tokens) bits.push(fmtTok(r.cache_read_tokens) + ' cache read');
-  if (r.cache_write_tokens) bits.push(fmtTok(r.cache_write_tokens) + ' cache write');
-  return bits.join(' · ');
-}
-
-function fmtTok(n) {
-  n = Number(n) || 0;
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1) + 'M';
-  if (n >= 1_000) return (n / 1_000).toFixed(n >= 10_000 ? 0 : 1) + 'k';
-  return String(n);
-}
 
 function fmtCredits(n) {
   if (n === undefined || n === null) return '—';
@@ -305,8 +276,11 @@ function renderTiles(s) {
   $('t-in').textContent = fmtTok(t.prompt_tokens);
   $('t-in').title = tokBreakdown(t);
   $('t-out').textContent = fmtTok(t.completion_tokens);
-  $('t-in-sub').textContent = cacheLine(t) || (t.requests
-    ? '~' + fmtTok(t.prompt_tokens / Math.max(t.requests, 1)) + ' per request' : '');
+  $('t-in-sub').textContent = [
+    cacheLine(t) || (t.requests && t.prompt_tokens != null
+      ? '~' + fmtTok(t.prompt_tokens / Math.max(t.requests - (t.unknown_token_requests || 0), 1)) + ' per request' : ''),
+    unknownTokensNote(t),
+  ].filter(Boolean).join(' · ');
   $('t-out-sub').textContent = [
     t.errors ? t.errors + ' failed req (' + fmtCredits(t.error_credits) + ' cr)' : '',
     t.tokens_per_credit == null ? '' : fmtTok(t.tokens_per_credit) + ' effective tok/credit',
@@ -518,6 +492,7 @@ async function openSession(sid) {
     + ' · ' + fmtNum(detail.requests) + ' requests · '
     + fmtCredits(detail.credits) + ' credits (≈ ' + fmtUsd(detail.usd) + ')'
     + (cacheLine(detail) ? ' · ' + cacheLine(detail) : '')
+    + (unknownTokensNote(detail) ? ' · ' + unknownTokensNote(detail) : '')
     + (detail.estimated_requests
       ? ' · ' + fmtNum(detail.estimated_requests) + ' estimated (allocated from session totals, marked ~)' : '');
 
@@ -533,14 +508,17 @@ async function openSession(sid) {
   const tbody = $('sd-table').querySelector('tbody');
   tbody.innerHTML = (detail.requests_detail || []).map((r, i) => {
     const est = r.usage_estimated ? '~' : '';
+    const tok = (n) => (n == null ? '—' : est + fmtTok(n));
+    const rowTitle = r.usage_source === 'unavailable' ? 'The Copilot CLI recorded no token counts for this request'
+      : r.usage_estimated ? 'Estimated: allocated from session totals (' + r.usage_source + ')' : '';
     return `
-    <tr${r.error ? ' style="opacity:0.6"' : ''}${r.usage_estimated ? ' title="Estimated: allocated from session totals (' + esc(r.usage_source) + ')"' : ''}>
+    <tr${r.error ? ' style="opacity:0.6"' : ''}${rowTitle ? ' title="' + esc(rowTitle) + '"' : ''}>
       <td class="num">${fmtTime(r.ts)}</td>
       <td class="td-trunc" title="${esc(r.message)}">${contextToggle(r, i)}${esc(r.message) || '<span class="muted">—</span>'}${r.error ? ' <svg class="inline-glyph glyph-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="errored"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>' : ''}</td>
       <td>${esc(r.mode)}</td>
       <td class="td-trunc" title="${esc(r.model)}">${esc(r.model)}</td>
-      <td class="num" title="${esc(tokBreakdown(r))}">${est}${fmtTok(r.prompt_tokens)}</td>
-      <td class="num">${est}${fmtTok(r.completion_tokens)}</td>
+      <td class="num" title="${esc(tokBreakdown(r))}">${tok(r.prompt_tokens)}</td>
+      <td class="num">${tok(r.completion_tokens)}</td>
       <td class="num">${r.credits === null ? '—' : est + fmtCredits(r.credits)}</td>
       <td class="num">${r.elapsed_ms === null ? '—' : (r.elapsed_ms / 1000).toFixed(1) + 's'}</td>
     </tr>${contextRow(r, i)}`;

@@ -271,44 +271,59 @@ def _blank() -> Dict[str, Any]:
         "errors": 0,
         "credits": 0.0,
         "error_credits": 0.0,
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "cache_read_tokens": 0,
-        "cache_write_tokens": 0,
+        # A token total is None until one request recorded that figure: unknown is not zero.
+        "prompt_tokens": None,
+        "completion_tokens": None,
+        "cache_read_tokens": None,
+        "cache_write_tokens": None,
+        "unknown_token_requests": 0,
         "estimated_requests": 0,
     }
 
 
+def _add_known(total: Optional[int], value: Optional[int]) -> Optional[int]:
+    """``total`` plus ``value``, skipping a figure that was not recorded."""
+    if value is None:
+        return total
+    return value if total is None else total + value
+
+
 def token_metrics(
-    prompt_tokens: int,
-    completion_tokens: int,
-    cache_read_tokens: int,
-    cache_write_tokens: int,
+    prompt_tokens: Optional[int],
+    completion_tokens: Optional[int],
+    cache_read_tokens: Optional[int],
+    cache_write_tokens: Optional[int],
     credits: Optional[float],
 ) -> Dict[str, Any]:
     """The derived token figures, from one set of definitions.
 
     ``prompt_tokens`` is the input volume (uncached input plus cache-write);
-    cache-read never counts toward it or toward output.
+    cache-read never counts toward it or toward output. A figure that would rest
+    on a token count nobody recorded is ``None``, never 0.
     """
-    uncached = max(prompt_tokens - cache_write_tokens, 0)
-    eff_in = uncached + CACHE_WEIGHT * cache_read_tokens
-    eff_out = completion_tokens + CACHE_WEIGHT * cache_write_tokens
+    read, write = cache_read_tokens or 0, cache_write_tokens or 0
+    uncached = None if prompt_tokens is None else max(prompt_tokens - write, 0)
+    eff_in = None if uncached is None else uncached + CACHE_WEIGHT * read
+    eff_out = None if completion_tokens is None else completion_tokens + CACHE_WEIGHT * write
+    both = eff_in is not None and eff_out is not None
     return {
         "uncached_input_tokens": uncached,
-        "total_input_tokens": prompt_tokens + cache_read_tokens,
-        "effective_input_tokens": round(eff_in),
-        "effective_output_tokens": round(eff_out),
-        "tokens_per_credit": round((eff_in + eff_out) / credits, 1) if credits else None,
+        "total_input_tokens": None if prompt_tokens is None else prompt_tokens + read,
+        "effective_input_tokens": None if eff_in is None else round(eff_in),
+        "effective_output_tokens": None if eff_out is None else round(eff_out),
+        "tokens_per_credit": round((eff_in + eff_out) / credits, 1) if credits and both else None,
     }
+
+
+_TOKEN_FIELDS = ("prompt_tokens", "completion_tokens", "cache_read_tokens", "cache_write_tokens")
 
 
 def _add(acc: Dict[str, Any], r: RequestRecord) -> None:
     acc["requests"] += 1
-    acc["prompt_tokens"] += r.prompt_tokens
-    acc["completion_tokens"] += r.completion_tokens
-    acc["cache_read_tokens"] += r.cache_read_tokens
-    acc["cache_write_tokens"] += r.cache_write_tokens
+    for field in _TOKEN_FIELDS:
+        acc[field] = _add_known(acc[field], getattr(r, field))
+    if r.prompt_tokens is None and r.completion_tokens is None:
+        acc["unknown_token_requests"] += 1
     if r.usage_estimated:
         acc["estimated_requests"] += 1
     if r.credits is not None:
@@ -545,15 +560,13 @@ def _time_series(
         if slot is None:
             slot = bmap[bk][label] = {
                 "credits": 0.0, "requests": 0,
-                "prompt_tokens": 0, "completion_tokens": 0,
-                "cache_read_tokens": 0, "cache_write_tokens": 0,
+                "prompt_tokens": None, "completion_tokens": None,
+                "cache_read_tokens": None, "cache_write_tokens": None,
             }
         slot["requests"] += 1
-        slot["cache_read_tokens"] += r.cache_read_tokens
-        slot["cache_write_tokens"] += r.cache_write_tokens
         slot["credits"] = round(slot["credits"] + (r.credits or 0.0), 4)
-        slot["prompt_tokens"] += r.prompt_tokens
-        slot["completion_tokens"] += r.completion_tokens
+        for field in _TOKEN_FIELDS:
+            slot[field] = _add_known(slot[field], getattr(r, field))
 
     series = [
         {

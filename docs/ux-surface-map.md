@@ -240,6 +240,7 @@ flowchart LR
   - Tokens out with failed requests and effective tokens per credit
 - **States:**
   - a dash in every tile when the telemetry start date puts the whole period out of reach
+  - a token tile reads a dash, not 0, when no request of the period recorded that count; the Tokens in line then names how many requests had no token data
   - the change chip is hidden for All and Cycle
 - **Why:** credits lead because the credit is the unit the plan bills in; the dollar figure is derived
 
@@ -606,6 +607,7 @@ flowchart LR
   - the "N in context" button shows or hides that request's names
 - **States:**
   - an estimated request is marked ~ and explained in the meta line
+  - a request the Copilot CLI recorded no token counts for shows a dash in its token cells, with the reason on hover, and the meta line counts such requests
   - an errored request is dimmed and carries a warning glyph
 - **Phone:** a full-height sheet
 - **Desktop:** a wide centred card

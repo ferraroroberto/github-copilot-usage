@@ -290,3 +290,116 @@ def test_replayed_prompt_with_the_same_interaction_id_counts_once(tmp_path):
 
     assert sorted(r.message for r in records) == ["no id", "no id", "p1", "p2"]
     assert sum(r.credits for r in records) == pytest.approx(4.0)
+
+
+def test_shutdown_without_token_counts_gives_unknown_tokens_and_unavailable_source(tmp_path):
+    state = _copilot_home(tmp_path)
+    _write_events(state, SID, [
+        _prompt("2026-03-01T10:00:00Z", "p1"),
+        _shutdown("2026-03-01T12:00:00Z", {"model-a": {"totalNanoAiu": 1_500_000_000}}),
+    ])
+
+    records, _ = cli_parser.all_records(state)
+
+    assert len(records) == 1
+    r = records[0]
+    assert (r.prompt_tokens, r.completion_tokens, r.cache_read_tokens, r.cache_write_tokens) == (None,) * 4
+    assert r.usage_source == "unavailable"
+    assert r.credits == pytest.approx(1.5)
+
+
+def test_a_recorded_zero_stays_zero_and_keeps_its_source(tmp_path):
+    state = _copilot_home(tmp_path)
+    _write_events(state, SID, [
+        _prompt("2026-03-01T10:00:00Z", "p1"),
+        _shutdown("2026-03-01T12:00:00Z", {"model-a": _metrics(0, 0, 0, 0, 1_000_000_000)}),
+    ])
+
+    r = cli_parser.all_records(state)[0][0]
+
+    assert (r.prompt_tokens, r.completion_tokens) == (0, 0)
+    assert r.usage_source == "events.jsonl"
+
+
+def test_allocated_unknown_tokens_stay_unknown_on_every_prompt(tmp_path):
+    state = _copilot_home(tmp_path)
+    _write_events(state, SID, [
+        _prompt("2026-03-01T10:00:00Z", "p1"),
+        _prompt("2026-03-01T11:00:00Z", "p2"),
+        _shutdown("2026-03-01T12:00:00Z", {"model-a": {"totalNanoAiu": 2_000_000_000}}),
+    ])
+
+    records, _ = cli_parser.all_records(state)
+
+    assert len(records) == 2
+    assert all(r.prompt_tokens is None and r.completion_tokens is None for r in records)
+    assert all(r.usage_source == "unavailable" and r.usage_estimated for r in records)
+
+
+def test_running_session_checkpoint_has_unknown_tokens_but_keeps_its_source(tmp_path):
+    state = _copilot_home(tmp_path)
+    _write_events(state, SID, [_prompt("2026-03-01T10:00:00Z", "p1"), _checkpoint("2026-03-01T10:01:00Z", 700_000_000)])
+
+    r = cli_parser.all_records(state)[0][0]
+
+    assert r.prompt_tokens is None and r.completion_tokens is None
+    assert r.usage_source == "events.jsonl-checkpoint"
+
+
+_DETAILS_DDL = _USAGE_DDL.replace("created_at TEXT", "created_at TEXT, token_details_json TEXT")
+
+
+def _make_details_db(state: Path, rows: list) -> None:
+    conn = sqlite3.connect(str(state.parent / "session-store.db"))
+    conn.execute(_DETAILS_DDL)
+    conn.execute(_TURNS_DDL)
+    conn.execute(_SESSIONS_DDL)
+    conn.execute("INSERT INTO sessions VALUES (?, ?)", (SID, "/work/demo-project"))
+    for turn, inp, out, read, write, details in rows:
+        conn.execute(
+            "INSERT INTO assistant_usage_events (session_id, turn_index, model, input_tokens, output_tokens,"
+            " cache_read_tokens, cache_write_tokens, total_nano_aiu, created_at, token_details_json)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (SID, turn, "model-a", inp, out, read, write, 1_000_000_000, "2026-03-01T10:00:05.000Z", details),
+        )
+    conn.commit()
+    conn.close()
+
+
+def _details(uncached: int) -> str:
+    return json.dumps([
+        {"tokenType": "input", "tokenCount": uncached},
+        {"tokenType": "cache_read", "tokenCount": 0},
+        {"tokenType": "output", "tokenCount": 5},
+    ])
+
+
+def test_store_row_with_token_details_uses_its_exact_uncached_input(tmp_path):
+    state = _copilot_home(tmp_path)
+    # Total input 1000 less read 600 and write 300 would derive 100; the details say 120.
+    _make_details_db(state, [(0, 1000, 50, 600, 300, _details(120))])
+
+    r = cli_parser.all_records(state)[0][0]
+
+    assert r.prompt_tokens == 120 + 300
+    assert r.cache_read_tokens == 600 and r.cache_write_tokens == 300
+
+
+def test_store_row_without_details_derives_uncached_input_clamped_at_zero(tmp_path):
+    state = _copilot_home(tmp_path)
+    _make_details_db(state, [(0, 1000, 50, 600, 300, None), (1, 100, 5, 600, 300, "not json")])
+
+    by_turn = {r.request_id.split(":")[1]: r for r in cli_parser.all_records(state)[0]}
+
+    assert by_turn["0"].prompt_tokens == 100 + 300
+    assert by_turn["1"].prompt_tokens == 0 + 300      # derivation would go negative: clamped
+
+
+def test_store_row_with_null_tokens_is_unknown_not_zero(tmp_path):
+    state = _copilot_home(tmp_path)
+    _make_details_db(state, [(0, None, None, None, None, None)])
+
+    r = cli_parser.all_records(state)[0][0]
+
+    assert r.prompt_tokens is None and r.completion_tokens is None
+    assert r.usage_source == "unavailable"

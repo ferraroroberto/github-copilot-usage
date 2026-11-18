@@ -152,7 +152,10 @@ def _sort_key(sort: str) -> Callable[[RequestRecord], Any]:
     if sort == "credits":
         return lambda r: r.credits
     if sort == "tokens":
-        return lambda r: r.prompt_tokens + r.completion_tokens
+        return lambda r: (
+            None if r.prompt_tokens is None and r.completion_tokens is None
+            else (r.prompt_tokens or 0) + (r.completion_tokens or 0)
+        )
     if sort == "elapsed":
         return lambda r: r.elapsed_ms
     return lambda r: r.ts

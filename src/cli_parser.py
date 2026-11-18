@@ -40,9 +40,13 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from src import cli_session_store
 from src.cli_session_store import StoreSnapshot
-from src.vscode_parser import RequestRecord, _MtimeCache
+from src.vscode_parser import RequestRecord, _MtimeCache, optional_int
 
 _log = logging.getLogger(__name__)
+
+_CHECKPOINT_SOURCE = "events.jsonl-checkpoint"
+# The source of a record whose input and output tokens the CLI never recorded.
+UNAVAILABLE_SOURCE = "unavailable"
 
 _cache = _MtimeCache()
 # The last snapshot and the records built from it; rebuilt when the snapshot object changes.
@@ -58,14 +62,25 @@ def clear_caches() -> None:
 
 @dataclass
 class _Usage:
-    """Token and credit totals for one model; ``input_tokens`` includes cache traffic."""
+    """Token and credit totals for one model; ``input_tokens`` includes cache traffic.
+
+    A token figure the source did not record is ``None``, which stays apart from 0.
+    ``uncached_input_tokens`` is the uncached input the source states outright, when it does.
+    """
 
     model: str
-    input_tokens: int = 0
-    output_tokens: int = 0
-    cache_read_tokens: int = 0
-    cache_write_tokens: int = 0
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    cache_read_tokens: Optional[int] = None
+    cache_write_tokens: Optional[int] = None
     nano_aiu: float = 0.0
+    uncached_input_tokens: Optional[int] = None
+
+
+def _sum_known(values: List[Optional[int]]) -> Optional[int]:
+    """The sum of the figures that were recorded; ``None`` when none were."""
+    known = [v for v in values if v is not None]
+    return sum(known) if known else None
 
 
 def _read_cwd(session_dir: Path) -> Optional[str]:
@@ -117,7 +132,16 @@ def _record(
     estimated: bool,
 ) -> RequestRecord:
     key, name, path = _project(cwd)
-    uncached = max(usage.input_tokens - usage.cache_read_tokens - usage.cache_write_tokens, 0)
+    cache_read, cache_write = usage.cache_read_tokens, usage.cache_write_tokens
+    uncached = usage.uncached_input_tokens
+    if uncached is None and usage.input_tokens is not None:
+        uncached = max(usage.input_tokens - (cache_read or 0) - (cache_write or 0), 0)
+    if uncached is not None:
+        # An input figure was recorded, so a cache bucket it left out held nothing.
+        cache_read, cache_write = cache_read or 0, cache_write or 0
+    prompt = None if uncached is None else uncached + (cache_write or 0)
+    if prompt is None and usage.output_tokens is None and usage_source != _CHECKPOINT_SOURCE:
+        usage_source = UNAVAILABLE_SOURCE
     return RequestRecord(
         ide="Copilot CLI",
         source="cli",
@@ -132,12 +156,12 @@ def _record(
         mode="cli",
         model_requested=usage.model,
         model=usage.model,
-        prompt_tokens=uncached + usage.cache_write_tokens,
+        prompt_tokens=prompt,
         completion_tokens=usage.output_tokens,
         credits=usage.nano_aiu / 1e9,
         elapsed_ms=elapsed_ms,
-        cache_read_tokens=usage.cache_read_tokens,
-        cache_write_tokens=usage.cache_write_tokens,
+        cache_read_tokens=cache_read,
+        cache_write_tokens=cache_write,
         usage_source=usage_source,
         usage_estimated=estimated,
     )
@@ -146,6 +170,15 @@ def _record(
 # ---------------------------------------------------------------------------
 # session-store.db: exact per-prompt records
 # ---------------------------------------------------------------------------
+
+
+def _call_uncached(call: cli_session_store.UsageCall) -> Optional[int]:
+    """One call uncached input: the store exact figure, else total input less the cache buckets."""
+    if call.uncached_input_tokens is not None:
+        return call.uncached_input_tokens
+    if call.input_tokens is None:
+        return None
+    return max(call.input_tokens - (call.cache_read_tokens or 0) - (call.cache_write_tokens or 0), 0)
 
 
 def _store_records(store: StoreSnapshot, session_state_dir: Path) -> List[RequestRecord]:
@@ -165,11 +198,12 @@ def _store_records(store: StoreSnapshot, session_state_dir: Path) -> List[Reques
         durations = [c.duration_ms for c in calls if c.duration_ms is not None]
         usage = _Usage(
             model=model,
-            input_tokens=sum(c.input_tokens for c in calls),
-            output_tokens=sum(c.output_tokens for c in calls),
-            cache_read_tokens=sum(c.cache_read_tokens for c in calls),
-            cache_write_tokens=sum(c.cache_write_tokens for c in calls),
+            input_tokens=_sum_known([c.input_tokens for c in calls]),
+            output_tokens=_sum_known([c.output_tokens for c in calls]),
+            cache_read_tokens=_sum_known([c.cache_read_tokens for c in calls]),
+            cache_write_tokens=_sum_known([c.cache_write_tokens for c in calls]),
             nano_aiu=float(sum(c.nano_aiu for c in calls)),
+            uncached_input_tokens=_sum_known([_call_uncached(c) for c in calls]),
         )
         records.append(_record(
             sid, cwds[sid], sid + ":" + str(turn_key) + ":" + model,
@@ -185,8 +219,10 @@ def _store_records(store: StoreSnapshot, session_state_dir: Path) -> List[Reques
 # ---------------------------------------------------------------------------
 
 
-def _split_int(total: int, weights: List[float]) -> List[int]:
-    """Split ``total`` by ``weights`` into integers that still sum to ``total``."""
+def _split_int(total: Optional[int], weights: List[float]) -> List[Optional[int]]:
+    """Split ``total`` by ``weights`` into integers that still sum to ``total``; an unrecorded total stays unrecorded."""
+    if total is None:
+        return [None] * len(weights)
     wsum = sum(weights)
     raw = [total * w / wsum for w in weights]
     parts = [int(x) for x in raw]
@@ -284,13 +320,13 @@ def _parse_events_file(path: Path, cwd: Optional[str]) -> List[RequestRecord]:
         for model, metrics in (data.get("modelMetrics") or {}).items():
             if not isinstance(metrics, dict):
                 continue
-            usage = metrics.get("usage") or {}
+            usage = metrics.get("usage") if isinstance(metrics.get("usage"), dict) else {}
             totals.append(_Usage(
                 model=str(model),
-                input_tokens=int(usage.get("inputTokens") or 0),
-                output_tokens=int(usage.get("outputTokens") or 0),
-                cache_read_tokens=int(usage.get("cacheReadTokens") or 0),
-                cache_write_tokens=int(usage.get("cacheWriteTokens") or 0),
+                input_tokens=optional_int(usage.get("inputTokens")),
+                output_tokens=optional_int(usage.get("outputTokens")),
+                cache_read_tokens=optional_int(usage.get("cacheReadTokens")),
+                cache_write_tokens=optional_int(usage.get("cacheWriteTokens")),
                 nano_aiu=float(metrics.get("totalNanoAiu") or 0),
             ))
         if len(prompts) > 1:
@@ -305,7 +341,7 @@ def _parse_events_file(path: Path, cwd: Optional[str]) -> List[RequestRecord]:
         usage = _Usage(model=current_model or "unknown", nano_aiu=checkpoints[-1][1])
         if not prompts:
             prompts = [(checkpoints[-1][0], "")]
-        return _allocate(session_id, cwd, [usage], prompts, _prompt_weights([p[0] for p in prompts], checkpoints), "events.jsonl-checkpoint")
+        return _allocate(session_id, cwd, [usage], prompts, _prompt_weights([p[0] for p in prompts], checkpoints), _CHECKPOINT_SOURCE)
     return []
 
 

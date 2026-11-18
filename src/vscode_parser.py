@@ -56,8 +56,8 @@ class RequestRecord:
     mode: str                   # agent | ask | edit | … ("" when unknown)
     model_requested: str
     model: str                  # resolved model (display string)
-    prompt_tokens: int
-    completion_tokens: int
+    prompt_tokens: Optional[int]        # None = the source did not record the figure (not zero)
+    completion_tokens: Optional[int]
     credits: Optional[float]    # None = request never got billing data
     elapsed_ms: Optional[int]
     prompt_details: List[dict] = field(default_factory=list)
@@ -66,10 +66,13 @@ class RequestRecord:
     context_items: List[str] = field(default_factory=list)
     error: bool = False
     # prompt_tokens is the comparable input volume: uncached input plus
-    # cache-write. Cache-read is kept apart so it never inflates that volume.
-    cache_read_tokens: int = 0
-    cache_write_tokens: int = 0
-    usage_source: str = ""          # vscode | session-store | events.jsonl | events.jsonl-allocated | events.jsonl-checkpoint
+    # cache-write. Cache-read is kept apart so it never inflates that volume. VS Code
+    # logs no cache traffic, so its records keep 0; None marks a CLI figure not recorded.
+    cache_read_tokens: Optional[int] = 0
+    cache_write_tokens: Optional[int] = 0
+    # vscode | session-store | events.jsonl | events.jsonl-allocated | events.jsonl-checkpoint
+    # | unavailable (the CLI recorded no input or output tokens for it)
+    usage_source: str = ""
     usage_estimated: bool = False   # True = allocated from session/checkpoint totals, not measured per prompt
     # Set only on the read-time copy of a renamed session: the title the log itself carried.
     parsed_title: str = ""
@@ -255,6 +258,16 @@ def _resolved_model(req: dict) -> str:
     return "unknown"
 
 
+def optional_int(value: object) -> Optional[int]:
+    """The integer a log field holds, or ``None`` when it is absent or not a number (never 0)."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return int(value)  # type: ignore[call-overload]
+    except (TypeError, ValueError):
+        return None
+
+
 def _message_text(req: dict, limit: int = 200) -> str:
     msg = req.get("message")
     text = msg.get("text") if isinstance(msg, dict) else msg if isinstance(msg, str) else ""
@@ -400,8 +413,8 @@ def parse_session_file(
                 mode=_mode(req),
                 model_requested=str(req.get("modelId") or ""),
                 model=_resolved_model(req),
-                prompt_tokens=int(prompt_tokens or 0),
-                completion_tokens=int(completion_tokens or 0),
+                prompt_tokens=optional_int(prompt_tokens),
+                completion_tokens=optional_int(completion_tokens),
                 credits=float(credits) if credits is not None else None,
                 elapsed_ms=int(req["elapsedMs"]) if isinstance(req.get("elapsedMs"), (int, float)) else None,
                 prompt_details=_prompt_details(req),

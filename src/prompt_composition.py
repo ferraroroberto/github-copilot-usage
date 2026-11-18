@@ -18,7 +18,7 @@ USER_CATEGORY = "User Context"
 
 def label_tokens(r: RequestRecord) -> List[Tuple[str, str, float]]:
     """The request's ``(label, category, estimated tokens)`` entries; empty without composition."""
-    if not r.prompt_details or r.prompt_tokens <= 0:
+    if not r.prompt_details or (r.prompt_tokens or 0) <= 0:
         return []
     out: List[Tuple[str, str, float]] = []
     for d in r.prompt_details:

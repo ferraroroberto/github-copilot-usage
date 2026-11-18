@@ -88,7 +88,7 @@ surfaces:
     holds:
       - the tab's icon and title
       - the context line (the period on show, or the danger line when a refresh failed)
-      - the freshness readout with the time of the last refresh
+      - the freshness readout with the time of the last refresh (a tab left hidden for over 30 s reloads when it is shown again)
       - the theme toggle
       - the Settings gear
     does:

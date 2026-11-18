@@ -135,6 +135,13 @@ def test_sorts_and_pages_match(client: TestClient, spy: List[str]) -> None:
     {"q": "SESS-B"},
     {"q": "copilot cli"},
     {"q": "nothing matches this"},
+    {"q": "CLAUDE-sonnet"},
+    {"q": "COPILOT/gpt"},
+    {"q": "GAMMA"},
+    {"q": "insiders"},
+    {"q": "ask"},
+    {"q": "cli"},
+    {"q": "REQ-012"},
     {"project": "e:\\alpha", "mode": "agent", "ide": "Code", "result": "ok", "q": "prompt"},
 ])
 def test_filters_and_facets_match(client: TestClient, spy: List[str], params: Dict[str, Any]) -> None:
@@ -155,7 +162,7 @@ def test_start_date_and_session_names_apply(client: TestClient, spy: List[str]) 
     })
     for period in ("week", "all"):
         _compare(client, "/api/sessions", {"period": period}, spy)
-        for q in ("", "renamed", "named untitled", "alpha session"):
+        for q in ("", "renamed", "named untitled", "alpha session", "RENAMED ALPHA"):
             _compare(client, "/api/requests", {"period": period, "q": q, "sort": "credits"}, spy)
     sessions = client.get("/api/sessions", params={"period": "all"}).json()["sessions"]
     named = {s["session_id"]: s for s in sessions}

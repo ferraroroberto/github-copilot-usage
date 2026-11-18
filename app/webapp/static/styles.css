@@ -75,6 +75,8 @@
   --r-lg: var(--radius);
   --r-pill: var(--radius-pill);
   --gutter: var(--gap);
+  /* The page column's outer width; the wide sheets size from it so they line up with the cards behind. */
+  --column-width: 772px;
 }
 
 [data-theme="dark"] {
@@ -122,7 +124,7 @@ body {
 }
 
 .app {
-  max-width: 772px;
+  max-width: var(--column-width);
   margin: 0 auto;
   padding: var(--gutter) var(--gutter) calc(var(--gutter) + env(safe-area-inset-bottom));
   display: grid;
@@ -279,7 +281,8 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 /* ---- dialogs ----
  * Every sheet is the vendored modal. A content-heavy sheet widens past the modal's 440px,
  * and a long title wraps inside its header instead of pushing the close button out. */
-.detail-dialog.sheet-wide { width: min(680px, 92vw); }
+/* max-width: the UA's own cap on a dialog (100% - 6px - 2em) would otherwise trim it below the cards. */
+.detail-dialog.sheet-wide { width: min(var(--column-width) - 2 * var(--gutter), 100vw - 2 * var(--gutter)); max-width: none; }
 .detail-header h2 { min-width: 0; overflow-wrap: anywhere; }
 .dialog-meta { font-size: var(--font-label); color: var(--fg-muted); margin-bottom: 10px; }
 
@@ -392,7 +395,18 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .req-facts dt { font-size: var(--font-label); color: var(--fg-muted); }
 .req-facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .req-sub { margin: 14px 0 6px; font-size: var(--font-label); color: var(--fg-muted); font-weight: 700; }
+.req-sub-first { margin-top: 10px; }
 .req-prompt { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.req-detail .req-facts { margin-top: 14px; }
+/* The row's title is one ellipsized line, so a chevron says the row opens (and turns when it is open). */
+.action-row-main[aria-expanded] { position: relative; padding-right: 34px; }
+.action-row-main[aria-expanded]::after {
+  content: ""; position: absolute; right: 14px; top: 50%;
+  width: 7px; height: 7px; margin-top: -5px;
+  border-right: 2px solid var(--fg-muted); border-bottom: 2px solid var(--fg-muted);
+  transform: rotate(45deg); transition: transform 0.15s;
+}
+.action-row-main[aria-expanded="true"]::after { transform: rotate(-135deg); margin-top: -1px; }
 .ctx-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .ctx-chips li {
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

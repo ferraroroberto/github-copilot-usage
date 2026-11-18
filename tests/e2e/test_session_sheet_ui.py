@@ -108,3 +108,29 @@ def test_requests_open_in_place_with_every_bucket_and_the_sheet_lists_prompt_gro
     changes = page.locator("#sd-diagnostics .growth-change").all_inner_texts()
     assert changes[0] == "first" and changes[1] == "+20%"
     assert sum(1 for c in changes if c != "first") == 3
+
+
+def _width(page, selector: str) -> float:
+    return page.locator(selector).first.bounding_box()["width"]
+
+
+def test_the_sheet_is_as_wide_as_the_page_column_and_the_prompt_opens_first(page, base_url):
+    _open_sheet(page, base_url)
+    row = page.locator("#sd-requests button[data-req='0']")
+
+    # the row says it opens, and the prompt is the first thing it shows, above every figure
+    row.click()
+    assert row.get_attribute("aria-expanded") == "true"
+    prompt = page.locator("#sd-req-0 .req-prompt").bounding_box()
+    figures = page.locator("#sd-req-0 .req-facts").bounding_box()
+    assert prompt["y"] < figures["y"]
+
+    # the wide sheet lines up with the cards behind it at a phone, a tablet and a desktop width
+    for width, height in ((390, 844), (800, 900), (1440, 900)):
+        page.set_viewport_size({"width": width, "height": height})
+        page.locator("#sd-close").click()
+        page.wait_for_selector("#session-dialog", state="hidden")
+        card = _width(page, "#pane-sessions .card")
+        page.click("#session-list button[data-sid]")
+        page.wait_for_selector("#session-dialog", state="visible")
+        assert abs(_width(page, "#session-dialog") - card) <= 1, width

@@ -17,6 +17,7 @@ import { showToast as showFleetToast } from './_vendored/toast/toast.js';
 import { createRowMenu } from './_vendored/row-menu/row-menu.js';
 import { actionRowHtml, esc, splitMeta } from './rows.js';
 import { initRequests } from './requests.js';
+import { commitUrl, composeUrl, readDash } from './url-state.js';
 import { initRequestList, renderRequestList } from './request-list.js';
 import { flagChips, initInsights, refreshInsights, renderDiagnostics } from './insights.js';
 import { initFeatures } from './features.js';
@@ -574,15 +575,21 @@ function renderSources(sources) {
 // ---------------------------------------------------------------------------
 
 // Also the way a tapped chart bucket focuses the dashboard: the period is then a date range, which
-// lights no button of the segmented control.
-function setPeriod(period) {
+// lights no button of the segmented control. A change adds a history entry; one that Back or
+// Forward asked for (`fromHistory`) already has its address.
+function paintPeriod(period) {
+  // The page's period control and the Filters & sort sheet's copy always agree.
+  document.querySelectorAll('#period-seg button, #filters-period button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === period)));
+  filters.paint();
+}
+
+function setPeriod(period, { fromHistory = false } = {}) {
   state.period = period;
   state.sessionsExpanded = false;
   state.trendOffset = 0;
   state.trend = null;
-  // The page's period control and the Filters & sort sheet's copy always agree.
-  document.querySelectorAll('#period-seg button, #filters-period button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === period)));
-  filters.paint();
+  paintPeriod(period);
+  if (!fromHistory) commitUrl(composeUrl(period, null), 'push');
   refresh();
 }
 
@@ -832,9 +839,26 @@ initSections(document.querySelector('main.app'));
 const showSessionName = initSessionName({ jsonApi, showToast: toast, reopen: openSession, refresh });
 initTimeline({ state, jsonApi, setPeriod, renderCharts, showToast: toast });
 
+// A reload or a shared link keeps the period or focus the address names.
+const addressPeriod = readDash();
+if (addressPeriod) {
+  state.period = addressPeriod;
+  paintPeriod(addressPeriod);
+}
+
 const requests = initRequests({
   jsonApi, fmtCredits, fmtTok, fmtNum, fmtDay, fmtTime, openSession,
   getPeriod: () => state.period,
+});
+
+// Back and Forward: restore the period or focus, then the explorer sheet, from the address.
+window.addEventListener('popstate', () => {
+  const period = readDash() || DEFAULT_PERIOD;
+  if (period !== state.period) {
+    if (!period.startsWith('range:')) state.returnPeriod = null;
+    setPeriod(period, { fromHistory: true });
+  }
+  requests.restoreFromUrl();
 });
 
 initInsights({

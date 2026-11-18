@@ -134,3 +134,97 @@ def test_pagination_walks_the_pages_and_the_phone_layout_does_not_overflow_and_e
     assert page.inner_text("#rq-summary") == "No requests match"
     page.click("#rq-close")
     page.wait_for_function("!location.search.includes('view=requests')")
+
+
+def _wait_rows(page, count: int) -> None:
+    page.wait_for_function("n => document.querySelectorAll('#rq-list li').length === n", arg=count)
+
+
+def test_back_and_forward_step_through_the_filtered_views_and_back_closes_the_sheet(page, base_url):
+    page.goto(base_url + "/")
+    page.click('.tabs .tab[data-tab="sessions"]')
+    page.click("#requests-open")
+    page.wait_for_selector("#rq-list li")
+    page.click("#rq-filter-box > summary")
+
+    page.select_option("#rq-model", "claude-sonnet")
+    _wait_rows(page, 8)
+    first = page.url
+    page.select_option("#rq-sort", "credits")
+    page.wait_for_function("location.search.includes('sort=credits')")
+    second = page.url
+    assert "model=claude-sonnet" in first and "sort=credits" not in first
+
+    page.go_back()
+    _wait_rows(page, 8)
+    assert page.url == first
+    assert page.input_value("#rq-model") == "claude-sonnet"
+    assert page.input_value("#rq-sort") == "ts"
+
+    page.go_forward()
+    page.wait_for_function("document.querySelector('#rq-sort').value === 'credits'")
+    assert page.url == second
+    assert page.input_value("#rq-model") == "claude-sonnet"
+
+    # Back past the filters reaches the unfiltered view, then the dashboard with the sheet closed.
+    page.go_back()
+    page.go_back()
+    page.wait_for_function("document.querySelector('#rq-model').value === ''")
+    assert page.is_visible("#requests-dialog")
+    page.go_back()
+    page.wait_for_function("!document.querySelector('#requests-dialog').open")
+    assert "view=requests" not in page.url
+    assert page.url.rstrip("/") == base_url
+
+    # Closing the sheet with its own button adds a plain dashboard entry; Back reopens the view.
+    page.go_forward()
+    page.wait_for_selector("#requests-dialog[open]")
+    page.click("#rq-close")
+    page.wait_for_function("!location.search.includes('view=requests')")
+    page.go_back()
+    page.wait_for_selector("#requests-dialog[open]")
+    assert "view=requests" in page.url
+
+
+def test_a_page_step_is_an_entry_and_typing_replaces_the_current_one(page, base_url):
+    _open(page, base_url)
+    page.click("#rq-next")
+    page.wait_for_function("document.querySelectorAll('#rq-list li').length === 5")
+    assert "page=2" in page.url
+    page.go_back()
+    page.wait_for_function("document.querySelectorAll('#rq-list li').length === 25")
+    assert page.inner_text("#rq-page") == "Page 1 of 2"
+    assert "page=" not in page.url
+
+    length = page.evaluate("history.length")
+    page.fill("#rq-q", "prompt 0")
+    page.wait_for_function("location.search.includes('q=prompt')")
+    assert page.evaluate("history.length") == length
+
+
+def test_the_dashboard_period_and_a_focused_range_survive_back_and_a_reload(page, base_url):
+    page.goto(base_url + "/")
+    page.wait_for_selector("#period-seg button[aria-pressed='true'][data-period='today']")
+    page.click("#period-seg button[data-period='month']")
+    page.wait_for_function("location.search.includes('dash=month')")
+    page.click("#period-seg button[data-period='all']")
+    page.wait_for_function("location.search.includes('dash=all')")
+
+    page.go_back()
+    page.wait_for_selector("#period-seg button[aria-pressed='true'][data-period='month']")
+    assert "dash=month" in page.url
+    page.go_back()
+    page.wait_for_selector("#period-seg button[aria-pressed='true'][data-period='today']")
+    assert "dash=" not in page.url
+
+    page.go_forward()
+    page.wait_for_selector("#period-seg button[aria-pressed='true'][data-period='month']")
+    page.reload()
+    page.wait_for_selector("#period-seg button[aria-pressed='true'][data-period='month']")
+
+    day = TODAY_NOON.date().isoformat()
+    page.goto(base_url + "/?dash=range:%s..%s" % (day, day))
+    page.wait_for_selector("#focus-bar:not([hidden])")
+    assert "Focused on" in page.inner_text("#focus-label")
+    page.goto(base_url + "/?dash=garbage")
+    page.wait_for_selector("#period-seg button[aria-pressed='true'][data-period='today']")

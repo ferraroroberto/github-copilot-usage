@@ -2,11 +2,13 @@
  *
  * The view lives in a dialog over the dashboard. Its whole state is in the URL
  * (?view=requests&period=week&model=...), so a filtered view can be bookmarked and a
- * reload restores it. The server (GET /api/requests) does the filtering, sorting,
+ * reload restores it; each committed change is a history entry, so Back and Forward step
+ * through the views (see url-state.js). The server (GET /api/requests) does the filtering, sorting,
  * paging and the facet counts; this module only draws them.
  */
 
 import { actionRowHtml, esc, splitMeta } from './rows.js';
+import { commitUrl, composeUrl } from './url-state.js';
 
 const DEFAULTS = {
   period: 'week', project: '', model: '', mode: '', ide: '', result: '',
@@ -50,18 +52,22 @@ function readUrl() {
   return next;
 }
 
-function writeUrl() {
+// mode: 'push' for a committed change, 'replace' for typing, 'none' when the address already says it.
+function writeUrl(mode) {
   // A response that lands after the dialog closed must not put the view back in the URL.
   if (!$('requests-dialog').open) return;
   const p = new URLSearchParams({ view: 'requests', period: filters.period });
   for (const key of Object.keys(DEFAULTS)) {
     if (key !== 'period' && String(filters[key]) !== String(DEFAULTS[key])) p.set(key, filters[key]);
   }
-  history.replaceState(null, '', window.location.pathname + '?' + p.toString());
+  commitUrl(composeUrl(deps.getPeriod(), p), mode);
 }
 
-function clearUrl() {
-  history.replaceState(null, '', window.location.pathname);
+// Closing the sheet moves on to the plain dashboard address. When the sheet was closed by Back
+// the address no longer names the view, so nothing is added.
+function onClosed() {
+  clearTimeout(searchTimer);
+  if (readUrl()) commitUrl(composeUrl(deps.getPeriod(), null), 'push');
 }
 
 function apiUrl() {
@@ -131,7 +137,7 @@ function renderSummary(body) {
 function render(body) {
   // The server clamps a page past the end; keep the URL on the page actually shown.
   filters.page = body.query.page;
-  writeUrl();
+  writeUrl('replace');
   renderFacets(body.facets);
   renderSummary(body);
   $('rq-rows').innerHTML = body.rows.map(requestRow).join('');
@@ -159,10 +165,10 @@ function syncControls() {
 
 // ---- loading and changing the query ----
 
-async function load() {
+async function load(mode) {
   const seq = ++loadSeq;
   syncControls();
-  writeUrl();
+  writeUrl(mode);
   // Keep the rows on screen while a new page loads; only a first load shows the loading block.
   if ($('rq-list').hidden) setState('loading');
   try {
@@ -177,23 +183,39 @@ async function load() {
   }
 }
 
-function change(patch) {
+function change(patch, mode) {
   filters = { ...filters, page: 1, ...patch };
-  load();
+  load(mode || 'push');
 }
 
+// Typing replaces the current entry rather than adding one per pause.
 function debouncedChange(patchFor) {
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => change(patchFor()), SEARCH_DEBOUNCE_MS);
+  searchTimer = setTimeout(() => change(patchFor(), 'replace'), SEARCH_DEBOUNCE_MS);
 }
 
-function openView(initial) {
+function goToPage(page) {
+  filters.page = page;
+  load('push');
+}
+
+function openView(initial, mode) {
+  const wasOpen = $('requests-dialog').open;
   filters = { ...DEFAULTS, period: deps.getPeriod(), ...initial };
   // On a phone the filters start folded so the rows stay in view, unless some are already set.
-  $('rq-filter-box').open = window.matchMedia(WIDE_QUERY).matches || activeFilters() > 0;
-  if (!$('requests-dialog').open) $('requests-dialog').showModal();
+  if (!wasOpen) $('rq-filter-box').open = window.matchMedia(WIDE_QUERY).matches || activeFilters() > 0;
+  else if (activeFilters() > 0) $('rq-filter-box').open = true;
+  if (!wasOpen) $('requests-dialog').showModal();
   setState('loading');
-  load();
+  load(mode);
+}
+
+// Back or Forward landed on another address: show the view it names, or close the sheet.
+function restoreFromUrl() {
+  clearTimeout(searchTimer);
+  const fromUrl = readUrl();
+  if (fromUrl) openView(fromUrl, 'none');
+  else if ($('requests-dialog').open) $('requests-dialog').close();
 }
 
 // ---- wiring ----
@@ -217,8 +239,8 @@ function bindFilters() {
 }
 
 function bindPagingAndRows() {
-  $('rq-prev').addEventListener('click', () => { filters.page = Math.max(filters.page - 1, 1); load(); });
-  $('rq-next').addEventListener('click', () => { filters.page += 1; load(); });
+  $('rq-prev').addEventListener('click', () => goToPage(Math.max(filters.page - 1, 1)));
+  $('rq-next').addEventListener('click', () => goToPage(filters.page + 1));
   const list = $('rq-list');
   // The rows are real buttons, so Enter and Space already arrive as a click.
   list.addEventListener('click', (e) => {
@@ -229,13 +251,14 @@ function bindPagingAndRows() {
 
 export function initRequests(handedOver) {
   deps = handedOver;
-  $('requests-open').addEventListener('click', () => openView({}));
+  $('requests-open').addEventListener('click', () => openView({}, 'push'));
   $('rq-close').addEventListener('click', () => $('requests-dialog').close());
-  $('requests-dialog').addEventListener('close', clearUrl);
-  $('rq-retry').addEventListener('click', load);
+  $('requests-dialog').addEventListener('close', onClosed);
+  $('rq-retry').addEventListener('click', () => load('none'));
   bindFilters();
   bindPagingAndRows();
+  // A reload lands on the view the address names; that entry already exists, so it is only tidied.
   const fromUrl = readUrl();
-  if (fromUrl) openView(fromUrl);
-  return { open: openView };
+  if (fromUrl) openView(fromUrl, 'replace');
+  return { open: (initial) => openView(initial, 'push'), restoreFromUrl };
 }

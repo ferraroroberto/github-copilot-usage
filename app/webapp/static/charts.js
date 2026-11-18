@@ -113,8 +113,14 @@ export function createCharts(env) {
 
   function drawTokens(ts, labels) {
     const theme = currentTheme();
-    const sumField = (b, f) => (b.coverage === 'none' ? null
-      : Object.values(b.models || {}).reduce((acc, m) => acc + (m[f] || 0), 0));
+    // A bucket whose requests recorded no such figure is a gap in the line, not a zero.
+    const sumField = (b, f) => {
+      if (b.coverage === 'none') return null;
+      const slots = Object.values(b.models || {});
+      const known = slots.map((m) => m[f]).filter((v) => v != null);
+      if (slots.length && !known.length) return null;
+      return known.reduce((acc, v) => acc + v, 0);
+    };
     // Colour is never the only cue: each line also differs in dash, point shape and fill.
     const line = (label, field, color, extra) => ({
       label,

@@ -144,3 +144,38 @@ def test_cache_buckets_and_estimates_reach_totals_and_detail():
     assert est["usage_estimated"] is True and est["usage_source"] == "events.jsonl-allocated"
     assert est["uncached_input_tokens"] == 200
     assert detail["usage_sources"] == ["events.jsonl-allocated", "vscode"]
+
+
+def test_unknown_tokens_stay_apart_from_zero_in_totals():
+    unknown = dict(prompt_tokens=None, completion_tokens=None, cache_read_tokens=None, cache_write_tokens=None)
+    only_unknown = aggregate.get_summary([_rec(**unknown)], "today")["totals"]
+    assert only_unknown["requests"] == 1
+    assert only_unknown["unknown_token_requests"] == 1
+    for field in ("prompt_tokens", "completion_tokens", "cache_read_tokens", "cache_write_tokens",
+                  "uncached_input_tokens", "total_input_tokens", "effective_input_tokens",
+                  "effective_output_tokens", "tokens_per_credit"):
+        assert only_unknown[field] is None, field
+
+    mixed = aggregate.get_summary([_rec(**unknown), _rec(request_id="req-2")], "today")["totals"]
+    assert mixed["unknown_token_requests"] == 1
+    assert (mixed["prompt_tokens"], mixed["completion_tokens"]) == (1000, 100)
+    assert mixed["tokens_per_credit"] is not None
+
+    recorded_zero = aggregate.get_summary([_rec(prompt_tokens=0, completion_tokens=0)], "today")["totals"]
+    assert recorded_zero["prompt_tokens"] == 0 and recorded_zero["unknown_token_requests"] == 0
+
+
+def test_unknown_tokens_reach_the_session_sheet_trends_and_csv():
+    unknown = _rec(prompt_tokens=None, completion_tokens=None, cache_read_tokens=None, cache_write_tokens=None,
+                   source="cli", usage_source="unavailable")
+    detail = aggregate.get_session_detail([unknown], "sess-1")
+    row = detail["requests_detail"][0]
+    assert row["prompt_tokens"] is None and row["completion_tokens"] is None
+    assert row["uncached_input_tokens"] is None and row["usage_source"] == "unavailable"
+    assert detail["unknown_token_requests"] == 1 and detail["prompt_tokens"] is None
+
+    slot = aggregate.get_trends([unknown], "today")["time_series"][-1]["models"]["gpt-5-mini"]
+    assert slot["prompt_tokens"] is None and slot["requests"] == 1
+
+    cells = aggregate.export_csv([unknown], "all").strip().splitlines()[1].split(",")
+    assert "None" not in cells

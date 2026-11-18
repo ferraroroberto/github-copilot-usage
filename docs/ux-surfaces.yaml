@@ -253,6 +253,7 @@ surfaces:
       - Tokens out with failed requests and effective tokens per credit
     states:
       - a dash in every tile when the telemetry start date puts the whole period out of reach
+      - a token tile reads a dash, not 0, when no request of the period recorded that count; the Tokens in line then names how many requests had no token data
       - the change chip is hidden for All and Cycle
     why: credits lead because the credit is the unit the plan bills in; the dollar figure is derived
 
@@ -594,6 +595,7 @@ surfaces:
       - the "N in context" button shows or hides that request's names
     states:
       - an estimated request is marked ~ and explained in the meta line
+      - a request the Copilot CLI recorded no token counts for shows a dash in its token cells, with the reason on hover, and the meta line counts such requests
       - an errored request is dimmed and carries a warning glyph
     why: one sheet for every list that names a session, so a session reads the same wherever it is reached
     phone: a full-height sheet

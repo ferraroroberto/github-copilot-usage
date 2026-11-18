@@ -58,7 +58,7 @@ All sources are **discovered automatically at runtime** and parsed read-only:
 
 The **Data sources** card at the bottom of the dashboard shows exactly what was found and how many sessions/requests each source contributed — use it to confirm your setup is being read. A VS Code chat log reachable twice (a profile copied to another editor folder, a restored backup, an extra root inside a discovered one) counts once: requests with the same editor, session id and request id collapse to the copy in the newest file (the smallest path on a tie), and the card says how many duplicates it ignored. A request missing any of those ids is never merged.
 
-The CLI database's schema is undocumented: when it is missing or has an unexpected shape, the CLI falls back to `events.jsonl` and the Data sources card says why. Every request carries `usage_source` (`vscode`, `session-store`, `events.jsonl`, `events.jsonl-allocated`, `events.jsonl-checkpoint`) and `usage_estimated`. Estimated values come from session or checkpoint totals spread across prompts (weighted by each prompt's checkpoint credit delta, evenly without checkpoints); the UI marks them `~`.
+The CLI database's schema is undocumented: when it is missing or has an unexpected shape, the CLI falls back to `events.jsonl` and the Data sources card says why. Every request carries `usage_source` (`vscode`, `session-store`, `events.jsonl`, `events.jsonl-allocated`, `events.jsonl-checkpoint`, `unavailable`) and `usage_estimated`. Estimated values come from session or checkpoint totals spread across prompts (weighted by each prompt's checkpoint credit delta, evenly without checkpoints); the UI marks them `~`. A CLI request whose log carries no input or output token counts has `null` tokens and the source `unavailable`: the dashboard shows `—` for it rather than 0, and totals say how many requests had no token data.
 
 ### Token definitions
 
@@ -66,12 +66,13 @@ Credits stay the billing measure. Cache tokens are kept in their own buckets, an
 
 | Figure | Definition |
 |---|---|
-| Tokens in (input volume, `prompt_tokens`) | CLI: uncached input + cache-write. VS Code: `promptTokens` |
+| Tokens in (input volume, `prompt_tokens`) | CLI: uncached input + cache-write; the store's exact uncached input (`token_details_json`) when a row has it, else total input less the cache buckets, never below 0. VS Code: `promptTokens` |
 | Cache read / cache write | separate buckets; cache-read never counts toward input volume or output |
 | Total input (context processed) | CLI total input including cache-read |
 | Effective input | uncached input + 10% of cache-read |
 | Effective output | output + 10% of cache-write |
-| Tokens per credit | (effective input + effective output) / billed credits; null when nothing was billed |
+| Tokens per credit | (effective input + effective output) / billed credits; null when nothing was billed or a token count was not recorded |
+| Unknown tokens | a count the source did not record is `null`, never 0: totals add the recorded ones, and are `null` when no request recorded that count |
 
 ### Notes and honest limitations
 

@@ -88,7 +88,7 @@ def diagnose(session_records: List[RequestRecord], high_non_user_cut: Optional[f
     share is reported but never flagged.
     """
     ordered = sorted(session_records, key=lambda r: (r.ts, r.request_id))
-    sized = [r for r in ordered if not r.usage_estimated and r.prompt_tokens > 0]
+    sized = [r for r in ordered if not r.usage_estimated and (r.prompt_tokens or 0) > 0]
     flags: List[Dict[str, str]] = []
 
     max_prompt = max((r.prompt_tokens for r in sized), default=0)

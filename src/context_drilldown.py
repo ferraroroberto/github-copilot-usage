@@ -33,8 +33,8 @@ def _pct(part: float, whole: float) -> Optional[float]:
 def coverage(in_period: List[RequestRecord]) -> Dict[str, Any]:
     """How much of the period carries a prompt composition, by requests and by prompt tokens."""
     covered = [r for r in in_period if prompt_composition.has_composition(r)]
-    tokens_total = sum(r.prompt_tokens for r in in_period)
-    tokens_covered = sum(r.prompt_tokens for r in covered)
+    tokens_total = sum(r.prompt_tokens or 0 for r in in_period)
+    tokens_covered = sum(r.prompt_tokens or 0 for r in covered)
     return {
         "requests_total": len(in_period),
         "requests_covered": len(covered),
@@ -51,7 +51,7 @@ def _contribution(r: RequestRecord, label: str) -> float:
     if not entries:
         return 0.0
     if not label:
-        return float(r.prompt_tokens)
+        return float(r.prompt_tokens or 0)
     return sum(tokens for name, _category, tokens in entries if name == label)
 
 

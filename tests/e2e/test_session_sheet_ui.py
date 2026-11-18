@@ -74,8 +74,10 @@ def _facts(page, index: int) -> dict:
     }
 
 
-def test_a_tap_opens_every_bucket_and_the_full_prompt_without_hover(page, base_url):
+def test_requests_open_in_place_with_every_bucket_and_the_sheet_lists_prompt_growth(page, base_url):
     _open_sheet(page, base_url)
+
+    # a tap opens a measured request: every bucket and the full prompt, no hover
     assert page.locator("#sd-req-0").is_hidden()
     page.locator("#sd-requests button[data-req='0']").click()
     assert page.locator("#sd-requests button[data-req='0']").get_attribute("aria-expanded") == "true"
@@ -91,26 +93,18 @@ def test_a_tap_opens_every_bucket_and_the_full_prompt_without_hover(page, base_u
     page.locator("#sd-requests button[data-req='0']").click()
     assert page.locator("#sd-req-0").is_hidden()
 
-
-def test_estimates_carry_a_tilde_and_their_source_and_unknown_is_a_dash(page, base_url):
-    _open_sheet(page, base_url)
+    # an estimate carries ~ and its source; an unrecorded figure is a dash
     page.locator("#sd-requests button[data-req='4']").click()
     assert _facts(page, 4)["Input volume"].startswith("~")
     assert "events.jsonl-allocated" in page.locator("#sd-req-4").inner_text()
-
     page.locator("#sd-requests button[data-req='5']").click()
     unknown = _facts(page, 5)
     assert unknown["Input volume"] == "—" and unknown["Output"] == "—" and unknown["Cache read"] == "—"
     assert "recorded no token counts" in page.locator("#sd-req-5").inner_text()
 
-
-def test_the_growth_list_has_one_change_fewer_than_sized_requests(page, base_url):
-    _open_sheet(page, base_url)
-    # four measured requests; the estimated and the unknown one are left out of the size checks
-    assert page.locator("#sd-diagnostics .growth-box").count() == 1
+    # four measured requests (the estimated and the unknown one are left out): four sizes, three changes
     page.click("#sd-diagnostics .growth-box > summary")
-    rows = page.locator("#sd-diagnostics .growth-list li")
-    assert rows.count() == 4
+    assert page.locator("#sd-diagnostics .growth-list li").count() == 4
     changes = page.locator("#sd-diagnostics .growth-change").all_inner_texts()
     assert changes[0] == "first" and changes[1] == "+20%"
     assert sum(1 for c in changes if c != "first") == 3

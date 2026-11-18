@@ -604,15 +604,17 @@ flowchart LR
   - the rename row
   - the diagnostics block
   - the prompt composition of the session
-  - a table of time, prompt, mode, model, tokens in and out, credits and time taken per request
-  - on a request that logged any, an "N in context" button that opens a row of the names of its attached files, tools and attachments
+  - a list of requests, each a row with the prompt, time, model, tokens in and out and credits
+  - under a request that is opened: the requested and used model, mode, input volume, context processed, uncached input, cache read, cache write, output, credits and time taken, the stored prompt in full, and the names of its attached files, tools and attachments when it logged any
   - Save name
 - **Does:**
   - the close button and Esc close it
-  - the "N in context" button shows or hides that request's names
+  - a request row opens and closes its detail in place
 - **States:**
   - an estimated request is marked ~ and explained in the meta line
-  - a request the Copilot CLI recorded no token counts for shows a dash in its token cells, with the reason on hover, and the meta line counts such requests
+  - an opened estimated request marks its figures ~ and names the source of the estimate
+  - a request the Copilot CLI recorded no token counts for shows a dash for each figure, says why under its detail, and the meta line counts such requests
+  - a VS Code prompt of 200 characters or more says the log keeps only the first 200
   - an errored request is dimmed and carries a warning glyph
 - **Phone:** a full-height sheet
 - **Desktop:** a wide centred card
@@ -643,7 +645,11 @@ flowchart LR
 - **Holds:**
   - the largest prompt, the growth from first to last prompt and the share outside the user's own context
   - one line per flag with its heuristic wording
-- **States:** hidden when the session logged no prompt size
+  - a closed disclosure listing the prompt size of each sized request in order with the percentage change from the previous one
+- **Does:** the disclosure opens and closes the growth list
+- **States:**
+  - hidden when the session logged no prompt size
+  - no growth list with fewer than two sized requests
 - **Why:** the flags are heuristics, worded as such, and never a verdict
 
 ### `drill.context` Context drill-down

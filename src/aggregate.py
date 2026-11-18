@@ -778,6 +778,7 @@ def get_session_detail(records: List[RequestRecord], session_id: str) -> Optiona
             "request_id": r.request_id,
             "ts": r.ts.isoformat(),
             "message": r.message,
+            "source": r.source,
             "mode": r.mode,
             "model": r.model,
             "model_label": labels.label(r.model),

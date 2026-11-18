@@ -68,8 +68,32 @@ export function renderDiagnostics(el, diag) {
   const flags = (diag.flags || []).map((f) =>
     `<li><span class="badge flag">${esc(FLAG_LABEL[f.type] || f.type)}</span> ${esc(f.text)}</li>`).join('');
   el.innerHTML = `<p class="dialog-meta">${esc(facts.join(' · '))}</p>`
-    + (flags ? `<ul class="flag-list">${flags}</ul>` : '');
+    + (flags ? `<ul class="flag-list">${flags}</ul>` : '')
+    + growthList(diag.prompt_growth || []);
   el.hidden = false;
+}
+
+// "+50%", "−20%" (a true minus), "0%".
+function changeText(pct) {
+  if (pct === null || pct === undefined) return 'first';
+  if (pct === 0) return '0%';
+  return (pct > 0 ? '+' : '−') + Math.abs(pct) + '%';
+}
+
+// Prompt size per request, in order, with the change from the previous one. A long session
+// stays a closed disclosure so the sheet opens on the figures that matter first.
+function growthList(steps) {
+  if (steps.length < 2) return '';
+  const { fmtTok, fmtTime } = deps;
+  const rows = steps.map((s, i) => `<li><span class="growth-n">#${i + 1}</span>`
+    + `<span class="growth-time">${esc(fmtTime(s.ts))}</span>`
+    + `<span class="growth-size">${esc(fmtTok(s.prompt_tokens))} tok</span>`
+    + `<span class="growth-change">${esc(changeText(s.change_pct))}</span></li>`).join('');
+  return `<details class="growth-box">
+    <summary data-track="session-growth-toggle"><span>Prompt size by request</span>`
+    + `<span class="badge">${steps.length}</span>`
+    + `<svg class="icon rq-chevron" aria-hidden="true"><use href="#i-chevron-right"></use></svg></summary>
+    <ol class="growth-list">${rows}</ol></details>`;
 }
 
 // ---- insights card ----

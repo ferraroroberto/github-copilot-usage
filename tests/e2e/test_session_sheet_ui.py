@@ -134,10 +134,10 @@ def test_the_sheet_is_as_wide_as_the_page_column_and_the_prompt_opens_first(page
         assert abs(sheet["x"] - card["x"]) <= 1, width
 
 
-@pytest.mark.parametrize("scheme", ["light", "dark"])
-def test_on_a_desktop_the_sheet_shares_the_page_columns_edges_beside_the_side_nav(browser, base_url, scheme):
-    # a fine pointer is what gives the wide layout its side nav, so this needs a desktop context, not the phone one
-    context = browser.new_context(viewport={"width": 1440, "height": 900}, color_scheme=scheme)
+def test_on_a_desktop_the_sheet_shares_the_page_columns_edges_beside_the_side_nav(browser, base_url):
+    # a fine pointer is what gives the wide layout its side nav, so this needs a desktop context, not the phone one;
+    # the geometry does not depend on the theme, so one scheme carries it
+    context = browser.new_context(viewport={"width": 1440, "height": 900})
     context.route("**/api/usage/**", lambda route: route.fulfill(status=204))
     page = context.new_page()
     try:

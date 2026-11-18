@@ -77,6 +77,8 @@
   --gutter: var(--gap);
   /* The page column's outer width; the wide sheets size from it so they line up with the cards behind. */
   --column-width: 772px;
+  /* The side nav's width on a wide pointer screen; the page column sits to its right, and so do the wide sheets. */
+  --layout-rail: 80px;
 }
 
 [data-theme="dark"] {
@@ -283,6 +285,9 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
  * and a long title wraps inside its header instead of pushing the close button out. */
 /* max-width: the UA's own cap on a dialog (100% - 6px - 2em) would otherwise trim it below the cards. */
 .detail-dialog.sheet-wide { width: min(var(--column-width) - 2 * var(--gutter), 100vw - 2 * var(--gutter)); max-width: none; }
+/* Beside the side nav the page column is centred on what the rail leaves, not on the window, so the sheet starts
+ * at the rail and the dialog's auto margins centre it in the remaining space. Same query as the nav's. */
+@media (min-width: 1100px) and (pointer: fine) { .detail-dialog.sheet-wide { left: var(--layout-rail); } }
 .detail-header h2 { min-width: 0; overflow-wrap: anywhere; }
 .dialog-meta { font-size: var(--font-label); color: var(--fg-muted); margin-bottom: 10px; }
 

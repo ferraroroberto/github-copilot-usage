@@ -11,12 +11,14 @@ Every figure is prompt size times the logged percentage: an estimate, never per-
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any, Callable, Dict, Hashable, List, Optional, Tuple
 
 from src import aggregate, prompt_composition, session_diagnostics
 from src.vscode_parser import RequestRecord
 
 TOP_N = 8
+CONTEXT_ITEMS_TOP = 20
 
 ESTIMATE_NOTE = (
     "Estimates: each request's prompt size times the share Copilot logged for it. "
@@ -92,10 +94,21 @@ def _request_rows(contributions: List[Tuple[RequestRecord, float]], total: float
     ]
 
 
-def _empty(period: str, label: str, cov: Dict[str, Any], reason: str, labels: List[dict]) -> Dict[str, Any]:
+def context_items(in_period: List[RequestRecord]) -> List[Dict[str, Any]]:
+    """The most frequent context labels (files, tools, attachments) and how many requests carried each."""
+    counts: Counter = Counter()
+    for r in in_period:
+        counts.update(set(r.context_items))
+    ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    return [{"label": name, "requests": n} for name, n in ranked[:CONTEXT_ITEMS_TOP]]
+
+
+def _empty(
+    period: str, label: str, cov: Dict[str, Any], reason: str, labels: List[dict], items: List[dict],
+) -> Dict[str, Any]:
     return {
         "period": period, "label": label, "state": "no_data", "reason": reason, "coverage": cov,
-        "labels": labels, "total_est_tokens": 0,
+        "labels": labels, "context_items": items, "total_est_tokens": 0,
         "projects": [], "models": [], "sessions": [], "requests": [],
         "note": ESTIMATE_NOTE,
     }
@@ -107,15 +120,16 @@ def drilldown(records: List[RequestRecord], period: str, label: str = "") -> Dic
     in_period = aggregate.records_in_period(records, period)
     cov = coverage(in_period)
     labels = aggregate.prompt_mix(in_period)
+    items = context_items(in_period)
 
     if not in_period:
-        return _empty(period, label, cov, "No requests in this period.", labels)
+        return _empty(period, label, cov, "No requests in this period.", labels, items)
     if not cov["requests_covered"]:
         return _empty(
             period, label, cov,
             "None of this period's requests carry a prompt composition "
             "(only VS Code chat logs record one).",
-            labels,
+            labels, items,
         )
 
     models = aggregate.labels_for(records)
@@ -123,7 +137,7 @@ def drilldown(records: List[RequestRecord], period: str, label: str = "") -> Dic
     contributions = [(r, tokens) for r, tokens in contributions if tokens > 0]
     total = sum(tokens for _r, tokens in contributions)
     if not total:
-        return _empty(period, label, cov, 'No request in this period carries the label "%s".' % label, labels)
+        return _empty(period, label, cov, 'No request in this period carries the label "%s".' % label, labels, items)
 
     flags = session_diagnostics.flags_by_session(in_period, records)
     sessions = _group(
@@ -143,6 +157,7 @@ def drilldown(records: List[RequestRecord], period: str, label: str = "") -> Dic
         "reason": None,
         "coverage": cov,
         "labels": labels,
+        "context_items": items,
         "total_est_tokens": int(total),
         "projects": _group(
             contributions, lambda r: r.project_key,

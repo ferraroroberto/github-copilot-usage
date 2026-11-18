@@ -718,6 +718,7 @@ def get_session_detail(records: List[RequestRecord], session_id: str) -> Optiona
             "usd": round(r.credits * USD_PER_CREDIT, 4) if r.credits is not None else None,
             "elapsed_ms": r.elapsed_ms,
             "prompt_details": r.prompt_details,
+            "context_items": r.context_items,
             "error": r.error,
         }
         for r in sess

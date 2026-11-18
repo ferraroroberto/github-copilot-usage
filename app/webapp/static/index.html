@@ -550,7 +550,7 @@
     </form>
     <div id="sd-diagnostics" data-surface="drill.session-diagnostics" hidden></div>
     <div id="sd-mix"></div>
-    <div class="table-wrap">
+    <div class="table-wrap" id="sd-table-wrap">
       <table id="sd-table">
         <thead><tr><th>Time</th><th>Prompt</th><th>Mode</th><th>Model</th><th class="num">In</th><th class="num">Out</th><th class="num">Credits</th><th class="num">Took</th></tr></thead>
         <tbody></tbody>
@@ -577,6 +577,13 @@
     <div class="empty-state" id="cx-empty" data-surface="drill.context-empty" hidden>
       <svg class="icon empty-state-icon" aria-hidden="true"><use href="#i-search"></use></svg>
       <p class="empty-state-message" id="cx-empty-text"></p>
+    </div>
+    <div id="cx-items" data-surface="drill.context-items">
+      <h3 class="chart-title">In the context most often</h3>
+      <div class="card cx-items-card">
+        <p class="cx-items-empty" id="cx-items-empty" hidden></p>
+        <ul class="cx-items-list" id="cx-items-list"></ul>
+      </div>
     </div>
     <div id="cx-body">
       <h3 class="chart-title">Projects</h3>

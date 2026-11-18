@@ -41,7 +41,7 @@ Walked 2026-11-17 against build `5a2781c`, at widths 390, 1440, themes light, da
 | [Trends](#trends) | 5 |
 | [Breakdown](#breakdown) | 5 |
 | [Sessions](#sessions) | 5 |
-| [Drill-ins](#drill-ins) | 10 |
+| [Drill-ins](#drill-ins) | 11 |
 | [Settings](#settings) | 9 |
 
 ## Chrome
@@ -58,7 +58,7 @@ flowchart LR
   s5["Navigation"]
   s6["Page footer"]
   s7["Toast"]
-  s39(["Settings page · Settings"])
+  s40(["Settings page · Settings"])
   s26(["Sessions filters and sort · Sessions"])
   s8(["Overview tab · Overview"])
   s14(["Trends tab · Trends"])
@@ -68,7 +68,7 @@ flowchart LR
   s16(["Bar tap · Trends"])
   s30(["Session rename · Drill-ins"])
   s0 -->|"the freshness readout"| s1
-  s0 -->|"the gear"| s39
+  s0 -->|"the gear"| s40
   s1 -->|"either item"| s7
   s2 -->|"the Filters & sort button"| s26
   s5 -->|"Overview"| s8
@@ -202,7 +202,7 @@ flowchart LR
   s5(["Navigation · Chrome"])
   s29(["Session sheet · Drill-ins"])
   s32(["Context drill-down · Drill-ins"])
-  s34(["Request explorer · Drill-ins"])
+  s35(["Request explorer · Drill-ins"])
   s5 -->|"Overview"| s8
   s8 --> s9
   s8 --> s10
@@ -211,7 +211,7 @@ flowchart LR
   s8 --> s13
   s11 -->|"a finding about one session"| s29
   s11 -->|"a finding about a prompt label"| s32
-  s11 -->|"a finding about a project, a model or a period"| s34
+  s11 -->|"a finding about a project, a model or a period"| s35
 ```
 
 ### `overview.pane` Overview tab
@@ -396,12 +396,12 @@ flowchart LR
   s22["By project"]
   s23["By project, empty"]
   s5(["Navigation · Chrome"])
-  s47(["Models sheet · Settings"])
+  s48(["Models sheet · Settings"])
   s5 -->|"Breakdown"| s19
   s19 --> s20
   s19 --> s22
   s20 -->|"an empty period"| s21
-  s20 -->|"Settings → Merge and colour"| s47
+  s20 -->|"Settings → Merge and colour"| s48
   s22 -->|"an empty period"| s23
 ```
 
@@ -470,7 +470,7 @@ flowchart LR
   s2(["Period control · Chrome"])
   s5(["Navigation · Chrome"])
   s29(["Session sheet · Drill-ins"])
-  s34(["Request explorer · Drill-ins"])
+  s35(["Request explorer · Drill-ins"])
   s2 -->|"the Filters & sort button"| s26
   s5 -->|"Sessions"| s24
   s24 --> s25
@@ -478,7 +478,7 @@ flowchart LR
   s25 -->|"a row"| s29
   s25 -->|"an empty period"| s27
   s26 -->|"Done"| s25
-  s28 -->|"Search requests"| s34
+  s28 -->|"Search requests"| s35
 ```
 
 ### `sessions.pane` Sessions tab
@@ -554,12 +554,13 @@ flowchart LR
   s30["Session rename"]
   s31["Session diagnostics"]
   s32["Context drill-down"]
-  s33["Context drill-down, empty"]
-  s34["Request explorer"]
-  s35["Request filters"]
-  s36["Requests, loading"]
-  s37["Requests, empty"]
-  s38["Requests, error"]
+  s33["Context items"]
+  s34["Context drill-down, empty"]
+  s35["Request explorer"]
+  s36["Request filters"]
+  s37["Requests, loading"]
+  s38["Requests, empty"]
+  s39["Requests, error"]
   s11(["Insights · Overview"])
   s18(["Where your prompt tokens go · Trends"])
   s25(["Sessions · Sessions"])
@@ -567,21 +568,22 @@ flowchart LR
   s7(["Toast · Chrome"])
   s11 -->|"a finding about one session"| s29
   s11 -->|"a finding about a prompt label"| s32
-  s11 -->|"a finding about a project, a model or a period"| s34
+  s11 -->|"a finding about a project, a model or a period"| s35
   s18 --> s32
   s25 -->|"a row"| s29
-  s28 -->|"Search requests"| s34
+  s28 -->|"Search requests"| s35
   s29 --> s30
   s29 --> s31
   s30 -->|"Save name or Restore title"| s7
   s32 --> s33
+  s32 --> s34
   s32 -->|"a session or request row"| s29
-  s32 -->|"a project or model row"| s34
-  s34 --> s35
-  s34 --> s36
-  s34 --> s37
-  s34 --> s38
-  s34 -->|"a row"| s29
+  s32 -->|"a project or model row"| s35
+  s35 --> s36
+  s35 --> s37
+  s35 --> s38
+  s35 --> s39
+  s35 -->|"a row"| s29
 ```
 
 ### `drill.session` Session sheet
@@ -597,8 +599,11 @@ flowchart LR
   - the diagnostics block
   - the prompt composition of the session
   - a table of time, prompt, mode, model, tokens in and out, credits and time taken per request
+  - on a request that logged any, an "N in context" button that opens a row of the names of its attached files, tools and attachments
   - Save name
-- **Does:** the close button and Esc close it
+- **Does:**
+  - the close button and Esc close it
+  - the "N in context" button shows or hides that request's names
 - **States:**
   - an estimated request is marked ~ and explained in the meta line
   - an errored request is dimmed and carries a warning glyph
@@ -645,6 +650,7 @@ flowchart LR
   - the label as the title, and the period
   - chips for All of the prompt and each label with its share
   - the coverage line
+  - the files, tools and attachments that rode along most often
   - Projects, Models, Sessions and Requests, each a list of rows with a share
   - a note
 - **Does:**
@@ -656,9 +662,20 @@ flowchart LR
   - the empty state carries the server's reason
 - **Why:** the shares are estimates weighted by prompt size, so the coverage line says how much of the period has a breakdown
 - **Leads to:**
+  - [Context items](#drillcontext-items-context-items)
   - [Context drill-down, empty](#drillcontext-empty-context-drill-down-empty)
   - [Session sheet](#drillsession-session-sheet) (a session or request row)
   - [Request explorer](#drillrequests-request-explorer) (a project or model row)
+
+### `drill.context-items` Context items
+
+- **Root:** `data-surface`
+- **Reach:** the context drill-down, above Projects
+- **Holds:** up to twenty names of attached files, tools and attachments, each with the number of the period's requests that carried it and a proportion bar
+- **States:**
+  - a period with none logged says so in one line
+  - the names alone are kept, never the content, and the list ignores the selected label
+- **Why:** the composition says which category of the prompt is large; the names say which tools and files ride along on every request
 
 ### `drill.context-empty` Context drill-down, empty
 
@@ -753,27 +770,27 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  s39["Settings page"]
-  s40["Display"]
-  s41["Billing cycle"]
-  s42["Models"]
-  s43["Data sources"]
-  s44["Alerts"]
-  s45["Available features"]
-  s46["Extra storage roots sheet"]
-  s47["Models sheet"]
+  s40["Settings page"]
+  s41["Display"]
+  s42["Billing cycle"]
+  s43["Models"]
+  s44["Data sources"]
+  s45["Alerts"]
+  s46["Available features"]
+  s47["Extra storage roots sheet"]
+  s48["Models sheet"]
   s0(["Page header · Chrome"])
   s20(["By model · Breakdown"])
-  s0 -->|"the gear"| s39
-  s20 -->|"Settings → Merge and colour"| s47
-  s39 --> s40
-  s39 --> s41
-  s39 --> s42
-  s39 --> s43
-  s39 --> s44
-  s39 --> s45
-  s42 -->|"Merge and colour"| s47
-  s43 -->|"Extra storage roots"| s46
+  s0 -->|"the gear"| s40
+  s20 -->|"Settings → Merge and colour"| s48
+  s40 --> s41
+  s40 --> s42
+  s40 --> s43
+  s40 --> s44
+  s40 --> s45
+  s40 --> s46
+  s43 -->|"Merge and colour"| s48
+  s44 -->|"Extra storage roots"| s47
 ```
 
 ### `settings.sheet` Settings page
@@ -948,6 +965,7 @@ flowchart LR
 | [Session sheet](#drillsession-session-sheet) |  | [Session rename](#drillsession-rename-session-rename) |
 | [Session sheet](#drillsession-session-sheet) |  | [Session diagnostics](#drillsession-diagnostics-session-diagnostics) |
 | [Session rename](#drillsession-rename-session-rename) | Save name or Restore title | [Toast](#chrometoast-toast) |
+| [Context drill-down](#drillcontext-context-drill-down) |  | [Context items](#drillcontext-items-context-items) |
 | [Context drill-down](#drillcontext-context-drill-down) |  | [Context drill-down, empty](#drillcontext-empty-context-drill-down-empty) |
 | [Context drill-down](#drillcontext-context-drill-down) | a session or request row | [Session sheet](#drillsession-session-sheet) |
 | [Context drill-down](#drillcontext-context-drill-down) | a project or model row | [Request explorer](#drillrequests-request-explorer) |

@@ -109,3 +109,48 @@ def test_decode_file_uri_windows_and_posix():
     assert decode_file_uri("file:///e%3A/automation/repo") == "E:\\automation\\repo"
     assert decode_file_uri("file:///home/rob/repo") == "/home/rob/repo"
     assert decode_file_uri("https://example.com/x") is None
+
+
+def _variable_lines():
+    """A request carrying a tool, a file, a prompt file, a pasted snippet and a long attachment name."""
+    lines = _fixture_lines()
+    lines[1]["v"]["variableData"] = {"variables": [
+        {"kind": "tool", "id": "tool-1", "name": "mcp_search_tool", "value": "SECRET TOOL SCHEMA"},
+        {"kind": "file", "id": "f1", "name": "  parser.py ", "value": {
+            "$mid": 1, "path": "/e:/proj/src/parser.py", "scheme": "file", "content": "FILE BODY"}},
+        {"kind": "promptFile", "id": "p1", "value": {"uri": {"path": "/e:/proj/.github/copilot-instructions.md"}}},
+        {"kind": "paste", "id": "x1", "value": "line one\nline two PASTED TEXT"},
+        {"kind": "generic", "id": "g1", "name": "a" * 400},
+        {"kind": "file", "id": "f2", "name": "parser.py"},
+        "not-a-dict",
+    ]}
+    return lines
+
+
+def test_context_items_are_labels_without_content(tmp_path):
+    path = _write_fixture(tmp_path, _variable_lines())
+    items = parse_session_file(path, "Code", "k", "n", None)[0].context_items
+
+    assert items == ["mcp_search_tool", "parser.py", "copilot-instructions.md", "a" * 160]
+    blob = " ".join(items)
+    for content in ("SECRET TOOL SCHEMA", "FILE BODY", "PASTED TEXT"):
+        assert content not in blob
+
+
+def test_context_items_empty_without_variable_data(tmp_path):
+    path = _write_fixture(tmp_path, _fixture_lines())
+    assert parse_session_file(path, "Code", "k", "n", None)[0].context_items == []
+
+
+def test_composition_percentages_outside_0_to_100_are_dropped(tmp_path):
+    lines = _fixture_lines()
+    lines[7]["v"] = [
+        {"category": "System", "label": "System Instructions", "percentageOfPrompt": 150},
+        {"category": "System", "label": "Tool Definitions", "percentageOfPrompt": -1},
+        {"category": "System", "label": "Odd", "percentageOfPrompt": "40"},
+        {"category": "User Context", "label": "Messages", "percentageOfPrompt": 0},
+        {"category": "User Context", "label": "Attachments", "percentageOfPrompt": 100},
+    ]
+    path = _write_fixture(tmp_path, lines)
+    details = parse_session_file(path, "Code", "k", "n", None)[0].prompt_details
+    assert [d["label"] for d in details] == ["Messages", "Attachments"]

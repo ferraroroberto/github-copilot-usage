@@ -138,10 +138,26 @@ def test_budget_just_under_eighty_percent_says_nothing(rec, monkeypatch):
     assert _of_type(insights.build_insights([rec(0)], "week"), "budget_risk") == []
 
 
-def test_budget_attention_is_listed_beside_a_projection_warning(rec, monkeypatch):
+def test_budget_over_eighty_percent_with_an_overrun_projection_is_one_warning_row(rec, monkeypatch):
     _set_budget(monkeypatch, used_credits=85.0, used_pct=85.0, projected_credits=142.0, projected_pct=142.0)
     found = _of_type(insights.build_insights([rec(0)], "week"), "budget_risk")
-    assert [i["severity"] for i in found] == ["warning", "info"]
+    assert [i["severity"] for i in found] == ["warning"]
+    assert "On pace for" in found[0]["text"]
+
+
+@pytest.mark.parametrize(
+    "kw, severity",
+    [
+        (dict(used_pct=40.0, projected_pct=62.0), None),
+        (dict(used_credits=85.0, used_pct=85.0, projected_pct=90.0), "info"),
+        (dict(used_credits=85.0, used_pct=85.0, projected_pct=142.0), "warning"),
+        (dict(used_credits=100.0, used_pct=100.0, projected_pct=200.0), "critical"),
+    ],
+)
+def test_budget_shows_at_most_one_row_for_the_level_reached(rec, monkeypatch, kw, severity):
+    _set_budget(monkeypatch, **kw)
+    found = _of_type(insights.build_insights([rec(0)], "week"), "budget_risk")
+    assert [i["severity"] for i in found] == ([severity] if severity else [])
 
 
 def test_budget_used_up_is_one_critical_finding_not_two(rec, monkeypatch):

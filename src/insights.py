@@ -121,22 +121,20 @@ def _budget_risk(summary: Dict[str, Any]) -> List[Dict[str, Any]]:
             "The cycle allowance is used up: %s of %s credits." % (used, allowance),
             period="cycle",
         )]
-    out: List[Dict[str, Any]] = []
     if risk == "warning":
-        out.append(_insight(
+        return [_insight(
             "budget_risk", "warning",
             "On pace for %s credits by cycle end, %s%% of the %s allowance."
             % (_credits(b["projected_credits"]), b["projected_pct"], allowance),
             period="cycle",
-        ))
-    # Past the first days a projection always follows 80% used, so the level is stated on its own.
-    if (b["used_pct"] or 0) >= aggregate.BUDGET_ATTENTION_PCT:
-        out.append(_insight(
+        )]
+    if risk == "attention":
+        return [_insight(
             "budget_risk", "info",
             "%s%% of the cycle allowance is used: %s of %s credits." % (round(b["used_pct"]), used, allowance),
             period="cycle",
-        ))
-    return out
+        )]
+    return []
 
 
 def _prompt_composition(

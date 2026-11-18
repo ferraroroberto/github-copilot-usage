@@ -359,3 +359,27 @@ def parse_session_file(
 
     _file_cache.put(path, records)
     return records
+
+
+def copied_request_losers(entries: List[Tuple[RequestRecord, float, str]]) -> List[bool]:
+    """Flag the requests of a chat log that is reachable under a second file.
+
+    ``entries`` holds each request with the mtime and path of the file it was read from. A request
+    whose ``ide``, ``session_id`` and ``request_id`` are all non-empty and equal to another file's
+    is the same request seen twice: the copy from the file with the newest mtime stays (the
+    lexically smallest path on a tie) and every other file's copy is flagged ``True``. A request
+    missing any part of that identity is never merged, nor are repeats inside one file.
+    """
+    winner: Dict[Tuple[str, str, str], Tuple[float, str]] = {}
+    for rec, mtime, path in entries:
+        if not (rec.ide and rec.session_id and rec.request_id):
+            continue
+        key = (rec.ide, rec.session_id, rec.request_id)
+        best = winner.get(key)
+        if best is None or (-mtime, path) < (-best[0], best[1]):
+            winner[key] = (mtime, path)
+    return [
+        bool(rec.ide and rec.session_id and rec.request_id)
+        and winner[(rec.ide, rec.session_id, rec.request_id)][1] != path
+        for rec, _mtime, path in entries
+    ]

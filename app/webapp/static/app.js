@@ -572,6 +572,7 @@ function renderSources(sources) {
       <span class="muted">${fmtNum(s.session_files)} session file${s.session_files === 1 ? '' : 's'} · ${fmtNum(s.requests)} requests${s.last_activity ? ' · last ' + fmtDay(s.last_activity) + ' ' + fmtTime(s.last_activity) : ''}</span>
       <span class="source-path">${esc(s.path)}</span>
       ${s.usage_note ? `<span class="muted">${esc(s.usage_note)}</span>` : ''}
+      ${s.duplicates_ignored > 0 ? `<span class="muted">${fmtNum(s.duplicates_ignored)} duplicate request${s.duplicates_ignored === 1 ? '' : 's'} ignored: the same chat log is also read from another folder.</span>` : ''}
     </li>`).join('') || '<li><span class="muted">No Copilot data locations found.</span></li>';
 }
 

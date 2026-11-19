@@ -53,16 +53,13 @@ def _settle(page) -> None:
     page.wait_for_timeout(400)
 
 
-def test_returning_before_a_poll_interval_loads_nothing(page):
+def test_returning_loads_only_once_the_tab_is_stale_and_then_exactly_once(page):
     before = len(page.summary_calls)
-    _skew(page, 5_000)
+    _skew(page, 5_000)  # back before a poll interval has passed: nothing to load
     page.evaluate(SHOW)
     _settle(page)
     assert len(page.summary_calls) == before
 
-
-def test_returning_to_a_stale_tab_loads_exactly_once(page):
-    before = len(page.summary_calls)
     _skew(page, 31_000)
     page.evaluate(SHOW)
     _settle(page)

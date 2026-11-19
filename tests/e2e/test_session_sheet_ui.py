@@ -74,7 +74,7 @@ def _facts(page, index: int) -> dict:
     }
 
 
-def test_requests_open_in_place_with_every_bucket_and_the_sheet_lists_prompt_growth(page, base_url):
+def test_requests_open_in_place_with_every_bucket_and_the_sheet_lists_prompt_growth_at_the_page_column_width(page, base_url):
     _open_sheet(page, base_url)
 
     # a tap opens a measured request: every bucket and the full prompt, no hover
@@ -90,6 +90,8 @@ def test_requests_open_in_place_with_every_bucket_and_the_sheet_lists_prompt_gro
     assert facts["Output"] == "300"
     assert page.locator("#sd-req-0 .req-prompt").inner_text() == LONG_PROMPT
     assert "first 200 characters" in page.locator("#sd-req-0").inner_text()
+    # the prompt is the first thing the row shows, above every figure
+    assert page.locator("#sd-req-0 .req-prompt").bounding_box()["y"] < page.locator("#sd-req-0 .req-facts").bounding_box()["y"]
     page.locator("#sd-requests button[data-req='0']").click()
     assert page.locator("#sd-req-0").is_hidden()
 
@@ -108,18 +110,6 @@ def test_requests_open_in_place_with_every_bucket_and_the_sheet_lists_prompt_gro
     changes = page.locator("#sd-diagnostics .growth-change").all_inner_texts()
     assert changes[0] == "first" and changes[1] == "+20%"
     assert sum(1 for c in changes if c != "first") == 3
-
-
-def test_the_sheet_is_as_wide_as_the_page_column_and_the_prompt_opens_first(page, base_url):
-    _open_sheet(page, base_url)
-    row = page.locator("#sd-requests button[data-req='0']")
-
-    # the row says it opens, and the prompt is the first thing it shows, above every figure
-    row.click()
-    assert row.get_attribute("aria-expanded") == "true"
-    prompt = page.locator("#sd-req-0 .req-prompt").bounding_box()
-    figures = page.locator("#sd-req-0 .req-facts").bounding_box()
-    assert prompt["y"] < figures["y"]
 
     # the wide sheet lines up with the cards behind it at a phone and a tablet width
     for width, height in ((390, 844), (800, 900)):

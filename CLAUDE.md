@@ -32,7 +32,7 @@ Standalone, public, local-only dashboard for GitHub Copilot usage: a FastAPI JSO
 powershell -File scripts/verify-before-ship.ps1
 ```
 
-That runs `compileall -q app src tests`, `pytest -q`, and these ratchets, each a `scripts/<name>_ratchet.py` vendored byte-for-byte (`.fleet.toml` `[vendored]`) with a currently empty baseline `.<name>-ratchet-baseline.json`:
+That runs `compileall -q app src tests`, `pytest -q`, and these ratchets, each a `scripts/<name>_ratchet.py` vendored byte-for-byte (`.fleet.toml` `[vendored]`) with a currently empty baseline `.<name>-ratchet-baseline.json`. **The exact stage count and order are declared once, in `scripts/verify-before-ship.ps1`'s own header comment** — treat that as canonical; this list only adds what each ratchet checks beyond its name, and `docs/layout.md` points here instead of repeating it:
 
 - **structure** (below).
 - **instruction**: holds `CLAUDE.md`/`AGENTS.md` to the prompt-audit lint rules and size caps.
@@ -41,8 +41,10 @@ That runs `compileall -q app src tests`, `pytest -q`, and these ratchets, each a
 - **static**: fails on a new duplicated block, unused import or variable, or likely-bug pattern; needs Node for `jscpd` and `ruff` from `requirements-dev.txt`; a detector that cannot run exits 3, which fails the gate.
 - **docs**: fails when the root `README.md` outgrows its size budget or `README.md`/`docs/` gain an issue reference, dated heading or changelog heading.
 - **comment**: fails when a product-code comment gains an issue reference.
-- **ux-surface**: fails on a surface root (`<dialog>`, a `dialog`/`menu`/`tabpanel` role, a `popover`) with no constant `data-surface` id, an id with no entry in `docs/ux-surfaces.yaml`, an entry no element carries, one id on two surfaces, a link to an id with no entry, or a `docs/ux-surface-map.md` not regenerated from the map.
 - **conventions**: rules `no-window`, `logging-not-print`, `no-drive-path` and `subprocess-timeout` fail when a source file gains a spawn without `creationflags`, a `print` in library code, a hardcoded drive path or a subprocess call without `timeout=` (or a `# subprocess-timeout-exempt: <reason>` marker).
+- **runtime-write**: a snapshot/probe pair bracketing `pytest`, plus its own stage, fails when a write target resolves under a code folder instead of the runtime-data root.
+- **usage-track**: fails on a web control with no constant tracking id, a `<dialog>` with no `data-track-view`, a built id, or an unwired usage log.
+- **ux-surface**: fails on a surface root (`<dialog>`, a `dialog`/`menu`/`tabpanel` role, a `popover`) with no constant `data-surface` id, an id with no entry in `docs/ux-surfaces.yaml`, an entry no element carries, one id on two surfaces, a link to an id with no entry, or a `docs/ux-surface-map.md` not regenerated from the map.
 
 There is no CI — the gate is local. For changes with a runtime surface, additionally hit `/api/summary?period=all` on a running instance and load `/` in a browser (both themes) before calling it done.
 

@@ -11,7 +11,7 @@ github-copilot-usage/
 │   ├── build_info.py          # short commit + process start time for the footer
 │   ├── version.py             # single source of the version reported by /health
 │   └── webapp/
-│       └── static/            # the vanilla-JS SPA: index.html (the four tab panes under one page header), app.js, rows.js (the one list-row renderer: sessions, insights, requests and the drill-down all draw the vendored action-row through it), requests.js (the request explorer view), request-list.js (the session sheet's request rows and their inline detail), insights.js (the insights card, session diagnostics and the context drill-down), features.js (Settings → Available features: the switches and what hides while a block is off), tailnet.js (the Tailscale access row in that group), health-check.js (Settings → Data sources: the read-model health check row and its result sentence), models.js (model colours by provider family and the Settings sheet that merges models and overrides a colour), charts.js (the two trend charts), timeline.js (trend windows, the focused date range and the coverage note), tokens.js (token figures as printed: a count the source did not record is a dash, never 0), sections.js (collapsible cards), session-name.js (the rename row of the session sheet), styles.css, PWA manifest + icons, vendored Chart.js
+│       └── static/            # the vanilla-JS SPA: index.html (the four tab panes under one page header), app.js, rows.js (the one list-row renderer: sessions, insights, requests and the drill-down all draw the vendored action-row through it), requests.js (the request explorer view), request-list.js (the session sheet's request rows and their inline detail), filters.js (the Sessions "Filters & sort" sheet), url-state.js (the page's address as the record of what is on show, so Back/Forward move between views), insights.js (the insights card, session diagnostics and the context drill-down), features.js (Settings → Available features: the switches and what hides while a block is off), tailnet.js (the Tailscale access row in that group), health-check.js (Settings → Data sources: the read-model health check row and its result sentence), models.js (model colours by provider family and the Settings sheet that merges models and overrides a colour), charts.js (the four trend charts: credits per model, tokens in/out, tokens per credit, cache read/write), timeline.js (trend windows, the focused date range and the coverage note), tokens.js (token figures as printed: a count the source did not record is a dash, never 0), sections.js (collapsible cards), session-name.js (the rename row of the session sheet), styles.css, PWA manifest + icons, vendored Chart.js
 │
 ├── src/                       # logic layer (never imports `app`)
 │   ├── config.py              # config.json + env loading, thread-safe settings
@@ -43,16 +43,19 @@ github-copilot-usage/
 │
 ├── tests/                     # pytest suite, fixtures only — no real logs or credentials; test_python_floor.py holds the 3.9 promise; e2e/ drives the dashboard in a phone-sized browser when Playwright is installed, through one shared Chromium context and a keep-alive test server so a run leaves few TIME_WAIT sockets, and names a drained port pool as its own failure (conftest.py)
 ├── scripts/
-│   ├── verify-before-ship.ps1 # the local gate: byte-compile, tests, structure, instruction, doc-refs, dead-code, static, docs, comment and conventions ratchets
-│   ├── structure_ratchet.py   # vendored byte-for-byte; see "Structure ratchet" below
-│   ├── instruction_ratchet.py # vendored byte-for-byte; holds the instruction files to the prompt-audit rules
+│   ├── verify-before-ship.ps1 # the local gate; stage list and order are CLAUDE.md's "Verification gate" section, kept in sync with this script's own header comment
+│   ├── structure_ratchet.py, structure_layout.py, structure_band.py        # vendored byte-for-byte; see "Structure ratchet" below
+│   ├── instruction_ratchet.py, instruction_frontmatter.py, instruction_repeats.py # vendored byte-for-byte; holds the instruction files to the prompt-audit rules
 │   ├── doc_refs_ratchet.py    # vendored byte-for-byte; fails on dangling doc references
 │   ├── dead_code_ratchet.py   # vendored byte-for-byte; fails on new unreferenced definitions
 │   ├── static_ratchet.py      # vendored byte-for-byte; fails on new duplicates, unused names and bug patterns
 │   ├── docs_ratchet.py        # vendored byte-for-byte; fails on a growing README or new history markers in the docs
 │   ├── comment_ratchet.py     # vendored byte-for-byte; fails on new issue references in code comments
-│   ├── conventions_ratchet.py # vendored byte-for-byte; fails on new spawns without creationflags, library prints, drive paths and a bare StaticFiles
-│   ├── conventions_readers.py # vendored byte-for-byte; the syntax-tree and line readers conventions_ratchet loads
+│   ├── conventions_ratchet.py, conventions_readers.py, conventions_state.py # vendored byte-for-byte; fails on new spawns without creationflags, library prints, drive paths and a bare StaticFiles
+│   ├── runtime_write_ratchet.py, runtime_write_resolve.py   # vendored byte-for-byte; fails on a write target resolving under a code folder instead of the runtime-data root
+│   ├── usage_track_ratchet.py, usage_track_scan.py          # vendored byte-for-byte; fails on a web control with no tracking id or an unwired usage log
+│   ├── ux_surface_ratchet.py, ux_surface_map.py             # vendored byte-for-byte; fails a surface with no `data-surface` id and regenerates docs/ux-surface-map.md
+│   ├── box_lock_gate.ps1      # vendored byte-for-byte; the shared load lock the gate enters before running any stage
 │   ├── gen_icons.py           # regenerates the PWA icon family under app/webapp/static/
 │   └── tray_lifecycle.ps1     # detect / stop / start / verify the tray, called by `tray.bat`
 └── docs/                      # durable reference (this file; setup-and-migration.md for a new machine and what to copy)

@@ -118,7 +118,7 @@ def test_unbilled_rows_show_without_a_credit_range_and_a_row_opens_its_session(p
     assert page.inner_text("#sd-title") in ("Alpha session", "Beta session")
 
 
-def test_pagination_walks_the_pages_and_the_phone_layout_does_not_overflow_and_empty_state_reads(page, base_url):
+def test_pagination_walks_the_pages_with_history_entries_and_the_phone_layout_holds_and_the_empty_state_reads(page, base_url):
     _open(page, base_url)
     assert page.inner_text("#rq-page") == "Page 1 of 2"
     assert page.is_disabled("#rq-prev")
@@ -129,6 +129,17 @@ def test_pagination_walks_the_pages_and_the_phone_layout_does_not_overflow_and_e
     assert page.is_disabled("#rq-next")
     for target in ("document.documentElement", "document.querySelector('#requests-dialog')"):
         assert page.evaluate("t => t.scrollWidth <= t.clientWidth + 1", page.evaluate_handle(target))
+
+    # Back from a page step is an entry in its own right; typing a search replaces the current entry instead.
+    page.go_back()
+    page.wait_for_function("document.querySelectorAll('#rq-list li').length === 25")
+    assert page.inner_text("#rq-page") == "Page 1 of 2"
+    assert "page=" not in page.url
+    length = page.evaluate("history.length")
+    page.fill("#rq-q", "prompt 0")
+    page.wait_for_function("location.search.includes('q=prompt')")
+    assert page.evaluate("history.length") == length
+
     page.fill("#rq-q", "nothing matches this text")
     page.wait_for_selector("#rq-empty:not([hidden])")
     assert page.inner_text("#rq-summary") == "No requests match"
@@ -184,22 +195,6 @@ def test_back_and_forward_step_through_the_filtered_views_and_back_closes_the_sh
     page.go_back()
     page.wait_for_selector("#requests-dialog[open]")
     assert "view=requests" in page.url
-
-
-def test_a_page_step_is_an_entry_and_typing_replaces_the_current_one(page, base_url):
-    _open(page, base_url)
-    page.click("#rq-next")
-    page.wait_for_function("document.querySelectorAll('#rq-list li').length === 5")
-    assert "page=2" in page.url
-    page.go_back()
-    page.wait_for_function("document.querySelectorAll('#rq-list li').length === 25")
-    assert page.inner_text("#rq-page") == "Page 1 of 2"
-    assert "page=" not in page.url
-
-    length = page.evaluate("history.length")
-    page.fill("#rq-q", "prompt 0")
-    page.wait_for_function("location.search.includes('q=prompt')")
-    assert page.evaluate("history.length") == length
 
 
 def test_the_dashboard_period_and_a_focused_range_survive_back_and_a_reload(page, base_url):

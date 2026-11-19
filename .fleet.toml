@@ -211,5 +211,8 @@ derive = "derive"
 # [e2e] -- the standing browser suite is the contract for the single-page UI: one phone-sized
 # run per behaviour (the tab test also checks a desktop width, one test checks both themes). The
 # budget holds it at today's size: lower it when a test is trimmed, never raise it without a reason.
+# 20 is the count after the same-flow tests were merged: each remaining test owns a surface no other
+# one drives (rename, start date, card fold, trend, tabs, refresh toast, four feature switches, the
+# request explorer's filters, history and pagination, the session sheet, the stale-tab refresh).
 [e2e]
-test_budget = 14
+test_budget = 20

@@ -39,7 +39,7 @@ class Telegram:
 
     def __init__(self, status=200, body=None):
         self.status = status
-        self.body = body if body is not None else {"ok": True}
+        self.body = body if body is not None else {"ok": True, "result": {"message_id": 1}}
         self.sent = []
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
@@ -113,3 +113,37 @@ def test_not_configured_sends_nothing(channel, monkeypatch):
 def test_unreadable_state_counts_as_not_alerted(channel):
     (channel / pace_alert.STATE_FILENAME).write_text("{not json", encoding="utf-8")
     assert pace_alert.load_alerted_cycle() is None
+
+
+def test_send_returns_telegrams_message_id(channel):
+    api = Telegram(body={"ok": True, "result": {"message_id": 777}})
+    assert asyncio.run(pace_alert.send_telegram("hi", transport=api.transport)) == 777
+
+
+def test_a_200_without_a_message_id_is_not_a_delivery(channel):
+    api = Telegram(body={"ok": True})
+    with pytest.raises(RuntimeError, match="without confirming delivery"):
+        asyncio.run(pace_alert.send_telegram("hi", transport=api.transport))
+    # check() must not mark the cycle alerted on an unconfirmed send, so the next check retries.
+    with pytest.raises(RuntimeError):
+        _check(_budget(), api)
+    assert pace_alert.load_alerted_cycle() is None
+
+
+def test_test_endpoint_reports_the_message_id_and_marks_the_text(channel, monkeypatch, settings_file):
+    from starlette.testclient import TestClient
+
+    from app.server import app
+
+    api = Telegram(body={"ok": True, "result": {"message_id": 4242}})
+    real = pace_alert.send_telegram
+
+    async def via_stub(text, transport=None):
+        return await real(text, transport=api.transport)
+
+    monkeypatch.setattr(pace_alert, "send_telegram", via_stub)
+    with TestClient(app) as client:
+        body = client.post("/api/alerts/test").json()
+    assert body == {"ok": True, "reason": None, "message_id": 4242}
+    assert api.sent[0]["text"].startswith("TEST ONLY")
+    assert api.sent[0]["chat_id"] == "42"

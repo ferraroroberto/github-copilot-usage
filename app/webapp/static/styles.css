@@ -180,7 +180,7 @@ body {
  * boundary) it would spill past the card edge. Wrapping keeps it readable. */
 .tile-value { font-size: var(--font-heading-xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin-top: 2px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .tile-sub { font-size: var(--font-label); font-weight: 600; color: var(--fg-muted); min-height: 1.2em; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
-.delta { font-size: var(--font-caption); font-weight: 700; border-radius: var(--r-pill); padding: 1px 8px; background: var(--canvas-subtle); border: 1px solid var(--border-muted); }
+.delta { font-size: var(--font-caption); font-weight: 700; border-radius: var(--r-pill); padding: 1px 8px; background: var(--input-bg); border: 1px solid var(--border-muted); }
 .delta.up { color: var(--danger); }     /* more spend = red */
 .delta.down { color: var(--success); }  /* less spend = green */
 
@@ -191,7 +191,7 @@ body {
 .collapse-count { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .badge {
   font-size: var(--font-caption); font-weight: 700; color: var(--fg-muted);
-  background: var(--canvas-subtle); border: 1px solid var(--border-muted);
+  background: var(--input-bg); border: 1px solid var(--border-muted);
   border-radius: var(--r-pill); padding: 1px 8px;
 }
 .footnote { font-size: var(--font-label); color: var(--fg-muted); margin: 10px 0 0; }
@@ -214,7 +214,7 @@ code {
 /* ---- budget meter ---- */
 .budget-meter {
   position: relative; height: 14px; border-radius: var(--r-pill);
-  background: var(--canvas-subtle); border: 1px solid var(--border-muted);
+  background: var(--input-bg); border: 1px solid var(--border-muted);
   overflow: hidden;
 }
 .budget-fill {
@@ -244,7 +244,7 @@ code {
 .mix-row + .mix-row { border-top: 1px solid var(--border-muted); }
 .mix-top { display: flex; justify-content: space-between; gap: 8px; font-size: var(--font-label); font-weight: 600; }
 .mix-top .pct { font-variant-numeric: tabular-nums; }
-.mix-track { display: block; height: 8px; border-radius: var(--r-pill); background: var(--canvas-subtle); border: 1px solid var(--border-muted); overflow: hidden; }
+.mix-track { display: block; height: 8px; border-radius: var(--r-pill); background: var(--input-bg); border: 1px solid var(--border-muted); overflow: hidden; }
 .mix-fill { display: block; height: 100%; background: var(--accent); border-radius: var(--r-pill); }
 
 /* ---- tables ---- */
@@ -368,7 +368,7 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .sev {
   align-self: start; white-space: nowrap;
   font-size: var(--font-caption); font-weight: 700; color: var(--fg-muted);
-  background: var(--canvas-subtle); border: 1px solid var(--border-muted);
+  background: var(--input-bg); border: 1px solid var(--border-muted);
   border-radius: var(--r-pill); padding: 1px 8px;
 }
 .sev-attention, .sev-warning, .flag { color: var(--attention-text); border-color: var(--attention); }
@@ -383,7 +383,7 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .chip {
   position: relative; min-height: 36px; padding: 0 12px;
   font: inherit; font-size: var(--font-label); font-weight: 600; color: var(--fg-muted);
-  background: var(--canvas-subtle); border: 1px solid var(--border); border-radius: var(--r-pill); cursor: pointer;
+  background: var(--input-bg); border: 1px solid var(--border); border-radius: var(--r-pill); cursor: pointer;
 }
 .chip::before { content: ""; position: absolute; inset: -4px 0; }
 .chip.active { color: var(--accent-text); background: var(--accent-soft); border-color: var(--accent-border-soft); }
@@ -418,7 +418,7 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .ctx-chips li {
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   padding: 2px 8px; font-size: var(--font-label); color: var(--fg-muted);
-  background: var(--canvas-subtle); border: 1px solid var(--border-muted); border-radius: var(--r-pill);
+  background: var(--input-bg); border: 1px solid var(--border-muted); border-radius: var(--r-pill);
 }
 
 /* ---- focused range and coverage ---- */

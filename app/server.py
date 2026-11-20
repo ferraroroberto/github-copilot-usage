@@ -372,11 +372,12 @@ async def api_models() -> dict:
 @app.post("/api/alerts/test", dependencies=[_requires("pace_alert")])
 async def api_alert_test() -> dict:
     try:
-        await pace_alert.send_telegram("Test from github-copilot-usage: pace alerts will arrive in this chat.")
+        message_id = await pace_alert.send_telegram(pace_alert.TEST_TEXT)
     except Exception as exc:  # the reason goes back to the settings dialog
         _log.warning("⚠️ pace alert test failed: %s", exc)
-        return {"ok": False, "reason": str(exc)}
-    return {"ok": True, "reason": None}
+        return {"ok": False, "reason": str(exc), "message_id": None}
+    _log.info("✅ pace alert test delivered (message %d)", message_id)
+    return {"ok": True, "reason": None, "message_id": message_id}
 
 
 # ---------------------------------------------------------------------------

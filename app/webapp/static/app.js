@@ -746,7 +746,7 @@ $('roots-dialog').addEventListener('close', saveRoots);
 $('alert-test').addEventListener('click', async () => {
   try {
     const res = await jsonApi('/api/alerts/test', { method: 'POST' });
-    toast(res.ok ? 'Test message sent. Check Telegram.' : 'Not sent: ' + res.reason, res.ok ? undefined : 'error');
+    toast(res.ok ? 'Test message delivered (Telegram message ' + res.message_id + '). Check Telegram.' : 'Not sent: ' + res.reason, res.ok ? undefined : 'error');
   } catch (exc) {
     toast('Not sent: ' + exc.message, 'error');
   }

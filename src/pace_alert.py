@@ -117,8 +117,15 @@ def save_alerted_cycle(cycle_start: str) -> None:
     path.write_text(json.dumps({"alerted_cycle": cycle_start}) + "\n", encoding="utf-8")
 
 
-async def send_telegram(text: str, transport: Optional[Any] = None) -> None:
-    """Send ``text`` to the configured chat; raises RuntimeError with the reason on any failure."""
+TEST_TEXT = "TEST ONLY, not a real alert: github-copilot-usage pace alerts will arrive in this chat."
+
+
+async def send_telegram(text: str, transport: Optional[Any] = None) -> int:
+    """Send ``text`` to the configured chat and return Telegram's message id.
+
+    Raises RuntimeError with the reason on any failure, including a 200 that carries no message id,
+    so a caller never reports a delivery Telegram did not confirm.
+    """
     reason = channel_reason()
     if reason is not None:
         raise RuntimeError("Telegram " + reason)
@@ -135,14 +142,21 @@ async def send_telegram(text: str, transport: Optional[Any] = None) -> None:
         except ValueError:
             detail = ""
         raise RuntimeError("Telegram refused the message (HTTP %d) %s" % (resp.status_code, detail))
+    try:
+        message_id = resp.json()["result"]["message_id"]
+    except (ValueError, KeyError, TypeError):
+        message_id = None
+    if not isinstance(message_id, int) or isinstance(message_id, bool):
+        raise RuntimeError("Telegram answered without confirming delivery (no message id)")
+    return message_id
 
 
 async def check(budget: Dict[str, Any], transport: Optional[Any] = None) -> bool:
     """Alert once per cycle when due; True when a message was sent."""
     if channel_reason() is not None or not should_alert(budget, load_alerted_cycle()):
         return False
-    await send_telegram(format_message(budget), transport=transport)
+    message_id = await send_telegram(format_message(budget), transport=transport)
     save_alerted_cycle(budget["cycle_start"])
-    _log.info("✅ pace alert sent for the cycle starting %s (projected %s%%)",
-              budget["cycle_start"], budget["projected_pct"])
+    _log.info("✅ pace alert sent (message %d) for the cycle starting %s (projected %s%%)",
+              message_id, budget["cycle_start"], budget["projected_pct"])
     return True

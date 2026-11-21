@@ -131,8 +131,48 @@ def validate_features(value: Any) -> Dict[str, bool]:
     return cleaned
 
 
-# Keys whose value has a shape beyond a number or a flag; each raises ValueError when malformed.
+def _whole_number(value: Any) -> int:
+    """A whole number from a JSON number or numeric text; a flag, ``1,500`` or NaN raises ValueError."""
+    if isinstance(value, bool):
+        raise ValueError("must be a whole number")
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        raise ValueError("must be a whole number") from None
+
+
+def validate_credits(value: Any) -> int:
+    """The monthly allowance: a whole number, never below zero."""
+    return max(0, _whole_number(value))
+
+
+def validate_reset_day(value: Any) -> int:
+    """The billing-cycle reset day, kept within 1-28 so every month has it."""
+    return min(28, max(1, _whole_number(value)))
+
+
+def validate_port(value: Any) -> int:
+    """A TCP port, 1-65535."""
+    port = _whole_number(value)
+    if not 1 <= port <= 65535:
+        raise ValueError("must be between 1 and 65535")
+    return port
+
+
+def validate_roots(value: Any) -> List[str]:
+    """The extra storage roots as text with blank entries dropped; anything but a list raises ValueError."""
+    if not isinstance(value, list):
+        raise ValueError("must be a list of paths")
+    return [str(p) for p in value if str(p).strip()]
+
+
+# One cleaner per key of DEFAULTS, each raising ValueError when malformed. The same function runs on a
+# hand-edited file at load and on a settings update at save.
 _VALIDATORS: Dict[str, Callable[[Any], Any]] = {
+    "port": validate_port,
+    "monthly_credits": validate_credits,
+    "cycle_reset_day": validate_reset_day,
+    "extra_roots": validate_roots,
     "model_aliases": model_labels.validate_aliases,
     "model_colors": model_labels.validate_colors,
     "telemetry_start_date": validate_start_date,
@@ -193,7 +233,7 @@ def load() -> Dict[str, Any]:
         for k, check in _VALIDATORS.items():
             try:
                 merged[k] = check(merged[k])
-            except ValueError as exc:
+            except (TypeError, ValueError) as exc:
                 _log.warning("⚠️ config: ignoring %s in %s (%s)", k, CONFIG_PATH, exc)
                 merged[k] = copy.deepcopy(DEFAULTS[k])
         if cli_was_off:
@@ -202,9 +242,9 @@ def load() -> Dict[str, Any]:
         port_env = os.environ.get("COPILOT_USAGE_PORT")
         if port_env:
             try:
-                merged["port"] = int(port_env)
-            except ValueError:
-                _log.warning("⚠️ config: ignoring non-numeric COPILOT_USAGE_PORT=%r", port_env)
+                merged["port"] = validate_port(port_env)
+            except ValueError as exc:
+                _log.warning("⚠️ config: ignoring COPILOT_USAGE_PORT=%r (%s)", port_env, exc)
 
         _cache.clear()
         _cache.update(merged)
@@ -215,14 +255,6 @@ def load() -> Dict[str, Any]:
 def _clean(key: str, value: Any) -> Any:
     """One UI-editable value in its stored form; raises ConfigError when it cannot be."""
     try:
-        if key == "monthly_credits":
-            return max(0, int(value))
-        if key == "cycle_reset_day":
-            return min(28, max(1, int(value)))
-        if key == "extra_roots":
-            if not isinstance(value, list):
-                raise ValueError("must be a list of paths")
-            return [str(p) for p in value if str(p).strip()]
         return _VALIDATORS[key](value)
     except (TypeError, ValueError) as exc:
         raise ConfigError("%s: %s" % (key, exc)) from exc

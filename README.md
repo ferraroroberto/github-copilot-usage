@@ -100,7 +100,7 @@ Credits stay the billing measure. Cache tokens are kept in their own buckets, an
 | `telemetry_start_date` | `""` | first local day (`YYYY-MM-DD`) that counts; earlier records are left out of every total, empty counts them all |
 | `session_names` | `{}` | custom session names, `{"<session id>": "<name>"}`, set from the session sheet; at most 120 characters |
 
-A settings update with an unknown key, a malformed value or a bad colour is refused with its reason (`400`) and changes nothing; a bad value written by hand in `config.json` is ignored with a log warning.
+A settings update with an unknown key, a malformed value or a bad colour is refused with its reason (`400`) and changes nothing; a bad value written by hand in `config.json` (any key, `port`, `monthly_credits`, `cycle_reset_day` and `extra_roots` included) is replaced by its default with a log warning naming the key, and a hand-set `cycle_reset_day` above 28 is clamped to 28 like a saved one.
 
 Everything except the port is editable live from the ⚙ Settings dialog; each setting saves as you change it (numbers when you leave the field), with a toast, and there is no Save button.
 

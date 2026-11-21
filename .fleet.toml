@@ -216,3 +216,20 @@ derive = "derive"
 # request explorer's filters, history and pagination, the session sheet, the stale-tab refresh).
 [e2e]
 test_budget = 20
+
+# [[design.accepted]] -- a design_lint finding this repo has judged and keeps. The icon family
+# is committed and linked; this public repo generates it with the standalone Pillow-only
+# scripts/gen_icons.py because it may not depend on another repo's brand_gen.
+[[design.accepted]]
+check  = "app-icon-family"
+target = "app/webapp/static/index.html"
+detail = "shared brand_gen.render_set generator not adopted"
+reason = "public standalone repo: scripts/gen_icons.py generates the same icon family without importing another repo's generator"
+
+[[design.accepted]]
+check  = "glyph-icons"
+reason = "the one remaining arrow is the 'Settings → …' path in prose copy, the same wording the docs use; it is not drawn as an icon"
+
+[[design.accepted]]
+check  = "hit-target"
+reason = ".model-dot is a decorative 10px colour swatch in a table cell, not a pointer target, so the 44px floor does not apply"

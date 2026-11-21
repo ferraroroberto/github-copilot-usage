@@ -215,5 +215,5 @@ def test_records_round_trip_every_field(rec):
     original = rec(3, credits=None, prompt_tokens=None, cache_read_tokens=None, usage_estimated=True, error=True,
                    prompt_details=[{"label": "Messages", "percentageOfPrompt": 10}], context_items=["a.py"])
     row = read_model._row(7, 0, original)
-    assert read_model._record(row[2:-2]) == original
-    assert json.loads(row[2 + read_model._RECORD_FIELDS.index("context_items")]) == ["a.py"]
+    assert read_model.record_from_row(row[2:-2]) == original
+    assert json.loads(row[2 + read_model.RECORD_FIELDS.index("context_items")]) == ["a.py"]

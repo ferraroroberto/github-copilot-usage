@@ -55,9 +55,11 @@ T = TypeVar("T")
 # Record fields stored as JSON text, and the one field that only exists on a read-time copy.
 _JSON_FIELDS = ("prompt_details", "context_items")
 _BOOL_FIELDS = ("error", "usage_estimated")
-_RECORD_FIELDS = [f.name for f in fields(RequestRecord) if f.name != "parsed_title"]
+# Column order of the ``records`` table. Shared with ``index_queries`` (which selects these
+# columns in SQL) and ``health_check_run``: all must agree with ``record_from_row``.
+RECORD_FIELDS = [f.name for f in fields(RequestRecord) if f.name != "parsed_title"]
 # The field layout is part of the schema: a record that gains a field rebuilds the file.
-_LAYOUT = ",".join(_RECORD_FIELDS)
+_LAYOUT = ",".join(RECORD_FIELDS)
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -85,12 +87,13 @@ CREATE INDEX IF NOT EXISTS records_model ON records(model);
 CREATE INDEX IF NOT EXISTS records_mode ON records(mode);
 CREATE INDEX IF NOT EXISTS records_credits ON records(credits);
 CREATE INDEX IF NOT EXISTS records_ts ON records(ts_epoch);
-""" % ",\n    ".join(_RECORD_FIELDS)
+""" % ",\n    ".join(RECORD_FIELDS)
 
 _INSERT_RECORD = "INSERT INTO records (source_id, ord, %s, ts_epoch, local_date) VALUES (%s)" % (
-    ", ".join(_RECORD_FIELDS), ", ".join("?" * (len(_RECORD_FIELDS) + 4)),
+    ", ".join(RECORD_FIELDS), ", ".join("?" * (len(RECORD_FIELDS) + 4)),
 )
-_SELECT_RECORDS = "SELECT %s FROM records WHERE source_id = ? ORDER BY ord" % ", ".join(_RECORD_FIELDS)
+# One source's records in file order; ``record_from_row`` turns each row back into a record.
+SELECT_RECORDS = "SELECT %s FROM records WHERE source_id = ? ORDER BY ord" % ", ".join(RECORD_FIELDS)
 
 
 class ReadModelUnusable(Exception):
@@ -126,7 +129,7 @@ def backup_live(target: Path) -> None:
 
 def _row(source_id: int, ord_: int, rec: RequestRecord) -> tuple:
     values: List[Any] = [source_id, ord_]
-    for name in _RECORD_FIELDS:
+    for name in RECORD_FIELDS:
         value = getattr(rec, name)
         if name in _JSON_FIELDS:
             value = json.dumps(value, ensure_ascii=False)
@@ -140,9 +143,14 @@ def _row(source_id: int, ord_: int, rec: RequestRecord) -> tuple:
     return tuple(values)
 
 
-def _record(row: tuple) -> RequestRecord:
+def record_from_row(row: tuple) -> RequestRecord:
+    """Rebuild a ``RequestRecord`` from a row laid out as ``RECORD_FIELDS``.
+
+    Used by this module's own reads and by ``index_queries``, so the SQL path and the
+    in-memory path hand the same record shape to the same row builders.
+    """
     kw: Dict[str, Any] = {}
-    for name, value in zip(_RECORD_FIELDS, row):
+    for name, value in zip(RECORD_FIELDS, row):
         if name in _JSON_FIELDS:
             value = json.loads(value) if value else []
         elif name == "ts":
@@ -426,7 +434,7 @@ class ReadModel:
         hit = self._memo.get(key)
         if hit is not None and hit[0] == signature:
             return hit[1], hit[2]
-        records = [_record(r) for r in conn.execute(_SELECT_RECORDS, (source_id,))]
+        records = [record_from_row(r) for r in conn.execute(SELECT_RECORDS, (source_id,))]
         meta_row = conn.execute("SELECT meta FROM sources WHERE id = ?", (source_id,)).fetchone()
         meta = json.loads(meta_row[0]) if meta_row else {}
         self._memo[key] = (signature, records, meta)

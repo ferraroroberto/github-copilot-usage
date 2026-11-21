@@ -114,7 +114,7 @@ def _replay_build(pristine: str) -> Callable[[], Tuple[list, List[dict]]]:
         conn = read_model.open_file(Path(pristine))
         try:
             row = conn.execute("SELECT id, meta FROM sources WHERE key = ?", (key,)).fetchone()
-            records = [read_model._record(r) for r in conn.execute(read_model._SELECT_RECORDS, (row[0],))]
+            records = [read_model.record_from_row(r) for r in conn.execute(read_model.SELECT_RECORDS, (row[0],))]
             return records, json.loads(row[1])
         finally:
             conn.close()

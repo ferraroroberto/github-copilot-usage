@@ -30,8 +30,9 @@ MAX_PAGE_SIZE = 100
 # The row carries a short preview of the prompt; the full stored text opens with the session.
 PREVIEW_CHARS = 120
 
-# Facet dimension -> (record value, display label) for the options list.
-_DIMENSIONS = ("project", "model", "mode", "ide", "result")
+# The facet dimensions, in display order. Shared with ``index_queries`` so the SQL facet
+# counts cover exactly the dimensions the in-memory path builds.
+DIMENSIONS = ("project", "model", "mode", "ide", "result")
 
 
 @dataclass
@@ -150,7 +151,7 @@ def _text_ok(needle: str, r: RequestRecord) -> bool:
 def _failed_filters(q: Query, r: RequestRecord, value: Dict[str, Callable[[RequestRecord], str]]) -> List[str]:
     """The filters ``r`` fails: a facet dimension name, or ``other`` for range and text."""
     failed = [
-        dim for dim in _DIMENSIONS
+        dim for dim in DIMENSIONS
         if _selected(q, dim) and value[dim](r) != _selected(q, dim)
     ]
     if not _credit_range_ok(q, r) or not _text_ok(q.text, r):
@@ -185,7 +186,11 @@ def _preview(message: str) -> str:
     return text if len(text) <= PREVIEW_CHARS else text[: PREVIEW_CHARS - 1].rstrip() + "…"
 
 
-def _row(r: RequestRecord, labels: ModelLabels) -> Dict[str, Any]:
+def request_row(r: RequestRecord, labels: ModelLabels) -> Dict[str, Any]:
+    """One explorer row as the API returns it.
+
+    Shared with ``index_queries``: the in-memory and SQL paths must emit identical rows.
+    """
     return {
         "request_id": r.request_id,
         "session_id": r.session_id,
@@ -207,9 +212,13 @@ def _row(r: RequestRecord, labels: ModelLabels) -> Dict[str, Any]:
     }
 
 
-def _facets(counts: Dict[str, Dict[str, int]], labels: Dict[str, Dict[str, str]]) -> Dict[str, List[dict]]:
+def facets_from_counts(counts: Dict[str, Dict[str, int]], labels: Dict[str, Dict[str, str]]) -> Dict[str, List[dict]]:
+    """Turn per-dimension ``{value: count}`` maps into the facet option lists.
+
+    Shared with ``index_queries``, which feeds it counts computed in SQL.
+    """
     out: Dict[str, List[dict]] = {}
-    for dim in _DIMENSIONS:
+    for dim in DIMENSIONS:
         options = [
             {"value": value, "label": labels[dim].get(value, value), "count": count}
             for value, count in counts[dim].items()
@@ -229,10 +238,10 @@ def explore(records: List[RequestRecord], q: Query) -> Dict[str, Any]:
         q = replace(q, model=models.key(q.model))
 
     matched: List[RequestRecord] = []
-    counts: Dict[str, Dict[str, int]] = {dim: {} for dim in _DIMENSIONS}
-    labels: Dict[str, Dict[str, str]] = {dim: {} for dim in _DIMENSIONS}
+    counts: Dict[str, Dict[str, int]] = {dim: {} for dim in DIMENSIONS}
+    labels: Dict[str, Dict[str, str]] = {dim: {} for dim in DIMENSIONS}
     # A selected option stays listed even when the other filters leave it with no rows.
-    for dim in _DIMENSIONS:
+    for dim in DIMENSIONS:
         if _selected(q, dim):
             counts[dim][_selected(q, dim)] = 0
 
@@ -242,7 +251,7 @@ def explore(records: List[RequestRecord], q: Query) -> Dict[str, Any]:
             continue
         # With no failure the request counts toward every facet; failing only dimension
         # ``d`` it counts toward ``d``'s facet alone (that is the option's "would show" count).
-        dims: Tuple[str, ...] = tuple(_DIMENSIONS) if not failed else (failed[0],)
+        dims: Tuple[str, ...] = tuple(DIMENSIONS) if not failed else (failed[0],)
         for dim in dims:
             option = value[dim](r)
             counts[dim][option] = counts[dim].get(option, 0) + 1
@@ -267,6 +276,6 @@ def explore(records: List[RequestRecord], q: Query) -> Dict[str, Any]:
         "pages": pages,
         "credits": round(credits, 4),
         "period_total": len(in_period),
-        "rows": [_row(r, models) for r in ordered[start:start + q.page_size]],
-        "facets": _facets(counts, labels),
+        "rows": [request_row(r, models) for r in ordered[start:start + q.page_size]],
+        "facets": facets_from_counts(counts, labels),
     }

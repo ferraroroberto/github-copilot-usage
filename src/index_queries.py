@@ -28,7 +28,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar
 
 from src import aggregate, config, request_explorer
 from src.model_labels import ModelLabels
-from src.read_model import _RECORD_FIELDS, _record
+from src.read_model import RECORD_FIELDS, record_from_row
 from src.request_explorer import Query
 from src.vscode_parser import RequestRecord
 
@@ -123,7 +123,7 @@ class _View:
 
 def _in_period(period: str) -> _Where:
     where = _Where()
-    lo, hi = aggregate._period_bounds(aggregate.normalize_period(period, "all"), date.today())
+    lo, hi = aggregate.period_bounds(aggregate.normalize_period(period, "all"), date.today())
     if lo is not None:
         where.add("local_date >= ?", lo.isoformat())
     if hi is not None:
@@ -182,7 +182,7 @@ def _facets_and_totals(
     combos: List[Combo], q: Query, models: ModelLabels,
 ) -> Tuple[Dict[str, List[dict]], int, float, int]:
     """The facets, the matching rows and credits, and the period's rows, from the combinations."""
-    dims = request_explorer._DIMENSIONS
+    dims = request_explorer.DIMENSIONS
     selected = {dim: getattr(q, dim) for dim in dims}
     counts: Dict[str, Dict[str, int]] = {dim: {} for dim in dims}
     labels: Dict[str, Dict[str, str]] = {dim: {} for dim in dims}
@@ -214,7 +214,7 @@ def _facets_and_totals(
         ordered[dim] = {selected[dim]: 0} if selected[dim] else {}
         for option in sorted(counts[dim], key=lambda o: first[dim][o]):
             ordered[dim][option] = counts[dim][option]
-    return request_explorer._facets(ordered, labels), total, credits, period_total
+    return request_explorer.facets_from_counts(ordered, labels), total, credits, period_total
 
 
 def _matching(q: Query, models: ModelLabels, raw_models: Counter) -> _Where:
@@ -263,7 +263,7 @@ def explore(conn: sqlite3.Connection, token: str, q: Query) -> Dict[str, Any]:
     matched = base.extend(other).extend(_matching(q, models, raw_models))
     rows = conn.execute(
         "SELECT %s FROM records WHERE %s ORDER BY %s LIMIT ? OFFSET ?"
-        % (", ".join(_RECORD_FIELDS), matched.sql(), _order_by(q)),
+        % (", ".join(RECORD_FIELDS), matched.sql(), _order_by(q)),
         matched.params + [q.page_size, (page - 1) * q.page_size],
     ).fetchall() if total else []
     return {
@@ -272,7 +272,7 @@ def explore(conn: sqlite3.Connection, token: str, q: Query) -> Dict[str, Any]:
         "pages": pages,
         "credits": round(credits, 4),
         "period_total": period_total,
-        "rows": [request_explorer._row(view.named(_record(r)), models) for r in rows],
+        "rows": [request_explorer.request_row(view.named(record_from_row(r)), models) for r in rows],
         "facets": facets,
     }
 
@@ -330,7 +330,7 @@ def _session_rows(conn: sqlite3.Connection, view: _View, where: _Where) -> List[
          unknown, estimated, first_ts, last_ts) = totals[(ide, sid)]
         name: Optional[str] = view.names.get(sid)
         v = values[(ide, sid)]
-        rows.append(aggregate._finish({
+        rows.append(aggregate.finish_totals({
             "session_id": sid,
             "ide": ide,
             "source": source,

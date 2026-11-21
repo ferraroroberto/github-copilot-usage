@@ -198,8 +198,11 @@ def normalize_period(period: Any, default: str) -> str:
     return default
 
 
-def _period_bounds(period: str, today: date) -> Tuple[Optional[date], Optional[date]]:
-    """Inclusive (lo, hi) local-date bounds; (None, None) = all time."""
+def period_bounds(period: str, today: date) -> Tuple[Optional[date], Optional[date]]:
+    """Inclusive (lo, hi) local-date bounds; (None, None) = all time.
+
+    Shared with ``index_queries`` so a period means the same days on the SQL path.
+    """
     if period == "today":
         return today, today
     if period == "week":
@@ -357,7 +360,12 @@ def _add(acc: Dict[str, Any], r: RequestRecord) -> None:
             acc["error_credits"] += r.credits
 
 
-def _finish(acc: Dict[str, Any]) -> Dict[str, Any]:
+def finish_totals(acc: Dict[str, Any]) -> Dict[str, Any]:
+    """Round an accumulator and derive its USD and token metrics, in place.
+
+    Shared with ``index_queries``, whose SQL sums are finished the same way as the
+    in-memory accumulators.
+    """
     acc["credits"] = round(acc["credits"], 4)
     acc["error_credits"] = round(acc["error_credits"], 4)
     acc["usd"] = round(acc["credits"] * USD_PER_CREDIT, 4)
@@ -376,7 +384,7 @@ def _finish(acc: Dict[str, Any]) -> Dict[str, Any]:
 def get_summary(records: List[RequestRecord], period: str = "today") -> dict:
     period = normalize_period(period, "today")
     today = date.today()
-    lo, hi = _period_bounds(period, today)
+    lo, hi = period_bounds(period, today)
     start = telemetry_start()
     labels = labels_for(records)
 
@@ -385,7 +393,7 @@ def get_summary(records: List[RequestRecord], period: str = "today") -> dict:
     totals = _blank()
     for r in in_period:
         _add(totals, r)
-    _finish(totals)
+    finish_totals(totals)
     totals["avg_credits_per_request"] = (
         round(totals["credits"] / totals["billed_requests"], 3)
         if totals["billed_requests"] else 0.0
@@ -399,7 +407,7 @@ def get_summary(records: List[RequestRecord], period: str = "today") -> dict:
         for r in records:
             if _in_bounds(_local_date(r), prev[0], prev[1]):
                 _add(prev_totals, r)
-        _finish(prev_totals)
+        finish_totals(prev_totals)
 
     def group_by(key_fn, label_field: str) -> List[dict]:
         groups: Dict[str, Dict[str, Any]] = {}
@@ -409,7 +417,7 @@ def get_summary(records: List[RequestRecord], period: str = "today") -> dict:
             if g is None:
                 g = groups[k] = {label_field: k, **_blank()}
             _add(g, r)
-        rows = [_finish(g) for g in groups.values()]
+        rows = [finish_totals(g) for g in groups.values()]
         rows.sort(key=lambda x: (x["credits"], x["requests"]), reverse=True)
         total_credits = sum(x["credits"] for x in rows) or 1.0
         for x in rows:
@@ -436,7 +444,7 @@ def get_summary(records: List[RequestRecord], period: str = "today") -> dict:
             }
         _add(g, r)
     by_project = sorted(
-        (_finish(g) for g in by_project_groups.values()),
+        (finish_totals(g) for g in by_project_groups.values()),
         key=lambda x: (x["credits"], x["requests"]),
         reverse=True,
     )
@@ -750,7 +758,7 @@ def build_sessions(records: List[RequestRecord], labels: Optional[ModelLabels] =
         if r.usage_source and r.usage_source not in s["usage_sources"]:
             s["usage_sources"].append(r.usage_source)
 
-    rows = [_finish(s) for s in smap.values()]
+    rows = [finish_totals(s) for s in smap.values()]
     rows.sort(key=lambda x: (x["credits"], x["last_ts"]), reverse=True)
     return rows
 
@@ -758,7 +766,7 @@ def build_sessions(records: List[RequestRecord], labels: Optional[ModelLabels] =
 def records_in_period(records: List[RequestRecord], period: str) -> List[RequestRecord]:
     """The records whose local date falls in ``period``; an unknown period means all time."""
     period = normalize_period(period, "all")
-    lo, hi = _period_bounds(period, date.today())
+    lo, hi = period_bounds(period, date.today())
     return [r for r in records if _in_bounds(_local_date(r), lo, hi)]
 
 
@@ -826,7 +834,7 @@ _CSV_COLUMNS = [
 
 def export_csv(records: List[RequestRecord], period: str = "all") -> str:
     period = normalize_period(period, "all")
-    lo, hi = _period_bounds(period, date.today())
+    lo, hi = period_bounds(period, date.today())
     rows = sorted(
         (r for r in records if _in_bounds(_local_date(r), lo, hi)),
         key=lambda r: r.ts,

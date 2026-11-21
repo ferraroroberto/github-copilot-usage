@@ -56,6 +56,8 @@
   --icon-inline: 16px;
   --icon-title: 18px;
   --icon-feature: 24px;
+  /* the row avatar icon's size (action-row reads it; matches the tab-bar glyph) */
+  --bottom-tabs-icon: 20px;
   /* the floating tab bar's clear glass — design.md "Navigation" */
   --tabbar-bg: rgba(255, 255, 255, 0.62);
   --tabbar-border: rgba(0, 0, 0, 0.08);
@@ -77,6 +79,8 @@
   --gutter: var(--gap);
   /* The page column's outer width; the wide sheets size from it so they line up with the cards behind. */
   --column-width: 772px;
+  /* the settings page column (settings-group reads it) follows the page column */
+  --measure: var(--column-width);
   /* The side nav's width on a wide pointer screen; the page column sits to its right, and so do the wide sheets. */
   --layout-rail: 80px;
 }

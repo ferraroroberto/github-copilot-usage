@@ -64,8 +64,11 @@ function writeUrl(mode) {
 }
 
 // Closing the sheet moves on to the plain dashboard address. When the sheet was closed by Back
-// the address no longer names the view, so nothing is added.
+// the address no longer names the view, so nothing is added. The `close` event is queued, so a quick
+// Back then Forward can reopen the sheet before it runs; that stale event must not replace the
+// address of the view now showing.
 function onClosed() {
+  if ($('requests-dialog').open) return;
   clearTimeout(searchTimer);
   if (readUrl()) commitUrl(composeUrl(deps.getPeriod(), null), 'push');
 }

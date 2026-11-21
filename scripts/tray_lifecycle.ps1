@@ -7,7 +7,8 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\tray_lifecycle.ps1
 #   powershell ... -File scripts\tray_lifecycle.ps1 --restart
 #
-# Safety: every process match is scoped to THIS repo's .venv path AND the
+# Safety: every process match is scoped to THIS repo's .venv path (under either
+# spelling of the fleet root, see tray_match.ps1) AND the
 # `app.tray` module in the command line, and always excludes the current
 # process — no unrelated python/pythonw is ever touched.
 
@@ -15,6 +16,7 @@ param([string]$Action = "")
 
 $ErrorActionPreference = "Stop"
 $RepoDir = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
+. (Join-Path $PSScriptRoot "tray_match.ps1")
 $VenvDir = Join-Path $RepoDir ".venv"
 $Pythonw = Join-Path $VenvDir "Scripts\pythonw.exe"
 
@@ -52,11 +54,10 @@ $HealthUrl = "http://127.0.0.1:$Port/health"
 $PortReleaseWaitMs = 500
 
 function Get-TrayProcesses {
-    $esc = [regex]::Escape($VenvDir)
     Get-CimInstance Win32_Process | Where-Object {
         $_.ProcessId -ne $PID -and
         $_.CommandLine -and
-        $_.CommandLine -match $esc -and
+        (Test-UnderVenv $_.CommandLine $VenvDir) -and
         $_.CommandLine -match "app\.tray"
     }
 }
@@ -75,10 +76,9 @@ if ($Action -match "^(--)?restart$") {
         $owners = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction Stop |
             Select-Object -ExpandProperty OwningProcess -Unique
     } catch { $owners = @() }
-    $esc = [regex]::Escape($VenvDir)
     foreach ($ownerPid in $owners) {
         $proc = Get-CimInstance Win32_Process -Filter "ProcessId = $ownerPid" -ErrorAction SilentlyContinue
-        if ($proc -and $proc.CommandLine -match $esc) {
+        if ($proc -and (Test-UnderVenv $proc.CommandLine $VenvDir)) {
             Write-Output "[restart] reclaiming port $Port from PID $ownerPid ..."
             cmd /c "taskkill /PID $ownerPid /T /F >nul 2>&1"
         }
@@ -107,8 +107,8 @@ $deadline = (Get-Date).AddSeconds(10)
 while ((Get-Date) -lt $deadline) {
     try {
         $resp = Invoke-WebRequest -UseBasicParsing -Uri $HealthUrl -TimeoutSec 2
-        $ver = (ConvertFrom-Json $resp.Content).version
-        Write-Output "[ok] tray running - dashboard at http://127.0.0.1:$Port/ (v$ver)"
+        $body = ConvertFrom-Json $resp.Content
+        Write-Output "[ok] tray running - dashboard at http://127.0.0.1:$Port/ (v$($body.version), build $($body.git_sha))"
         exit 0
     } catch {
         Start-Sleep -Milliseconds 500

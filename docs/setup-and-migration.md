@@ -17,7 +17,7 @@ The lists below were derived from the code, not from memory: every file the app 
 5. **Check it.** Open `/health` (it answers `ok` with the version), then the **Data sources** card on the Overview tab: it lists every editor folder and Copilot CLI source found on this machine and how many requests each contributed.
 6. **Switch off what cannot run here.** Open **Settings → Available features**. A block whose dependency is missing is marked *Unavailable on this machine* with the reason under the list (no billing token, no Telegram settings, no Copilot CLI folder, a Python too old for the usage log). Switch it off and its part of the page disappears and its work stops. Every block is on by default, and the choice is stored in this machine's `config.json` under `features`.
 7. **Tray (Windows, optional).** `tray.bat` runs the server under a tray icon; it creates `.venv` and installs the tray extras itself. Put a shortcut to it in `shell:startup` to start it on login.
-8. **Update.** `git pull`, then restart: `tray.bat --restart` for the tray (it only touches this repo's own `.venv` process), or stop and rerun the foreground command. Open `/health` to confirm the new version.
+8. **Update.** `git pull`, then restart: `tray.bat --restart` for the tray (it only touches this repo's own `.venv` process, found under either path spelling of a junctioned folder), or stop and rerun the foreground command. Open `/health` to confirm the new build: it carries `version` and `git_sha`, and `tray.bat` prints both once the server answers.
 
 ## Migrate from an existing machine
 

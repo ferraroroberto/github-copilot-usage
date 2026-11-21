@@ -24,7 +24,7 @@ Standalone, public, local-only dashboard for GitHub Copilot usage: a FastAPI JSO
 
 - **Dev (foreground):** `.venv\Scripts\python.exe -m app` (`--open` also launches the browser; `--port N` overrides).
 - **Resident (Windows tray):** `tray.bat` — self-bootstrapping (creates `.venv`, installs core + tray deps) and idempotent. **`tray.bat --restart` is the canonical safe restart:** detection and kill are scoped to this repo's `.venv` path in the process command line — never blanket-kill python/pythonw.
-- **Build confirmation:** `GET http://127.0.0.1:8377/health` returns 200 and carries `version` (single source: `app/version.py`).
+- **Build confirmation:** `GET http://127.0.0.1:8377/health` returns 200 and carries `version` (single source: `app/version.py`) and `git_sha`, the checkout's short commit; a restart is confirmed by that sha changing, not only by the process start time.
 
 ## Verification gate
 

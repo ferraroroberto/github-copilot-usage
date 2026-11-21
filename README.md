@@ -122,7 +122,7 @@ Set `COPILOT_USAGE_TELEGRAM_BOT_TOKEN` (from [@BotFather](https://t.me/BotFather
 
 ## Optional: system tray (Windows)
 
-`tray.bat` runs the server under a tray icon (Open dashboard / Open on private network / Restart / Quit; the private-network item appears only while Tailscale access is live) instead of a console window — handy for keeping it always on. It works directly on a fresh clone (it creates the venv and installs everything itself, including two small tray extras: pystray, pillow), so it is a full alternative to `start.bat`. Re-running it is a no-op while the tray lives; `tray.bat --restart` restarts it. Detection is scoped to this repo's `.venv`, so no other Python process is ever touched. Put a shortcut in `shell:startup` to launch on login.
+`tray.bat` runs the server under a tray icon (Open dashboard / Open on private network / Restart / Quit; the private-network item appears only while Tailscale access is live) instead of a console window — handy for keeping it always on. It works directly on a fresh clone (it creates the venv and installs everything itself, including two small tray extras: pystray, pillow), so it is a full alternative to `start.bat`. Re-running it is a no-op while the tray lives; `tray.bat --restart` restarts it. Detection is scoped to this repo's `.venv` (matched under either path spelling when the folder is reachable through a junction, e.g. `C:` and `E:`), so no other Python process is ever touched. Put a shortcut in `shell:startup` to launch on login.
 
 ## API
 

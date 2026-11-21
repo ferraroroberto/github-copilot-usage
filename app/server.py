@@ -135,7 +135,7 @@ def _summary_of(records: List[RequestRecord], period: str) -> dict:
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok", "version": VERSION}
+    return {"status": "ok", "version": VERSION, "git_sha": build_info.GIT_SHA}
 
 
 @app.get("/api/version")

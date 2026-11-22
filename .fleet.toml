@@ -56,6 +56,7 @@ select-native = { src = "app/webapp/static/_vendored/select-native", sha = "09fe
 action-row = { src = "app/webapp/static/_vendored/action-row", sha = "90ac7687bf9bc756d73a3b0f4e64cd692d88617e", dest = "app/webapp/static/_vendored/action-row" }
 toast = { src = "app/webapp/static/_vendored/toast", sha = "90ac7687bf9bc756d73a3b0f4e64cd692d88617e", dest = "app/webapp/static/_vendored/toast" }
 row-menu = { src = "app/webapp/static/_vendored/row-menu", sha = "a04abc7b3af872cbac974401dd0945587eac6cef", dest = "app/webapp/static/_vendored/row-menu" }
+fullscreen = { src = "app/webapp/static/_vendored/fullscreen", sha = "e14844faa70acbd89dc43011c5bc98025052c2c3", dest = "app/webapp/static/_vendored/fullscreen" }
 
 # [structure_ratchet] -- baseline-and-ratchet layout stage. scripts/verify-before-ship.ps1
 # runs scripts/structure_ratchet.py, which fails when a new file passes 1,000 lines, a

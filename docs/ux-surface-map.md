@@ -14,7 +14,7 @@ The checklist of everything a person can see and do in the dashboard: every tab,
 
 **Layout bands.** The same markup serves a phone and a desktop. On a phone the nav is the floating bottom pill, hidden while a dialog is open; on a desktop it is the segmented control at the top. Dialogs are full-height sheets on a phone and centred cards on a desktop (`sheet-wide` ones are wider).
 
-**Where state lives.** The open tab and the folded cards live in the page and `localStorage` (`copilot-usage.tab`, `copilot-usage.collapsed`, `copilot-usage.theme`, `copilot-usage.textsize`); the period or focused date range (`?dash=...`) and the request explorer's filters (`?view=requests&...`) ride the URL, and each committed change is a history entry, so Back and Forward step through them. Every setting that changes the numbers lives in the server's `config.json` and saves as it changes.
+**Where state lives.** The open tab and the folded cards live in the page and `localStorage` (`copilot-usage.tab`, `copilot-usage.collapsed`, `copilot-usage.theme`, `copilot-usage.textsize`, `copilot-usage.fullscreen`); the period or focused date range (`?dash=...`) and the request explorer's filters (`?view=requests&...`) ride the URL, and each committed change is a history entry, so Back and Forward step through them. Every setting that changes the numbers lives in the server's `config.json` and saves as it changes.
 
 **Gating.** A feature block that is switched off (Settings → Available features) hides its part of the page and stops its work: the official billing card with the billing token row, and the pace alert with its Settings group. A block this machine cannot run says why under the Features group.
 
@@ -833,8 +833,12 @@ flowchart LR
 
 - **Root:** `data-surface`
 - **Reach:** Settings
-- **Holds:** Text size, with Small, Default and Large
-- **Does:** applies at once and is remembered in the browser
+- **Holds:**
+  - Text size, with Small, Default and Large
+  - Full screen on Edge, a switch shown only in Edge
+- **Does:**
+  - applies at once and is remembered in the browser
+  - the full-screen switch enters full screen at once, and the first tap after a reload enters again while it is on
 - **Why:** the zoom-lock escape, since the page forbids pinch zoom on a phone
 
 ### `settings.cycle` Billing cycle

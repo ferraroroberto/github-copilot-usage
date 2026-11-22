@@ -12,6 +12,7 @@
 import { buildReadoutText } from './_vendored/page-foot/page-foot.js';
 import { initRestartSheet } from './_vendored/page-foot/restart-sheet.js';
 import { initUsageLog } from './_vendored/usage-log/usage-log.js';
+import { bindFullscreen } from './_vendored/fullscreen/fullscreen.js';
 import { initNavTabs } from './_vendored/nav/nav-tabs.js';
 import { renderHeadStatus } from './_vendored/home-head/home-head.js';
 import { showToast as showFleetToast } from './_vendored/toast/toast.js';
@@ -107,6 +108,7 @@ $('set-textsize').addEventListener('click', (e) => {
   toast('Text size: ' + btn.textContent.trim().toLowerCase());
 });
 paintTextSize();
+bindFullscreen($('fullscreenRow'), 'copilot-usage');
 
 // ---------------------------------------------------------------------------
 // Formatting

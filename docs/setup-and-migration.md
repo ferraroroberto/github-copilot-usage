@@ -35,7 +35,7 @@ Copy only what is listed as needed. Nothing here is secret except `.env`: move i
 | Copilot's own session logs | the editor's `User/workspaceStorage` and `globalStorage`, the CLI's `session-state` folder and `session-store.db` | not migrated | These are the data the dashboard reads, and it only reads them. Each machine shows its own. To count another machine's history, copy that editor's `User/workspaceStorage` folder to any folder here and add it under **Settings → Extra storage roots**; a CLI history has to sit in the same place on this machine to be read. |
 | `.venv` | repo root | no, rebuilt | Never copy it: the first run creates it. |
 | Caches | memory, `__pycache__`, `.pytest_cache`, `.launcher-tmp/` | no, rebuildable | Rebuilt on the first request or on **Force refresh**. |
-| Theme, text size, last tab, folded cards | the browser's local storage | no | Per browser, set once on each device. |
+| Theme, text size, full screen on Edge, last tab, folded cards | the browser's local storage | no | Per browser, set once on each device. |
 
 The data folder is, in order of precedence: `GITHUB_COPILOT_USAGE_DATA_DIR`, then `FLEET_DATA_ROOT/github-copilot-usage/`, then the platform default described in the README's Privacy section. It is created on the first write, never inside the repo.
 

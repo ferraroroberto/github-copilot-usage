@@ -38,7 +38,7 @@ runtime_write_ratchet = { src = "scripts/runtime_write_ratchet.py", sha = "4a06c
 runtime_write_resolve = { src = "scripts/runtime_write_resolve.py", sha = "ce64203b017ba636c82737ee7f768c9ef6f422cd", dest = "scripts/runtime_write_resolve.py" }
 instruction_frontmatter = { src = "scripts/instruction_frontmatter.py", sha = "c5535ac326c398df8f44486f386ff0e0b6d4c61c", dest = "scripts/instruction_frontmatter.py" }
 instruction_repeats = { src = "scripts/instruction_repeats.py", sha = "c5535ac326c398df8f44486f386ff0e0b6d4c61c", dest = "scripts/instruction_repeats.py" }
-page-foot = { src = "app/webapp/static/_vendored/page-foot", sha = "3f1dcc76d5ba40c8b3d12a80a99659816ce1dd0e", dest = "app/webapp/static/_vendored/page-foot" }
+page-foot = { src = "app/webapp/static/_vendored/page-foot", sha = "564864cb95a8b416c16d1a1e1e9f31b9d5b2ec8e", dest = "app/webapp/static/_vendored/page-foot" }
 settings-group = { src = "app/webapp/static/_vendored/settings-group", sha = "7577aece617ad366e7df8ef522d511184b445144", dest = "app/webapp/static/_vendored/settings-group" }
 card = { src = "app/webapp/static/_vendored/card", sha = "8f15c49560adbc076d24a8a63dd671868ffa7a4e", dest = "app/webapp/static/_vendored/card" }
 switch = { src = "app/webapp/static/_vendored/switch", sha = "8f15c49560adbc076d24a8a63dd671868ffa7a4e", dest = "app/webapp/static/_vendored/switch" }
@@ -64,7 +64,7 @@ fullscreen = { src = "app/webapp/static/_vendored/fullscreen", sha = "e14844faa7
 # past its size in .structure-ratchet-baseline.json, when src/ imports app/, and when the
 # root folders do not match `shape` plus `extra_roots`. Offenders are baselined at today's
 # size, never excluded. Exit 3 (git unusable, an unparseable file) fails the gate.
-self_restart = { src = "src/self_restart.py", sha = "3f1dcc76d5ba40c8b3d12a80a99659816ce1dd0e", dest = "src/self_restart.py" }
+self_restart = { src = "src/self_restart.py", sha = "564864cb95a8b416c16d1a1e1e9f31b9d5b2ec8e", dest = "src/self_restart.py" }
 [structure_ratchet]
 enabled  = true
 baseline = ".structure-ratchet-baseline.json"

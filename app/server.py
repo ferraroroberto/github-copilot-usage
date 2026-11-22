@@ -39,6 +39,7 @@ from src import (
     request_explorer,
     tailnet,
 )
+from src.self_restart import TRAY_RESTART, RestartTarget, restart_router
 from src.shell_etag import shell_response
 from src.static_versioning import CachingStaticFiles, StaticVersion
 from src.usage_store import usage_db_path
@@ -75,6 +76,15 @@ except Exception as exc:  # any failure of this optional component must not stop
     _log.warning("⚠️ usage log disabled, the dashboard runs without it: %s: %s", type(exc).__name__, exc)
 else:
     app.include_router(usage_router(usage_db_path()), dependencies=[_requires("usage_log")])
+
+# The build readout's restart sheet runs this repo's own `tray.bat --restart`. The app has no sign-in
+# (it binds loopback, or the tailnet when the owner turns that on), so the route's guard is open like
+# every other write route here; the POST still refuses a cross-origin request.
+app.include_router(restart_router(
+    targets=[RestartTarget("app", "Restart app", TRAY_RESTART)],
+    status_dir=usage_db_path().parent / "restart",
+    guard=lambda: None,
+))
 
 
 async def _pace_alert_loop() -> None:

@@ -10,6 +10,7 @@
  */
 
 import { buildReadoutText } from './_vendored/page-foot/page-foot.js';
+import { initRestartSheet } from './_vendored/page-foot/restart-sheet.js';
 import { initUsageLog } from './_vendored/usage-log/usage-log.js';
 import { initNavTabs } from './_vendored/nav/nav-tabs.js';
 import { renderHeadStatus } from './_vendored/home-head/home-head.js';
@@ -161,6 +162,14 @@ async function jsonApi(url, opts) {
   const resp = await fetch(url, opts);
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
   return resp.json();
+}
+
+// The restart sheet reads the POST's status itself (a refusal is an answer, not an error).
+async function postRestart(url, body) {
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  let data = null;
+  try { data = await res.json(); } catch (e) { data = null; }
+  return { status: res.status, body: data };
 }
 
 // ---------------------------------------------------------------------------
@@ -830,6 +839,7 @@ initHealthCheck({ $, jsonApi, showToast: toast }).load();
 fetch('/api/version').then((r) => r.json()).then((v) => {
   $('buildReadout').textContent = buildReadoutText(v.git_sha || 'unknown', v.built_at || '');
 }).catch(() => {});
+initRestartSheet({ fetchJson: jsonApi, postJson: postRestart });
 
 const filters = initFilters({ $, state, periodNames: PERIOD_NAMES, setPeriod, renderSessions });
 initNavTabs({

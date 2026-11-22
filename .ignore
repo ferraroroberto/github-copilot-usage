@@ -40,6 +40,7 @@
 /scripts/ux_surface_map.py
 /scripts/ux_surface_ratchet.py
 /src/runtime_data.py
+/src/self_restart.py
 /src/shell_etag.py
 /src/usage_log.py
 /tests/e2e/_paced_browser.py

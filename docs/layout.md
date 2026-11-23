@@ -33,6 +33,8 @@ github-copilot-usage/
 │   ├── session_diagnostics.py # per-session heuristic flags: large prompt, growing prompt, high non-user share
 │   ├── insights.py            # deterministic local insights with a stable type, severity and linkable evidence
 │   ├── static_versioning.py   # content-hash cache busting: the ?v= stamp, CachingStaticFiles and the stamped index.html
+│   ├── build_info.py          # vendored byte-for-byte; the git sha of the checkout, which restart_check reads
+│   ├── restart_check.py       # vendored byte-for-byte; `python -m src.restart_check restart --port <port>`: runs this repo's `tray.bat --restart` by absolute path and exits non-zero unless a different process serves `HEAD`
 │   ├── self_restart.py        # vendored byte-for-byte; the build readout's restart: `/api/restart` router and the detached runner of this repo's `tray.bat --restart`
 │   ├── shell_etag.py          # vendored byte-for-byte; the shell's weak ETag and the 200-or-304 answer for a conditional GET
 │   ├── request_timing.py      # vendored byte-for-byte; the request-timing middleware the request-budget ratchet requires

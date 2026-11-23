@@ -1,10 +1,4 @@
 {
   "version": 1,
-  "entries": [
-    {"key": "app/listeners.py", "counts": {"unwatched-loop": 1, "default-pool": 2}},
-    {"key": "app/server.py", "counts": {"unwatched-loop": 1, "timing-middleware": 1}},
-    {"key": "app/webapp/static/app.js", "counts": {"fixed-rate-poll": 1}},
-    {"key": "app/webapp/static/health-check.js", "counts": {"fixed-rate-poll": 1, "poll-floor": 1}},
-    {"key": "src/refresh.py", "counts": {"default-pool": 2}}
-  ]
+  "entries": []
 }

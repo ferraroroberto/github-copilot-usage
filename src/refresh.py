@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from src import read_model
+from src import pools, read_model
 from src.vscode_parser import RequestRecord
 
 _log = logging.getLogger(__name__)
@@ -130,7 +130,7 @@ class SnapshotStore:
             return self._snapshot or snap
 
     async def _work(self, seq: int, force: bool) -> Snapshot:
-        snap = await asyncio.get_running_loop().run_in_executor(None, self._run_build, seq, force)
+        snap = await asyncio.get_running_loop().run_in_executor(pools.HEAVY_READ, self._run_build, seq, force)
         return self._install(snap)
 
     async def refresh(self, force: bool = False) -> Outcome:
@@ -178,7 +178,7 @@ class SnapshotStore:
             with self._build_lock:
                 self._clear_caches()
 
-        await asyncio.get_running_loop().run_in_executor(None, _wipe)
+        await asyncio.get_running_loop().run_in_executor(pools.HEAVY_READ, _wipe)
 
     # -- cached summary ----------------------------------------------------------
 

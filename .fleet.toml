@@ -57,6 +57,10 @@ action-row = { src = "app/webapp/static/_vendored/action-row", sha = "90ac7687bf
 toast = { src = "app/webapp/static/_vendored/toast", sha = "90ac7687bf9bc756d73a3b0f4e64cd692d88617e", dest = "app/webapp/static/_vendored/toast" }
 row-menu = { src = "app/webapp/static/_vendored/row-menu", sha = "a04abc7b3af872cbac974401dd0945587eac6cef", dest = "app/webapp/static/_vendored/row-menu" }
 fullscreen = { src = "app/webapp/static/_vendored/fullscreen", sha = "e14844faa70acbd89dc43011c5bc98025052c2c3", dest = "app/webapp/static/_vendored/fullscreen" }
+request_budget_ratchet = { src = "scripts/request_budget_ratchet.py", sha = "2e2a4cca9d3180980db6f8cd7f03a6f12737b7db", dest = "scripts/request_budget_ratchet.py" }
+request_budget_scan = { src = "scripts/request_budget_scan.py", sha = "2e2a4cca9d3180980db6f8cd7f03a6f12737b7db", dest = "scripts/request_budget_scan.py" }
+request_timing = { src = "src/request_timing.py", sha = "2e2a4cca9d3180980db6f8cd7f03a6f12737b7db", dest = "src/request_timing.py" }
+poll = { src = "app/webapp/static/_vendored/poll", sha = "2e2a4cca9d3180980db6f8cd7f03a6f12737b7db", dest = "app/webapp/static/_vendored/poll" }
 
 # [structure_ratchet] -- baseline-and-ratchet layout stage. scripts/verify-before-ship.ps1
 # runs scripts/structure_ratchet.py, which fails when a new file passes 1,000 lines, a
@@ -235,3 +239,15 @@ reason = "the one remaining arrow is the 'Settings → …' path in prose copy, 
 [[design.accepted]]
 check  = "hit-target"
 reason = ".model-dot is a decorative 10px colour swatch in a table cell, not a pointer target, so the 44px floor does not apply"
+
+# [request_budget_ratchet] -- scripts/request_budget_ratchet.py (with its reader
+# scripts/request_budget_scan.py) fails when a file's count for a request-budget rule rises above
+# .request-budget-ratchet-baseline.json: a fixed-rate browser poll that reaches the server, a poll
+# under 2 s, an undeclared fast or subprocess-spawning server loop, a use of the default thread
+# pool, or a web app without the request-timing middleware. `scan-per-request` is OFF: the
+# handlers live in the single module app/server.py, not a dedicated handler folder, so no
+# `handler_dirs` is declared. Exit 3 is "not confirmed", never clean. Mechanism:
+# project-scaffolding docs/request-budget-ratchet.md.
+[request_budget_ratchet]
+enabled  = true
+baseline = ".request-budget-ratchet-baseline.json"

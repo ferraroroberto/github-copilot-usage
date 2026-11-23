@@ -23,7 +23,7 @@ Standalone, public, local-only dashboard for GitHub Copilot usage: a FastAPI JSO
 ## Run / restart
 
 - **Dev (foreground):** `.venv\Scripts\python.exe -m app` (`--open` also launches the browser; `--port N` overrides).
-- **Resident (Windows tray):** `tray.bat` — self-bootstrapping (creates `.venv`, installs core + tray deps) and idempotent. **`tray.bat --restart` is the canonical safe restart:** detection and kill are scoped to this repo's `.venv` path in the process command line — never blanket-kill python/pythonw.
+- **Resident (Windows tray):** `tray.bat` — self-bootstrapping (creates `.venv`, installs core + tray deps) and idempotent. **`.\.venv\Scripts\python.exe -m src.restart_check restart --port 8377` (`./.venv/Scripts/python.exe` in Git Bash; same in every shell; run it in the foreground) is the canonical safe restart:** it runs this checkout's `tray.bat --restart` by absolute path and exits non-zero unless a different process serves `HEAD`; detection and kill are scoped to this repo's `.venv` path in the process command line — never blanket-kill python/pythonw. Never type the bare `tray.bat --restart`: it is not found from any shell here (by hand only `.\tray.bat` in PowerShell, `./tray.bat` in Git Bash), and Git Bash `cmd.exe /c "tray.bat --restart"` exits 0 having restarted nothing.
 - **Build confirmation:** `GET http://127.0.0.1:8377/health` returns 200 and carries `version` (single source: `app/version.py`) and `git_sha`, the checkout's short commit; a restart is confirmed by that sha changing, not only by the process start time.
 
 ## Verification gate

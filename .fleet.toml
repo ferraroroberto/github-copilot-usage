@@ -253,3 +253,18 @@ reason = ".model-dot is a decorative 10px colour swatch in a table cell, not a p
 [request_budget_ratchet]
 enabled  = true
 baseline = ".request-budget-ratchet-baseline.json"
+
+# The pace alert is the one loop that must run while no page is open: it messages the owner when the
+# cycle projection reaches the allowance, which only matters when nobody is looking at the dashboard.
+[[request_budget.loops]]
+path       = "app/server.py"
+function   = "_pace_alert_loop"
+interval_s = 1800
+why        = "sends the owner a message when the cycle projection reaches the allowance, while no page is open"
+
+# The tailnet certificate check wakes once a day to renew it; the listener has no viewer to wait for.
+[[request_budget.loops]]
+path       = "app/listeners.py"
+function   = "Listeners._wait_for_renewal"
+interval_s = 86400
+why        = "renews the tailnet certificate before it expires, whether or not a page is open"

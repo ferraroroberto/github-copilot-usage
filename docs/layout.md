@@ -38,6 +38,7 @@ github-copilot-usage/
 │   ├── self_restart.py        # vendored byte-for-byte; the build readout's restart: `/api/restart` router and the detached runner of this repo's `tray.bat --restart`
 │   ├── shell_etag.py          # vendored byte-for-byte; the shell's weak ETag and the 200-or-304 answer for a conditional GET
 │   ├── request_timing.py      # vendored byte-for-byte; the request-timing middleware the request-budget ratchet requires
+│   ├── pools.py               # the named thread pools by class of blocking work (snapshot rebuilds, tailnet probes), each timed by the request-timing middleware
 │   ├── billing.py             # optional GitHub billing API client (needs a token; absent → visible reason)
 │   ├── billing_state.py       # the billing card's declared state and its one derive function (docs/billing-state.md)
 │   ├── pace_alert.py          # optional Telegram message once per cycle when the projection reaches the allowance

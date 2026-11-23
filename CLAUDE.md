@@ -32,7 +32,7 @@ Standalone, public, local-only dashboard for GitHub Copilot usage: a FastAPI JSO
 powershell -File scripts/verify-before-ship.ps1
 ```
 
-That runs `compileall -q app src tests`, `pytest -q`, and these ratchets, each a `scripts/<name>_ratchet.py` vendored byte-for-byte (`.fleet.toml` `[vendored]`) with a baseline `.<name>-ratchet-baseline.json` (empty, except the request-budget one below). **The exact stage count and order are declared once, in `scripts/verify-before-ship.ps1`'s own header comment** — treat that as canonical; this list only adds what each ratchet checks beyond its name, and `docs/layout.md` points here instead of repeating it:
+That runs `compileall -q app src tests`, `pytest -q`, and these ratchets, each a `scripts/<name>_ratchet.py` vendored byte-for-byte (`.fleet.toml` `[vendored]`) with a baseline `.<name>-ratchet-baseline.json` (all empty). **The exact stage count and order are declared once, in `scripts/verify-before-ship.ps1`'s own header comment** — treat that as canonical; this list only adds what each ratchet checks beyond its name, and `docs/layout.md` points here instead of repeating it:
 
 - **structure** (below).
 - **instruction**: holds `CLAUDE.md`/`AGENTS.md` to the prompt-audit lint rules and size caps.
@@ -45,7 +45,7 @@ That runs `compileall -q app src tests`, `pytest -q`, and these ratchets, each a
 - **runtime-write**: a snapshot/probe pair bracketing `pytest`, plus its own stage, fails when a write target resolves under a code folder instead of the runtime-data root.
 - **usage-track**: fails on a web control with no constant tracking id, a `<dialog>` with no `data-track-view`, a built id, or an unwired usage log.
 - **ux-surface**: fails on a surface root (`<dialog>`, a `dialog`/`menu`/`tabpanel` role, a `popover`) with no constant `data-surface` id, an id with no entry in `docs/ux-surfaces.yaml`, an entry no element carries, one id on two surfaces, a link to an id with no entry, or a `docs/ux-surface-map.md` not regenerated from the map.
-- **request-budget**: fails when a file's count for a request-budget rule rises above `.request-budget-ratchet-baseline.json`: a fixed-rate browser poll, a poll under 2 s, an undeclared fast or subprocess-spawning server loop, a use of the default thread pool, or a server without the request-timing middleware. Its baseline holds the waste that exists today; lower it with `--update-baseline`, never raise it, and declare a loop that must run while nobody is viewing in `.fleet.toml` `[[request_budget.loops]]` with its reason.
+- **request-budget**: fails when a file's count for a request-budget rule rises above `.request-budget-ratchet-baseline.json`: a fixed-rate browser poll, a poll under 2 s, an undeclared fast or subprocess-spawning server loop, a use of the default thread pool, or a server without the request-timing middleware. Its baseline is empty, so a new hit is fixed, never baselined: blocking work goes on a named pool in `src/pools.py`, browser polls on the vendored `startPoll`, and a loop that must run while nobody is viewing is declared in `.fleet.toml` `[[request_budget.loops]]` with its reason.
 
 There is no CI — the gate is local. For changes with a runtime surface, additionally hit `/api/summary?period=all` on a running instance and load `/` in a browser (both themes) before calling it done.
 

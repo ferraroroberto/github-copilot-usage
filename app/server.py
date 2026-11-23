@@ -39,6 +39,7 @@ from src import (
     request_explorer,
     tailnet,
 )
+from src.request_timing import RequestTimingMiddleware
 from src.self_restart import TRAY_RESTART, RestartTarget, restart_router
 from src.shell_etag import shell_response
 from src.static_versioning import CachingStaticFiles, StaticVersion
@@ -55,6 +56,8 @@ STATIC_VERSION = StaticVersion(STATIC_DIR)
 app = FastAPI(title="github-copilot-usage", version=VERSION, docs_url="/api/docs")
 # A phone on a slow link pays for every byte of the shell, the module graph and the JSON.
 app.add_middleware(GZipMiddleware, minimum_size=500)
+# Added last so it is outermost: Server-Timing then covers the compression too.
+app.add_middleware(RequestTimingMiddleware)
 
 def _requires(block_id: str):
     """A route dependency that refuses the call while a feature block is switched off."""

@@ -18,7 +18,7 @@ from typing import Callable, List, Optional, Tuple
 
 import uvicorn
 
-from src import tailnet
+from src import pools, tailnet
 
 _log = logging.getLogger(__name__)
 
@@ -150,7 +150,7 @@ class Listeners:
             await self._sleep_or_stop(_RETRY_SECS)
             if self._stopping:
                 return
-            plan = await loop.run_in_executor(None, tailnet.resolve)
+            plan = await loop.run_in_executor(pools.TAILNET, tailnet.resolve)
             if plan.live:
                 self.plan = plan
                 tailnet.set_serving(plan, self.port)
@@ -201,7 +201,7 @@ class Listeners:
                                              return_when=asyncio.FIRST_COMPLETED)
                 if done:
                     return False
-                problem = await asyncio.get_running_loop().run_in_executor(None, tailnet.renew, self.plan)
+                problem = await asyncio.get_running_loop().run_in_executor(pools.TAILNET, tailnet.renew, self.plan)
                 if problem:
                     _log.warning("⚠️ tailnet access: certificate renewal failed, keeping the current one: %s", problem)
                 elif tailnet.cert_digest(self.plan) != digest:

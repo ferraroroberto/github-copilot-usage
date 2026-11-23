@@ -17,6 +17,7 @@ import { initNavTabs } from './_vendored/nav/nav-tabs.js';
 import { renderHeadStatus } from './_vendored/home-head/home-head.js';
 import { showToast as showFleetToast } from './_vendored/toast/toast.js';
 import { createRowMenu } from './_vendored/row-menu/row-menu.js';
+import { startPoll } from './_vendored/poll/poll.js';
 import { actionRowHtml, esc, splitMeta } from './rows.js';
 import { initRequests } from './requests.js';
 import { commitUrl, composeUrl, readDash } from './url-state.js';
@@ -237,13 +238,15 @@ async function refresh() {
   fetchBilling().catch(() => {});
 }
 
-// Hidden tabs have their timers throttled or suspended, so the figures can be older than one poll
-// on return. A tab that comes back to a stale view loads once; a load already running is that load.
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible') return;
-  if (loadsInFlight > 0 || Date.now() - lastLoadedAt <= POLL_MS) return;
-  refresh();
-});
+// The poll helper arms nothing while the tab is hidden and ticks once on the return, so the figures
+// can be older than one poll on return. A tick that finds the view fresh, or a load already running,
+// has nothing to load; a stale view loads once. The tolerance keeps a tick that fires a hair early
+// (timer jitter) from being skipped for a whole interval.
+const TICK_JITTER_MS = 1_000;
+function refreshWhenStale() {
+  if (loadsInFlight > 0 || Date.now() - lastLoadedAt < POLL_MS - TICK_JITTER_MS) return undefined;
+  return refresh();
+}
 
 let _billingFetched = 0;
 async function fetchBilling() {
@@ -892,5 +895,5 @@ jsonApi('/api/config').then((cfg) => {
   if (state.summary) render();
 }).catch(() => {});
 
-refresh();
-setInterval(refresh, POLL_MS);
+// Armed once the first load has settled, so the first tick is a full interval after it.
+refresh().finally(() => startPoll(refreshWhenStale, POLL_MS));

@@ -5,6 +5,8 @@
  * paints the row's value and the footnote under the group, and polls while a run is going.
  */
 
+import { startPoll } from './_vendored/poll/poll.js';
+
 const POLL_MS = 1500;
 
 const name = (c) => c.id.replace(/_/g, ' ');
@@ -49,7 +51,9 @@ export function healthStatus(state, now = Date.now()) {
 
 export function initHealthCheck({ $, jsonApi, showToast }) {
   const row = $('health-check');
-  let timer = null;
+  // Under the 2 s floor, so it runs only while a check is: no tick is armed once `running` is false.
+  let running = false;
+  const poll = startPoll(() => load(), POLL_MS, { activeWhile: () => running });
 
   function paint(state) {
     const { value, tone, note } = healthStatus(state);
@@ -60,11 +64,8 @@ export function initHealthCheck({ $, jsonApi, showToast }) {
     row.disabled = state.running;
     if (state.running) row.setAttribute('aria-busy', 'true');
     else row.removeAttribute('aria-busy');
-    if (state.running && timer === null) timer = setInterval(load, POLL_MS);
-    if (!state.running && timer !== null) {
-      clearInterval(timer);
-      timer = null;
-    }
+    running = state.running;
+    if (running) poll.kick();
   }
 
   async function load() {

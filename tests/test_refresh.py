@@ -208,3 +208,15 @@ def test_a_failing_refresh_route_returns_the_reason(monkeypatch):
     monkeypatch.setattr(aggregate, "gather_records", boom)
     body = TestClient(app).post("/api/refresh").json()
     assert body["ok"] is False and "unreadable" in body["reason"]
+
+
+def test_refresh_work_runs_on_the_named_pool_and_the_request_reports_it(monkeypatch, rec):
+    from app.server import app
+
+    monkeypatch.setattr(aggregate, "gather_records", lambda: ([rec(0)], [{"ide": "Code"}]))
+    client = TestClient(app)
+
+    forced = client.post("/api/refresh", params={"force": "true"})
+    assert forced.status_code == 200
+    # Server-Timing names the pool the request waited on, so a slow rebuild is told apart from a queued one.
+    assert 'desc="heavy-read"' in forced.headers["server-timing"]

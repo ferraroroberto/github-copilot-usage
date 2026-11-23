@@ -35,6 +35,7 @@ github-copilot-usage/
 │   ├── static_versioning.py   # content-hash cache busting: the ?v= stamp, CachingStaticFiles and the stamped index.html
 │   ├── self_restart.py        # vendored byte-for-byte; the build readout's restart: `/api/restart` router and the detached runner of this repo's `tray.bat --restart`
 │   ├── shell_etag.py          # vendored byte-for-byte; the shell's weak ETag and the 200-or-304 answer for a conditional GET
+│   ├── request_timing.py      # vendored byte-for-byte; the request-timing middleware the request-budget ratchet requires
 │   ├── billing.py             # optional GitHub billing API client (needs a token; absent → visible reason)
 │   ├── billing_state.py       # the billing card's declared state and its one derive function (docs/billing-state.md)
 │   ├── pace_alert.py          # optional Telegram message once per cycle when the projection reaches the allowance
@@ -56,6 +57,7 @@ github-copilot-usage/
 │   ├── runtime_write_ratchet.py, runtime_write_resolve.py   # vendored byte-for-byte; fails on a write target resolving under a code folder instead of the runtime-data root
 │   ├── usage_track_ratchet.py, usage_track_scan.py          # vendored byte-for-byte; fails on a web control with no tracking id or an unwired usage log
 │   ├── ux_surface_ratchet.py, ux_surface_map.py             # vendored byte-for-byte; fails a surface with no `data-surface` id and regenerates docs/ux-surface-map.md
+│   ├── request_budget_ratchet.py, request_budget_scan.py    # vendored byte-for-byte; fails on new fixed-rate polls, short sleeps, undeclared server loops, default-pool use and a missing timing middleware
 │   ├── box_lock_gate.ps1      # vendored byte-for-byte; the shared load lock the gate enters before running any stage
 │   ├── gen_icons.py           # regenerates the PWA icon family under app/webapp/static/
 │   ├── tray_lifecycle.ps1     # detect / stop / start / verify the tray, called by `tray.bat`

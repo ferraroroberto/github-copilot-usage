@@ -71,7 +71,7 @@ poll = { src = "app/webapp/static/_vendored/poll", sha = "2e2a4cca9d3180980db6f8
 # size, never excluded. Exit 3 (git unusable, an unparseable file) fails the gate.
 self_restart = { src = "src/self_restart.py", sha = "48602060fffdacbcdcdde66b9886c6471d835ff3", dest = "src/self_restart.py" }
 build_info = { src = "src/build_info.py", sha = "1c1007fcd0b65b54342779250cb66975d57482e8", dest = "src/build_info.py" }
-restart_check = { src = "src/restart_check.py", sha = "48602060fffdacbcdcdde66b9886c6471d835ff3", dest = "src/restart_check.py" }
+restart_check = { src = "src/restart_check.py", sha = "f8c2f66eae7a69f3c834386579702ed5b747d7af", dest = "src/restart_check.py" }
 [structure_ratchet]
 enabled  = true
 baseline = ".structure-ratchet-baseline.json"

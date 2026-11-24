@@ -30,8 +30,8 @@ dead_code_ratchet = { src = "scripts/dead_code_ratchet.py", sha = "4d0b0ff30e23e
 static_ratchet = { src = "scripts/static_ratchet.py", sha = "fe8cc1bdbd038ed65947186248df13072eceb25a", dest = "scripts/static_ratchet.py" }
 docs_ratchet = { src = "scripts/docs_ratchet.py", sha = "78635aa74a92b9622326cb53992e0634fbaf6246", dest = "scripts/docs_ratchet.py" }
 comment_ratchet = { src = "scripts/comment_ratchet.py", sha = "1ed07ddb5002d4513adf0ce45f1bfaf68f3acc32", dest = "scripts/comment_ratchet.py" }
-conventions_ratchet = { src = "scripts/conventions_ratchet.py", sha = "ce64203b017ba636c82737ee7f768c9ef6f422cd", dest = "scripts/conventions_ratchet.py" }
-conventions_readers = { src = "scripts/conventions_readers.py", sha = "7577aece617ad366e7df8ef522d511184b445144", dest = "scripts/conventions_readers.py" }
+conventions_ratchet = { src = "scripts/conventions_ratchet.py", sha = "9f5d6b727d457616ce80e18db9f5a048ab53c3be", dest = "scripts/conventions_ratchet.py" }
+conventions_readers = { src = "scripts/conventions_readers.py", sha = "9f5d6b727d457616ce80e18db9f5a048ab53c3be", dest = "scripts/conventions_readers.py" }
 conventions_state = { src = "scripts/conventions_state.py", sha = "4d0b0ff30e23eb95c73c4b0b1517ec6a43d3a836", dest = "scripts/conventions_state.py" }
 paced_browser = { src = "tests/e2e/_paced_browser.py", sha = "ce64203b017ba636c82737ee7f768c9ef6f422cd", dest = "tests/e2e/_paced_browser.py" }
 runtime_write_ratchet = { src = "scripts/runtime_write_ratchet.py", sha = "4a06ca84fc9c5005d4be7fa505c9d0e7c0472dba", dest = "scripts/runtime_write_ratchet.py" }
@@ -158,7 +158,7 @@ history_phrases = true
 [conventions_ratchet]
 enabled  = true
 baseline = ".conventions-ratchet-baseline.json"
-rules    = ["no-window", "logging-not-print", "no-drive-path", "must-use", "state-literal", "state-set-repeat", "state-write", "subprocess-timeout", "browser-per-iteration"]
+rules    = ["no-window", "logging-not-print", "no-drive-path", "must-use", "state-literal", "state-set-repeat", "state-write", "subprocess-timeout", "browser-per-iteration", "path-sep"]
 
 # Static files go through the cache-busting mount, never a bare StaticFiles.
 [[conventions_ratchet.must_use]]

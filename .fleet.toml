@@ -59,6 +59,7 @@ row-menu = { src = "app/webapp/static/_vendored/row-menu", sha = "a04abc7b3af872
 fullscreen = { src = "app/webapp/static/_vendored/fullscreen", sha = "e14844faa70acbd89dc43011c5bc98025052c2c3", dest = "app/webapp/static/_vendored/fullscreen" }
 request_budget_ratchet = { src = "scripts/request_budget_ratchet.py", sha = "2e2a4cca9d3180980db6f8cd7f03a6f12737b7db", dest = "scripts/request_budget_ratchet.py" }
 request_budget_scan = { src = "scripts/request_budget_scan.py", sha = "2e2a4cca9d3180980db6f8cd7f03a6f12737b7db", dest = "scripts/request_budget_scan.py" }
+request_budget_probe = { src = "tests/e2e/budget/_request_budget.py", sha = "2a65b20ee0b426fa8246bfc7ac3dd28e019a39b3", dest = "tests/e2e/budget/_request_budget.py" }
 request_timing = { src = "src/request_timing.py", sha = "2e2a4cca9d3180980db6f8cd7f03a6f12737b7db", dest = "src/request_timing.py" }
 poll = { src = "app/webapp/static/_vendored/poll", sha = "2e2a4cca9d3180980db6f8cd7f03a6f12737b7db", dest = "app/webapp/static/_vendored/poll" }
 
@@ -253,6 +254,12 @@ reason = ".model-dot is a decorative 10px colour swatch in a table cell, not a p
 [request_budget_ratchet]
 enabled  = true
 baseline = ".request-budget-ratchet-baseline.json"
+
+# Measured on the main page: two 30 s refresh polls of three reads each, the one-time boot reads that
+# can land in the window (config, version, billing, tailnet, health check, restart) and the usage
+# log's 10 s flush make 13 at most; a quieter minute reads 4.
+[request_budget]
+visible_requests_per_minute = 13
 
 # The pace alert is the one loop that must run while no page is open: it messages the owner when the
 # cycle projection reaches the allowance, which only matters when nobody is looking at the dashboard.

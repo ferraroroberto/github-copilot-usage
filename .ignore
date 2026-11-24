@@ -51,4 +51,5 @@
 /src/shell_etag.py
 /src/usage_log.py
 /tests/e2e/_paced_browser.py
+/tests/e2e/budget/_request_budget.py
 # END vendored-copies

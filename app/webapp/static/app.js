@@ -23,6 +23,7 @@ import { initRequests } from './requests.js';
 import { commitUrl, composeUrl, readDash } from './url-state.js';
 import { initRequestList, renderRequestList } from './request-list.js';
 import { flagChips, initInsights, refreshInsights, renderDiagnostics } from './insights.js';
+import { initBilling } from './billing.js';
 import { initFeatures } from './features.js';
 import { initHealthCheck } from './health-check.js';
 import { initTailnet } from './tailnet.js';
@@ -49,10 +50,6 @@ function syncUsageLog() {
 }
 
 const POLL_MS = 30_000;
-// Billing changes server-side at most every 5 min (src/billing.py caches today),
-// so the 30 s refresh need not re-ask each time; 60 s is a stated guess, not a
-// measurement, and is deliberately shorter than that cache.
-const BILLING_POLL_MS = 60_000;
 const SESSIONS_PREVIEW = 12;
 
 const state = {
@@ -234,8 +231,20 @@ async function refresh() {
   } finally {
     loadsInFlight -= 1;
   }
+  refreshSideCards();
+}
+
+// The insights and billing cards load after the main data. A load that lands while the tab is hidden
+// (a tick that began just before the hide) must not send them: the return tick sends them instead.
+let sideCardsPending = false;
+function refreshSideCards() {
+  if (document.hidden) {
+    sideCardsPending = true;
+    return;
+  }
+  sideCardsPending = false;
   refreshInsights();
-  fetchBilling().catch(() => {});
+  billing.fetch().catch(() => {});
 }
 
 // The poll helper arms nothing while the tab is hidden and ticks once on the return, so the figures
@@ -244,28 +253,12 @@ async function refresh() {
 // (timer jitter) from being skipped for a whole interval.
 const TICK_JITTER_MS = 1_000;
 function refreshWhenStale() {
-  if (loadsInFlight > 0 || Date.now() - lastLoadedAt < POLL_MS - TICK_JITTER_MS) return undefined;
-  return refresh();
-}
-
-let _billingFetched = 0;
-async function fetchBilling() {
-  if (!features.isOn('billing_card')) return;
-  if (Date.now() - _billingFetched < BILLING_POLL_MS) return;
-  _billingFetched = Date.now();
-  let body;
-  try {
-    body = await jsonApi('/api/billing');
-  } catch (exc) {
-    // The card could not tell: say so, and let the next 30 s refresh retry.
-    _billingFetched = 0;
-    $('billing-wrap').hidden = true;
-    $('billing-asof').textContent = '';
-    setNote($('billing-note'), 'Could not load billing data from the dashboard server.');
-    console.error(exc);
-    return;
+  if (loadsInFlight > 0) return undefined;
+  if (Date.now() - lastLoadedAt < POLL_MS - TICK_JITTER_MS) {
+    if (sideCardsPending) refreshSideCards();
+    return undefined;
   }
-  renderBilling(body);
+  return refresh();
 }
 
 // ---------------------------------------------------------------------------
@@ -537,40 +530,6 @@ async function openSession(sid) {
 initRequestList($('sd-requests'));
 $('sd-close').addEventListener('click', () => $('session-dialog').close());
 
-// ---- billing ----
-
-function renderBilling(body) {
-  const rows = body.daily || [];
-  const missing = (body.failed_days || []).length;
-  const tbody = $('billing-table').querySelector('tbody');
-  $('billing-asof').textContent = body.as_of ? 'as of ' + fmtTime(body.as_of) : '';
-  // The server decides the mode (src/billing_state.py); this only presents it. A card that
-  // is not ready or partial shows the server's reason, never the empty-data sentence.
-  const missingNote = missing
-    ? ' ' + missing + (missing === 1 ? ' day' : ' days') + ' could not be fetched.'
-    : '';
-  if (!rows.length) {
-    $('billing-wrap').hidden = true;
-    setNote($('billing-note'), body.available
-      ? 'No spend recorded in this window.' + missingNote
-      : (body.reason || 'Not available.'));
-    return;
-  }
-  $('billing-wrap').hidden = false;
-  const total = rows.reduce((acc, r) => acc + (Number(r.credits) || 0), 0);
-  const totalUsd = rows.reduce((acc, r) => acc + (Number(r.usd) || 0), 0);
-  setNote($('billing-note'),
-    'Account-wide official spend (all devices), last 14 days: '
-    + fmtCredits(total) + ' credits ≈ ' + fmtUsd(totalUsd) + '.' + missingNote);
-  tbody.innerHTML = rows.map((r) => `
-    <tr>
-      <td>${esc(r.date)}</td>
-      <td class="td-trunc">${esc(r.model)}</td>
-      <td class="num">${fmtCredits(r.credits)}</td>
-      <td class="num">${fmtUsd(r.usd)}</td>
-    </tr>`).join('');
-}
-
 // ---- sources ----
 
 function renderSources(sources) {
@@ -834,7 +793,10 @@ const features = initFeatures({
   jsonApi,
   showToast: toast,
   // The data and the billing card follow the switches, so a toggle re-reads them.
-  afterToggle: () => { _billingFetched = 0; refresh(); },
+  afterToggle: () => { billing.reset(); refresh(); },
+});
+const billing = initBilling({
+  $, jsonApi, setNote, fmtTime, fmtCredits, fmtUsd, isOn: () => features.isOn('billing_card'),
 });
 features.onChange(syncUsageLog);
 await features.load();

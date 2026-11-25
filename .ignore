@@ -21,6 +21,7 @@
 /app/webapp/static/_vendored/toast
 /app/webapp/static/_vendored/usage-log
 /scripts/box_lock_gate.ps1
+/scripts/classify_e2e.py
 /scripts/comment_ratchet.py
 /scripts/conventions_ratchet.py
 /scripts/conventions_readers.py
@@ -47,6 +48,7 @@
 /scripts/ux_surface_ratchet.py
 /src/build_info.py
 /src/health_routes.py
+/src/installer.py
 /src/request_timing.py
 /src/restart_check.py
 /src/runtime_data.py

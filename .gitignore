@@ -11,3 +11,6 @@ config.json.bak-*
 .launcher-tmp/
 # UI proof pages (local only, never committed)
 .proof/
+
+# Top-up backups of a settings file hold its values (src/installer.py)
+*.json.bak-*

@@ -170,6 +170,8 @@ GET /api/usage/time      foreground minutes: ?days=7&by=day|device|view
 
 Verification gate (also needs Node, for `jscpd`): `powershell -File scripts/verify-before-ship.ps1`. Its last stdout line is `GATE-RESULT: PASS` or `GATE-RESULT: FAIL`; don't pipe it (a pipe hides the exit code), and treat a run without that line as not passed.
 
+The gate's WebKit request-budget stage prints `[NOT RUN]` here, and the gate still passes. The browser tests drive raw `playwright.sync_api` fixtures (`tests/conftest.py`), so this pytest has no `--browser` option for the stage to point at WebKit; it reports that as its own state, never as a pass. Moving to pytest-playwright would make the stage run, and is a separate decision.
+
 Layout: `app/` (FastAPI server, optional tray, the vanilla-JS dashboard in `app/webapp/static/`) · `src/` (discovery, the jsonl replay parser, aggregation, optional billing client) · `tests/` — see [docs/layout.md](docs/layout.md).
 
 [UX surface map](docs/ux-surface-map.md): every tab, card, sheet, dialog, menu, state and gesture in one checklist with a diagram per area, generated from `docs/ux-surfaces.yaml`.

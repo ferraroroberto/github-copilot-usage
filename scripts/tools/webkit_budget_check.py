@@ -58,6 +58,8 @@ PROBE_HELPER = "_request_budget.py"
 RUN_TIMEOUT_S = 900
 # `pytest --help` only imports the plugins and conftests, so it ends in seconds; a hang is "cannot say".
 PROBE_TIMEOUT_S = 120
+# The probe's output is captured and never shown, so its child gets no console window of its own.
+NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 # `--browser` exactly: pytest-playwright also registers `--browser-channel`, which must not count.
 _BROWSER_OPTION = re.compile(r"(?<![\w-])--browser(?![\w-])")
 _MARKER = "measure_request_budget("
@@ -127,10 +129,9 @@ def has_browser_option(root: Path, python: str, targets: list[str]) -> bool | No
     The targets ride along so a `--browser` that a conftest next to them registers is listed too.
     """
     try:
-        # no-window-exempt: a short foreground probe whose output is captured, never shown
         result = subprocess.run(  # noqa: S603
-            [python, "-m", "pytest", *targets, "--help"],
-            cwd=root, check=False, capture_output=True, text=True, timeout=PROBE_TIMEOUT_S)
+            [python, "-m", "pytest", *targets, "--help"], cwd=root, check=False, capture_output=True,
+            text=True, timeout=PROBE_TIMEOUT_S, creationflags=NO_WINDOW)
     except (subprocess.TimeoutExpired, OSError) as exc:
         print(f"⚠️ could not ask pytest for its options: {exc}", file=sys.stderr)
         return None
@@ -195,6 +196,10 @@ def run(root: Path, python: str) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Status lines carry emoji; a cp1252 pipe (a gate capturing without PYTHONUTF8) would crash instead of giving a verdict.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0] if __doc__ else None)
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="the repo root (default: the current directory)")
     args = parser.parse_args(argv)

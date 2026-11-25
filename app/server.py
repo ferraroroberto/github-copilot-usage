@@ -39,6 +39,7 @@ from src import (
     request_explorer,
     tailnet,
 )
+from src.health_routes import health_router
 from src.request_timing import RequestTimingMiddleware
 from src.self_restart import TRAY_RESTART, RestartTarget, restart_router
 from src.shell_etag import shell_response
@@ -151,9 +152,11 @@ async def health() -> dict:
     return {"status": "ok", "version": VERSION, "git_sha": build_info.GIT_SHA}
 
 
-@app.get("/api/version")
-async def api_version() -> dict:
-    return {"version": VERSION, "git_sha": build_info.GIT_SHA, "built_at": build_info.BUILT_AT}
+app.include_router(health_router(
+    service="github-copilot-usage",
+    identity={"git_sha": build_info.GIT_SHA, "built_at": build_info.BUILT_AT},
+    extra={"version": VERSION},
+))
 
 
 @app.get("/api/summary")

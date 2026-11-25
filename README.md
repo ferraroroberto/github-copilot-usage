@@ -130,6 +130,7 @@ The dashboard is a thin client over a JSON API you can script against (interacti
 
 ```
 GET /health
+GET /healthz            liveness for the tray watchdog and launcher (vendored src/health_routes.py)
 GET /api/version        build identity (version, git_sha, built_at) behind the page footer
 GET /api/restart        the restart targets and the last run; POST {target} restarts the app from the footer
 GET /api/summary?period=today|week|month|cycle|all|range:2026-11-03..2026-11-09   a range focuses every period-taking endpoint on those days

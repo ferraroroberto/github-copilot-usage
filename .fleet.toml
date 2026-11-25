@@ -21,6 +21,7 @@ shell_etag = { src = "src/shell_etag.py", sha = "a94dbf39864c4dd19bcd07a516a0446
 usage_track_ratchet = { src = "scripts/usage_track_ratchet.py", sha = "732c304a4735d4e654f5acb3b6f53b7db67d47ef", dest = "scripts/usage_track_ratchet.py" }
 usage_track_scan = { src = "scripts/usage_track_scan.py", sha = "adf0375e08a186330196b8d6be7b8b51078a73ae", dest = "scripts/usage_track_scan.py" }
 installer = { src = "src/installer.py", sha = "c23c5bf575a3f375a4ddbfb99a31763a80c6bee5", dest = "src/installer.py" }
+classify_e2e = { src = "scripts/classify_e2e.py", sha = "3f15581f2188895a27f5a32083f7f7cdb7e93648", dest = "scripts/classify_e2e.py" }
 structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/structure_ratchet.py" }
 structure_layout = { src = "scripts/structure_layout.py", sha = "adf0375e08a186330196b8d6be7b8b51078a73ae", dest = "scripts/structure_layout.py" }
 structure_band = { src = "scripts/structure_band.py", sha = "3b708fd3c54ab7b93b08d489406c405762c83c41", dest = "scripts/structure_band.py" }
@@ -230,6 +231,15 @@ derive = "derive"
 # request explorer's filters, history and pagination, the session sheet, the stale-tab refresh).
 [e2e]
 test_budget = 20
+
+# Routing rules for scripts/classify_e2e.py, first match wins; a path no rule matches runs the full suite.
+[[e2e.rule]]
+tier   = "full"
+prefix = "app/"
+
+[[e2e.rule]]              # prose outside the app is never rendered by it
+tier       = "none"
+extensions = ["md"]
 
 # [[design.accepted]] -- a design_lint finding this repo has judged and keeps. The icon family
 # is committed and linked; this public repo generates it with the standalone Pillow-only

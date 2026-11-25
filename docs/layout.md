@@ -65,6 +65,7 @@ github-copilot-usage/
 │   ├── ux_surface_ratchet.py, ux_surface_map.py             # vendored byte-for-byte; fails a surface with no `data-surface` id and regenerates docs/ux-surface-map.md
 │   ├── request_budget_ratchet.py, request_budget_scan.py    # vendored byte-for-byte; fails on new fixed-rate polls, short sleeps, undeclared server loops, default-pool use and a missing timing middleware
 │   ├── box_lock_gate.ps1      # vendored byte-for-byte; the shared load lock the gate enters before running any stage
+│   ├── classify_e2e.py        # vendored byte-for-byte; maps a diff to an e2e tier from `.fleet.toml` `[e2e]` rules
 │   ├── gen_icons.py           # regenerates the PWA icon family under app/webapp/static/
 │   ├── tray_lifecycle.ps1     # detect / stop / start / verify the tray, called by `tray.bat`
 │   └── tray_match.ps1         # the command-line match it uses, blind to which spelling of the fleet root a process carries

@@ -9,7 +9,11 @@
       2. pytest            - the unit suite (fixtures only), bracketed by the runtime
                              write probe (scripts/runtime_write_ratchet.py --snapshot
                              before, --probe after): any untracked or ignored file the
-                             tests left under a code folder fails
+                             tests left under a code folder fails; then the request
+                             budget on webkit (scripts/tools/webkit_budget_check.py):
+                             this repo's browser tests use raw playwright.sync_api
+                             with no pytest --browser option, so it prints [NOT RUN]
+                             (exit 6), never a pass; exit 3 is a failure
       3. structure ratchet - scripts/structure_ratchet.py: file size, function
                              length, flat directories, the src -> app layer
                              contract and the root layout against the baseline;
@@ -121,6 +125,26 @@ Invoke-Stage "byte-compile"      { & $py -m compileall -q app src tests }
 $runtimeSnapshot = Join-Path ([IO.Path]::GetTempPath()) "runtime-write-snapshot-$PID.json"
 Invoke-Stage "runtime write probe (snapshot)" { & $py "scripts/runtime_write_ratchet.py" --snapshot $runtimeSnapshot }
 Invoke-Stage "pytest"            { & $py -m pytest -q }
+
+# The nightly engine is WebKit; this stage reruns the request-budget tests on it. 0 passed;
+# 4 (WebKit not installed), 5 (no budget test) and 6 (pytest has no --browser option) are
+# "not run", printed as such and never as a pass; anything else, 3 (not confirmed) included, fails.
+Write-Host ""
+Write-Host ">> request budget on webkit" -ForegroundColor Cyan
+& $py "scripts/tools/webkit_budget_check.py"
+$webkitBudget = $LASTEXITCODE
+if ($webkitBudget -eq 0) {
+    Write-Host "[PASS] request budget on webkit" -ForegroundColor Green
+} elseif ($webkitBudget -eq 4) {
+    Write-Host "[NOT RUN] request budget on webkit - WebKit is not installed here, so the nightly's engine was not checked" -ForegroundColor Yellow
+} elseif ($webkitBudget -eq 5) {
+    Write-Host "[NOT RUN] request budget on webkit - no request-budget test in this repo" -ForegroundColor Yellow
+} elseif ($webkitBudget -eq 6) {
+    Write-Host "[NOT RUN] request budget on webkit - this repo's pytest has no --browser option, so the nightly's engine was not checked" -ForegroundColor Yellow
+} else {
+    Write-Host "[FAIL] request budget on webkit (exit $webkitBudget)" -ForegroundColor Red
+    Complete-Gate 1
+}
 Invoke-Stage "runtime write probe" { & $py "scripts/runtime_write_ratchet.py" --probe $runtimeSnapshot }
 Invoke-Stage "structure ratchet" { & $py "scripts/structure_ratchet.py" }
 Invoke-Stage "instruction ratchet" { & $py "scripts/instruction_ratchet.py" }

@@ -7,11 +7,14 @@ changing."""
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 from pathlib import Path
 
 from src import installer
 
 ROOT = Path(__file__).resolve().parent.parent
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 def test_every_declared_pair_has_a_tracked_sample_and_an_ignored_target() -> None:
@@ -26,12 +29,15 @@ def test_every_declared_pair_has_a_tracked_sample_and_an_ignored_target() -> Non
 
 
 def test_existing_config_gains_only_missing_keys(tmp_path: Path) -> None:
+    # A git checkout carrying this repo's .gitignore: the installer tops up only when git ignores the backup.
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, timeout=60, creationflags=NO_WINDOW)
+    shutil.copyfile(ROOT / ".gitignore", tmp_path / ".gitignore")
     sample = tmp_path / "config.example.json"
     sample.write_text((ROOT / "config.example.json").read_text(encoding="utf-8"), encoding="utf-8")
     target = tmp_path / "config.json"
     target.write_text(json.dumps({"port": 9999, "features": {"billing": False}}), encoding="utf-8")
     report = installer.Report(what_if=False)
-    installer.ensure_config(tmp_path, "config.example.json", "config.json", True, report, "stamp")
+    installer.ensure_config(tmp_path, "config.example.json", "config.json", True, report, "stamp", subprocess.run)
     merged = json.loads(target.read_text(encoding="utf-8"))
     assert merged["port"] == 9999 and merged["features"] == {"billing": False}
     assert "monthly_credits" in merged and "session_names" in merged

@@ -16,6 +16,7 @@ github-copilot-usage/
 ├── src/                       # logic layer (never imports `app`)
 │   ├── config.py              # config.json + env loading, thread-safe settings
 │   ├── features.py            # the feature blocks switched per machine: their ids, what each needs here, the switch
+│   ├── installer.py           # vendored byte-for-byte; what `setup.bat` runs: venv, requirements, configs topped up after a backup, an ok/missing/unknown checklist, all declared in `.fleet.toml` `[install]`
 │   ├── tailnet.py             # the opt-in Tailscale bind: reads the machine's tailnet address and name through the tailscale command, fetches the certificate, says why it cannot
 │   ├── discovery.py           # finds Copilot's session-log folders per editor variant and OS
 │   ├── vscode_parser.py       # read-only, mtime-cached parser for VS Code chat session logs
@@ -64,13 +65,14 @@ github-copilot-usage/
 │   ├── ux_surface_ratchet.py, ux_surface_map.py             # vendored byte-for-byte; fails a surface with no `data-surface` id and regenerates docs/ux-surface-map.md
 │   ├── request_budget_ratchet.py, request_budget_scan.py    # vendored byte-for-byte; fails on new fixed-rate polls, short sleeps, undeclared server loops, default-pool use and a missing timing middleware
 │   ├── box_lock_gate.ps1      # vendored byte-for-byte; the shared load lock the gate enters before running any stage
+│   ├── classify_e2e.py        # vendored byte-for-byte; maps a diff to an e2e tier from `.fleet.toml` `[e2e]` rules
 │   ├── gen_icons.py           # regenerates the PWA icon family under app/webapp/static/
 │   ├── tray_lifecycle.ps1     # detect / stop / start / verify the tray, called by `tray.bat`
 │   └── tray_match.ps1         # the command-line match it uses, blind to which spelling of the fleet root a process carries
-└── docs/                      # durable reference (this file; setup-and-migration.md for a new machine and what to copy)
+└── docs/                      # durable reference (this file; install.md for a new machine and what to copy)
 ```
 
-Root files: `tray.bat` (resident Windows tray, self-bootstrapping), `requirements*.txt`, `config.example.json`, `.env.example`, `.fleet.toml` (shape and vendored manifest), `.structure-ratchet-baseline.json`.
+Root files: `setup.bat` (runs the vendored `src/installer.py`: venv, requirements, configs, checklist), `tray.bat` (resident Windows tray, self-bootstrapping), `requirements*.txt`, `config.example.json`, `.env.example`, `.fleet.toml` (shape and vendored manifest), `.structure-ratchet-baseline.json`.
 
 ## Where new code goes
 

@@ -21,7 +21,7 @@ $VenvDir = Join-Path $RepoDir ".venv"
 $Pythonw = Join-Path $VenvDir "Scripts\pythonw.exe"
 
 if (-not (Test-Path $Pythonw)) {
-    Write-Output "[error] $Pythonw not found - run tray.bat (or start.bat) to bootstrap first."
+    Write-Output "[error] $Pythonw not found - run tray.bat (or scripts\start.bat) to bootstrap first."
     exit 1
 }
 

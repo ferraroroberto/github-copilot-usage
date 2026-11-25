@@ -13,7 +13,7 @@ Requires Python 3.9+ (the local usage log below needs 3.11+ and switches itself 
 ```
 git clone https://github.com/ferraroroberto/github-copilot-usage.git
 cd github-copilot-usage
-start.bat        # Windows
+scripts\start.bat # Windows
 bash scripts/start.sh   # macOS / Linux
 ```
 

@@ -7,7 +7,7 @@ REM  and opens it in your browser. Re-run any time; setup steps are skipped
 REM  when already done.
 REM ============================================================================
 setlocal
-set "SCRIPT_DIR=%~dp0"
+for %%I in ("%~dp0..") do set "SCRIPT_DIR=%%~fI\"
 cd /d "%SCRIPT_DIR%"
 
 if not exist ".venv\Scripts\python.exe" (

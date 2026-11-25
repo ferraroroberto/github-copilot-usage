@@ -49,6 +49,7 @@ github-copilot-usage/
 │
 ├── tests/                     # pytest suite, fixtures only — no real logs or credentials; test_python_floor.py holds the 3.9 promise; e2e/ drives the dashboard in a phone-sized browser when Playwright is installed, through one shared Chromium context and a keep-alive test server so a run leaves few TIME_WAIT sockets, and names a drained port pool as its own failure (conftest.py); e2e/budget/ runs the vendored runtime request check on the main page, a visible and a hidden minute on a fake clock against `[request_budget] visible_requests_per_minute` in `.fleet.toml`
 ├── scripts/
+│   ├── start.bat, start.sh    # foreground launch (Windows / macOS and Linux); start.bat resolves the repo root from its own folder
 │   ├── verify-before-ship.ps1 # the local gate; stage list and order are CLAUDE.md's "Verification gate" section, kept in sync with this script's own header comment
 │   ├── structure_ratchet.py, structure_layout.py, structure_band.py        # vendored byte-for-byte; see "Structure ratchet" below
 │   ├── instruction_ratchet.py, instruction_frontmatter.py, instruction_repeats.py # vendored byte-for-byte; holds the instruction files to the prompt-audit rules
@@ -69,7 +70,7 @@ github-copilot-usage/
 └── docs/                      # durable reference (this file; setup-and-migration.md for a new machine and what to copy)
 ```
 
-Root files: `start.bat` (foreground launch on Windows; `scripts/start.sh` is the macOS / Linux equivalent), `tray.bat` (resident Windows tray, self-bootstrapping), `requirements*.txt`, `config.example.json`, `.env.example`, `.fleet.toml` (shape and vendored manifest), `.structure-ratchet-baseline.json`.
+Root files: `tray.bat` (resident Windows tray, self-bootstrapping), `requirements*.txt`, `config.example.json`, `.env.example`, `.fleet.toml` (shape and vendored manifest), `.structure-ratchet-baseline.json`.
 
 ## Where new code goes
 

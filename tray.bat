@@ -7,7 +7,7 @@ REM    tray.bat            start the tray (no-op if it is already running)
 REM    tray.bat --restart  stop the running tray + server, start fresh
 REM
 REM  Self-bootstrapping: works directly on a fresh clone (creates .venv and
-REM  installs core + tray dependencies on first run — no start.bat needed).
+REM  installs core + tray dependencies on first run — no scripts\start.bat needed).
 REM  The detect -> kill -> start -> verify lifecycle lives in
 REM  scripts\tray_lifecycle.ps1, invoked with -File (inline -Command output
 REM  capture breaks under nested non-interactive callers). All process

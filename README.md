@@ -17,7 +17,7 @@ scripts\start.bat # Windows
 bash scripts/start.sh   # macOS / Linux
 ```
 
-That's it — the first run creates a virtual environment, installs three dependencies (fastapi, uvicorn, httpx), starts the server on `http://127.0.0.1:8377/` and opens the dashboard in your browser. Setting it up on another computer, or moving your config across: [docs/setup-and-migration.md](docs/setup-and-migration.md).
+That's it — the first run creates a virtual environment, installs three dependencies (fastapi, uvicorn, httpx), starts the server on `http://127.0.0.1:8377/` and opens the dashboard in your browser. On another Windows PC, run `setup.bat` after the clone (venv, configs and a checklist, never overwriting what the PC has set); updating or moving an existing install across: [docs/install.md](docs/install.md).
 
 ## What you get
 
@@ -178,7 +178,7 @@ Layout: `app/` (FastAPI server, optional tray, the vanilla-JS dashboard in `app/
 
 ## Open from your phone (Tailscale)
 
-Off by default: the server answers on `127.0.0.1` only. Turn on **Settings → Available features → Tailscale access** (or set `"tailnet_access": true`) and restart (`tray.bat --restart`); the server then also serves HTTPS on this machine's Tailscale address, on the same port, with the certificate from `tailscale cert`, and Settings shows the URL to open (the tray menu has an Open on private network item for the same address). It needs the `tailscale` command, a connected tailnet with MagicDNS and HTTPS Certificates enabled. If any of that is missing the server stays on loopback and Settings and the log say which. It never binds `0.0.0.0`, and anyone who can reach that address on your tailnet can use the dashboard and its settings. Details: [docs/setup-and-migration.md](docs/setup-and-migration.md).
+Off by default: the server answers on `127.0.0.1` only. Turn on **Settings → Available features → Tailscale access** (or set `"tailnet_access": true`) and restart (`tray.bat --restart`); the server then also serves HTTPS on this machine's Tailscale address, on the same port, with the certificate from `tailscale cert`, and Settings shows the URL to open (the tray menu has an Open on private network item for the same address). It needs the `tailscale` command, a connected tailnet with MagicDNS and HTTPS Certificates enabled. If any of that is missing the server stays on loopback and Settings and the log say which. It never binds `0.0.0.0`, and anyone who can reach that address on your tailnet can use the dashboard and its settings. Details: [docs/install.md](docs/install.md).
 
 ## Privacy
 

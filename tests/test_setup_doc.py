@@ -1,4 +1,4 @@
-"""docs/setup-and-migration.md names every file and setting the code reads or writes, so a new
+"""docs/install.md names every file and setting the code reads or writes, so a new
 config key, environment key or data file cannot land without its migration note.
 
 The data-file list is discovered from source (every module-level ``*_FILENAME = "..."`` constant
@@ -14,7 +14,7 @@ from pathlib import Path
 from src import config
 
 ROOT = Path(__file__).resolve().parent.parent
-DOC = (ROOT / "docs" / "setup-and-migration.md").read_text(encoding="utf-8")
+DOC = (ROOT / "docs" / "install.md").read_text(encoding="utf-8")
 
 
 def _data_filenames() -> dict:

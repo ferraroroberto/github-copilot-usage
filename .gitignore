@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 .env
 config.json
+config.json.bak-*
 .pytest_cache/
 *.log
 # Launcher scratch (ephemeral images/logs written by the tray launcher)

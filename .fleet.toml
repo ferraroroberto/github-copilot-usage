@@ -20,6 +20,7 @@ runtime_data = { src = "src/runtime_data.py", sha = "fe8cc1bdbd038ed65947186248d
 shell_etag = { src = "src/shell_etag.py", sha = "a94dbf39864c4dd19bcd07a516a04466010a9b8c", dest = "src/shell_etag.py" }
 usage_track_ratchet = { src = "scripts/usage_track_ratchet.py", sha = "732c304a4735d4e654f5acb3b6f53b7db67d47ef", dest = "scripts/usage_track_ratchet.py" }
 usage_track_scan = { src = "scripts/usage_track_scan.py", sha = "adf0375e08a186330196b8d6be7b8b51078a73ae", dest = "scripts/usage_track_scan.py" }
+installer = { src = "src/installer.py", sha = "c23c5bf575a3f375a4ddbfb99a31763a80c6bee5", dest = "src/installer.py" }
 structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/structure_ratchet.py" }
 structure_layout = { src = "scripts/structure_layout.py", sha = "adf0375e08a186330196b8d6be7b8b51078a73ae", dest = "scripts/structure_layout.py" }
 structure_band = { src = "scripts/structure_band.py", sha = "3b708fd3c54ab7b93b08d489406c405762c83c41", dest = "scripts/structure_band.py" }
@@ -279,3 +280,33 @@ path       = "app/listeners.py"
 function   = "Listeners._wait_for_renewal"
 interval_s = 86400
 why        = "renews the tailnet certificate before it expires, whether or not a page is open"
+
+# [install] -- what setup.bat (src/installer.py) does on a fresh clone or an existing PC.
+# Schema: project-scaffolding docs/installer.md. config.json is a settings file: created from
+# config.example.json when missing, and on an existing one only the keys it lacks are added, after a
+# backup. .env is the PC's own secrets and is created empty from .env.example, never rewritten. The
+# app has no config/ folder, so no sample is picked up by convention.
+[install]
+requirements = "requirements.txt"
+samples      = []
+settings     = ["config.json"]
+
+[[install.config]]
+sample = "config.example.json"
+target = "config.json"
+
+[[install.config]]
+sample = ".env.example"
+target = ".env"
+
+# No [install.startup]: the tray has no register command, so log-on start is a shortcut to tray.bat in shell:startup.
+
+[[install.check]]
+name    = "Copilot session logs"
+command = ["{python}", "-c", "import sys; from src import discovery; sys.exit(0 if discovery.discover_roots() or discovery.copilot_cli_dir() else 1)"]
+hint    = "use GitHub Copilot in VS Code or the Copilot CLI on this PC, or add another PC's workspaceStorage under Settings > Extra storage roots"
+
+[[install.check]]
+name  = "Tailscale CLI (optional, for phone access)"
+which = "tailscale"
+hint  = "only needed to open the dashboard from a phone: install Tailscale, then turn on Settings > Available features > Tailscale access"

@@ -229,8 +229,13 @@ derive = "derive"
 # 20 is the count after the same-flow tests were merged: each remaining test owns a surface no other
 # one drives (rename, start date, card fold, trend, tabs, refresh toast, four feature switches, the
 # request explorer's filters, history and pagination, the session sheet, the stale-tab refresh).
+# The 21st is the runtime request-budget check (tests/e2e/budget), the only test that counts the
+# page's requests over a visible and a hidden minute.
+# junit_xml holds the per-test seconds /e2e-audit reads. The gate overwrites it on each run; it sits
+# in pytest's own cache folder, git-ignored and outside every code folder.
 [e2e]
-test_budget = 20
+test_budget = 21
+junit_xml   = ".pytest_cache/e2e-junit.xml"
 
 # Routing rules for scripts/classify_e2e.py, first match wins; a path no rule matches runs the full suite.
 [[e2e.rule]]

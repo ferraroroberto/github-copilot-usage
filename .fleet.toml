@@ -77,6 +77,7 @@ build_info = { src = "src/build_info.py", sha = "1c1007fcd0b65b54342779250cb6697
 health_routes = { src = "src/health_routes.py", sha = "732c304a4735d4e654f5acb3b6f53b7db67d47ef", dest = "src/health_routes.py" }
 restart_check = { src = "src/restart_check.py", sha = "f8c2f66eae7a69f3c834386579702ed5b747d7af", dest = "src/restart_check.py" }
 ratchet_baseline = { src = "scripts/ratchet_baseline.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/ratchet_baseline.py" }
+ps_script = { src = "src/ps_script.py", sha = "2d786d295c9b8d545aaf35703889638096f251ad", dest = "src/ps_script.py" }
 
 [structure_ratchet]
 enabled  = true

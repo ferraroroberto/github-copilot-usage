@@ -1,11 +1,14 @@
 # tray_lifecycle.ps1 — detect / stop / start / verify the tray, in one place.
 #
-# Called by tray.bat via `powershell -File` (never inline -Command: cmd-side
-# `for /f` capture of inline PowerShell output mangles quoting under nested
-# non-interactive callers). Also fine to run directly:
+# Called by tray.bat through `python -m src.ps_script` (never inline -Command:
+# cmd-side `for /f` capture of inline PowerShell output mangles quoting under
+# nested non-interactive callers). Also fine to run directly, from the repo root:
 #
-#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\tray_lifecycle.ps1
-#   powershell ... -File scripts\tray_lifecycle.ps1 --restart
+#   .venv\Scripts\python.exe -m src.ps_script scripts\tray_lifecycle.ps1
+#   .venv\Scripts\python.exe -m src.ps_script scripts\tray_lifecycle.ps1 restart
+#
+# Under AllSigned it runs as a ScriptBlock, so it must not rely on
+# $PSCommandPath or $MyInvocation, and it loads its sibling as text.
 #
 # Safety: every process match is scoped to THIS repo's .venv path (under either
 # spelling of the fleet root, see tray_match.ps1) AND the
@@ -15,8 +18,8 @@
 param([string]$Action = "")
 
 $ErrorActionPreference = "Stop"
-$RepoDir = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
-. (Join-Path $PSScriptRoot "tray_match.ps1")
+$RepoDir = Split-Path -Parent $PSScriptRoot
+. ([scriptblock]::Create([IO.File]::ReadAllText((Join-Path $PSScriptRoot "tray_match.ps1"))))
 $VenvDir = Join-Path $RepoDir ".venv"
 $Pythonw = Join-Path $VenvDir "Scripts\pythonw.exe"
 

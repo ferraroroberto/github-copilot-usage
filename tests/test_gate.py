@@ -32,6 +32,17 @@ def test_gate_runs_every_enabled_ratchet():
         assert stage.search(gate), "%s has no gate stage" % name
 
 
+def test_gate_writes_the_junit_file_the_e2e_timing_source_names():
+    """`[e2e] junit_xml` and the gate's `--junitxml` drifting apart would leave test timing unreadable."""
+    fleet = (ROOT / ".fleet.toml").read_text(encoding="utf-8")
+    declared = re.search(r'^junit_xml\s*=\s*"([^"]+)"', fleet, flags=re.M)
+    assert declared, ".fleet.toml [e2e] declares no junit_xml"
+    gate = (ROOT / "scripts" / "verify-before-ship.ps1").read_text(encoding="utf-8")
+    stage = re.search(r'^Invoke-Stage\s+"pytest"\s+\{([^}]*)\}', gate, flags=re.M)
+    assert stage, "the gate has no pytest stage"
+    assert "--junitxml=%s" % declared.group(1) in stage.group(1).split()
+
+
 def test_static_ratchet_without_npx_is_not_confirmed():
     env = {k: v for k, v in os.environ.items() if k.upper() != "PATH"}
     env["PATH"] = ""

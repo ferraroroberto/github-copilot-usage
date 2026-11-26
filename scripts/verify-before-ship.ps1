@@ -13,7 +13,9 @@
                              budget on webkit (scripts/tools/webkit_budget_check.py):
                              this repo's browser tests use raw playwright.sync_api
                              with no pytest --browser option, so it prints [NOT RUN]
-                             (exit 6), never a pass; exit 3 is a failure
+                             (exit 6), never a pass; exit 3 is a failure. pytest
+                             writes per-test seconds to the JUnit XML that
+                             .fleet.toml `[e2e] junit_xml` names
       3. structure ratchet - scripts/structure_ratchet.py: file size, function
                              length, flat directories, the src -> app layer
                              contract and the root layout against the baseline;
@@ -124,7 +126,7 @@ Invoke-Stage "byte-compile"      { & $py -m compileall -q app src tests }
 # the code folders, so the probe after the tests names only what they wrote.
 $runtimeSnapshot = Join-Path ([IO.Path]::GetTempPath()) "runtime-write-snapshot-$PID.json"
 Invoke-Stage "runtime write probe (snapshot)" { & $py "scripts/runtime_write_ratchet.py" --snapshot $runtimeSnapshot }
-Invoke-Stage "pytest"            { & $py -m pytest -q }
+Invoke-Stage "pytest"            { & $py -m pytest -q --junitxml=.pytest_cache/e2e-junit.xml }
 
 # The nightly engine is WebKit; this stage reruns the request-budget tests on it. 0 passed;
 # 4 (WebKit not installed), 5 (no budget test) and 6 (pytest has no --browser option) are

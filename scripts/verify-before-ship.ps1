@@ -58,6 +58,11 @@
                              server loop, a use of the default thread pool or a web app without
                              the request-timing middleware against the baseline; exit 3 is a
                              failure
+     15. install standard ratchet - scripts/install_standard_ratchet.py: an installer module
+                             missing, undeclared or behind the scaffold's, an
+                             [install.migrate] that does not parse, or docs/install.md
+                             without its Install, Update or Migrate section, against the
+                             baseline; exit 3 is a failure
 
     Verdict line: the last line on stdout is `GATE-RESULT: PASS` or
     `GATE-RESULT: FAIL`, on every path that can still run code. Never pipe the
@@ -160,6 +165,7 @@ Invoke-Stage "runtime write ratchet" { & $py "scripts/runtime_write_ratchet.py" 
 Invoke-Stage "usage track ratchet" { & $py "scripts/usage_track_ratchet.py" }
 Invoke-Stage "ux surface ratchet" { & $py "scripts/ux_surface_ratchet.py" }
 Invoke-Stage "request budget ratchet" { & $py "scripts/request_budget_ratchet.py" }
+Invoke-Stage "install standard ratchet" { & $py "scripts/install_standard_ratchet.py" }
 
 Write-Host ""
 Write-Host "[PASS] all checks green - safe to ship." -ForegroundColor Green

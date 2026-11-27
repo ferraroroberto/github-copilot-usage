@@ -19,7 +19,7 @@ github-copilot-usage/
 │   ├── installer.py           # vendored byte-for-byte; what `setup.bat` runs: venv, requirements, configs topped up after a backup, a required and an optional checklist, all declared in `.fleet.toml` `[install]`
 │   ├── installer_migrate.py   # vendored byte-for-byte; `setup.bat -MigrateFrom`: stop the old copy, copy the declared files, rebind, install, start, verify the clone serves
 │   ├── installer_declaration.py # vendored byte-for-byte; parses `.fleet.toml` `[install.migrate]` and `[install.endpoint]`, and resolves the port this machine serves
-│   ├── installer_inplace.py   # vendored byte-for-byte; `setup.bat -InPlace`: rename this install to a dated backup, clone fresh here, migrate from the backup
+│   ├── installer_inplace.py   # vendored byte-for-byte; `setup.bat -Replace` (run from a fresh clone beside the install) and `-InPlace` (from the install): rename the install to a dated backup, put the fresh clone at its path, migrate from the backup
 │   ├── tailnet.py             # the opt-in Tailscale bind: reads the machine's tailnet address and name through the tailscale command, fetches the certificate, says why it cannot
 │   ├── discovery.py           # finds Copilot's session-log folders per editor variant and OS
 │   ├── vscode_parser.py       # read-only, mtime-cached parser for VS Code chat session logs
@@ -77,7 +77,7 @@ github-copilot-usage/
 └── docs/                      # durable reference (this file; install.md for a new machine and what to copy)
 ```
 
-Root files: `setup.bat` (runs the vendored `src/installer.py`: venv, requirements, configs, checklist; `-MigrateFrom` and `-InPlace` move an existing install), `tray.bat` (resident Windows tray, self-bootstrapping), `requirements*.txt`, `config.example.json`, `.env.example`, `.fleet.toml` (shape and vendored manifest), `.structure-ratchet-baseline.json`.
+Root files: `setup.bat` (runs the vendored `src/installer.py`: venv, requirements, configs, checklist; `-MigrateFrom`, `-Replace` and `-InPlace` move an existing install), `tray.bat` (resident Windows tray, self-bootstrapping), `requirements*.txt`, `config.example.json`, `.env.example`, `.fleet.toml` (shape and vendored manifest), `.structure-ratchet-baseline.json`.
 
 ## Where new code goes
 

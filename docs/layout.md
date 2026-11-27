@@ -16,7 +16,7 @@ github-copilot-usage/
 ├── src/                       # logic layer (never imports `app`)
 │   ├── config.py              # config.json + env loading, thread-safe settings
 │   ├── features.py            # the feature blocks switched per machine: their ids, what each needs here, the switch
-│   ├── installer.py           # vendored byte-for-byte; what `setup.bat` runs: venv, requirements, configs topped up after a backup, an ok/missing/unknown checklist, all declared in `.fleet.toml` `[install]`
+│   ├── installer.py           # vendored byte-for-byte; what `setup.bat` runs: venv, requirements, configs topped up after a backup, a required and an optional checklist, all declared in `.fleet.toml` `[install]`
 │   ├── tailnet.py             # the opt-in Tailscale bind: reads the machine's tailnet address and name through the tailscale command, fetches the certificate, says why it cannot
 │   ├── discovery.py           # finds Copilot's session-log folders per editor variant and OS
 │   ├── vscode_parser.py       # read-only, mtime-cached parser for VS Code chat session logs

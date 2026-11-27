@@ -25,14 +25,14 @@ cd github-copilot-usage
 1. creates `.venv` when it is missing;
 2. installs `requirements.txt` (fastapi, uvicorn, httpx), and later reinstalls only when that file changed (its hash is kept inside `.venv`);
 3. creates `config.json` from `config.example.json` and `.env` from `.env.example` when they are missing;
-4. ends with a checklist that marks each item `ok`, `missing` or `unknown`.
+4. ends with two lists: the required items, each `ok`, `missing` or `unknown`, and the optional features, each `available`, `off` or `unknown` with what it unlocks.
 
 Nothing is required beyond that: every config key has a default, and the dashboard opens at `http://127.0.0.1:8377/`. `.\tray.bat` runs it under a tray icon (it installs the two tray extras, pystray and pillow, on its first run); `.venv\Scripts\python.exe -m app --open` runs it in the foreground and opens the browser.
 
-The checklist names what still needs you:
+Setup has succeeded when it ends with `Setup complete` and exits 0; an optional feature that is `off` never changes that. The optional features and the rest that may want you:
 
-- **Copilot session logs:** `missing` when no editor folder or Copilot CLI folder is found here. Use Copilot on this PC, or add another PC's `workspaceStorage` folder under **Settings → Extra storage roots**.
-- **Tailscale CLI (optional):** `missing` is fine unless you want phone access.
+- **Copilot session logs:** `off` when no editor folder or Copilot CLI folder is found here. Use Copilot on this PC, or add another PC's `workspaceStorage` folder under **Settings → Extra storage roots**.
+- **Tailscale CLI:** `off` is fine unless you want phone access.
 - **`.env` keys:** the file is created with every key empty. Fill `GITHUB_COPILOT_BILLING_PAT` for the official billing card, and `COPILOT_USAGE_TELEGRAM_BOT_TOKEN` and `COPILOT_USAGE_TELEGRAM_CHAT_ID` for the pace alert. A block with its key empty reports itself unavailable, with the reason, under **Settings → Available features**; switch it off there and its part of the page disappears.
 - **Start at log on:** put a shortcut to `tray.bat` in `shell:startup`. `setup.bat -Startup` has nothing to register for this app and says so.
 

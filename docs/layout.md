@@ -17,6 +17,9 @@ github-copilot-usage/
 │   ├── config.py              # config.json + env loading, thread-safe settings
 │   ├── features.py            # the feature blocks switched per machine: their ids, what each needs here, the switch
 │   ├── installer.py           # vendored byte-for-byte; what `setup.bat` runs: venv, requirements, configs topped up after a backup, a required and an optional checklist, all declared in `.fleet.toml` `[install]`
+│   ├── installer_migrate.py   # vendored byte-for-byte; `setup.bat -MigrateFrom`: stop the old copy, copy the declared files, rebind, install, start, verify the clone serves
+│   ├── installer_declaration.py # vendored byte-for-byte; parses `.fleet.toml` `[install.migrate]` and `[install.endpoint]`, and resolves the port this machine serves
+│   ├── installer_inplace.py   # vendored byte-for-byte; `setup.bat -InPlace`: rename this install to a dated backup, clone fresh here, migrate from the backup
 │   ├── tailnet.py             # the opt-in Tailscale bind: reads the machine's tailnet address and name through the tailscale command, fetches the certificate, says why it cannot
 │   ├── discovery.py           # finds Copilot's session-log folders per editor variant and OS
 │   ├── vscode_parser.py       # read-only, mtime-cached parser for VS Code chat session logs
@@ -65,6 +68,7 @@ github-copilot-usage/
 │   ├── usage_track_ratchet.py, usage_track_scan.py          # vendored byte-for-byte; fails on a web control with no tracking id or an unwired usage log
 │   ├── ux_surface_ratchet.py, ux_surface_map.py             # vendored byte-for-byte; fails a surface with no `data-surface` id and regenerates docs/ux-surface-map.md
 │   ├── request_budget_ratchet.py, request_budget_scan.py    # vendored byte-for-byte; fails on new fixed-rate polls, short sleeps, undeclared server loops, default-pool use and a missing timing middleware
+│   ├── install_standard_ratchet.py                          # vendored byte-for-byte; fails on a stale installer module, a migration table that does not parse or a playbook section gone
 │   ├── box_lock_gate.ps1      # vendored byte-for-byte; the shared load lock the gate enters before running any stage
 │   ├── classify_e2e.py        # vendored byte-for-byte; maps a diff to an e2e tier from `.fleet.toml` `[e2e]` rules
 │   ├── gen_icons.py           # regenerates the PWA icon family under app/webapp/static/
@@ -73,7 +77,7 @@ github-copilot-usage/
 └── docs/                      # durable reference (this file; install.md for a new machine and what to copy)
 ```
 
-Root files: `setup.bat` (runs the vendored `src/installer.py`: venv, requirements, configs, checklist), `tray.bat` (resident Windows tray, self-bootstrapping), `requirements*.txt`, `config.example.json`, `.env.example`, `.fleet.toml` (shape and vendored manifest), `.structure-ratchet-baseline.json`.
+Root files: `setup.bat` (runs the vendored `src/installer.py`: venv, requirements, configs, checklist; `-MigrateFrom` and `-InPlace` move an existing install), `tray.bat` (resident Windows tray, self-bootstrapping), `requirements*.txt`, `config.example.json`, `.env.example`, `.fleet.toml` (shape and vendored manifest), `.structure-ratchet-baseline.json`.
 
 ## Where new code goes
 

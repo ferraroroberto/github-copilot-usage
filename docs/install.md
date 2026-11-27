@@ -69,15 +69,16 @@ No tracked file is rewritten at runtime, so the pull always fast-forwards. `tray
 
 What moves is declared in `[install.migrate]` of `.fleet.toml`: `config.json` and `.env`, with `.env` compared by hash as a secret. The data folder stays where it is and is shared. The installer does the whole move: it stops the old copy, copies those two files (never over one already there), installs, starts the app with `tray.bat --restart` and verifies it. Nothing in it or in `setup.bat` deletes the old copy.
 
-**Reinstall in the same folder (the usual case).** From a terminal whose current folder is outside the app. The folder's own `setup.bat` must already know `-InPlace`; run `git pull --ff-only` in it first if it does not.
+**Reinstall in the same folder (the usual case).** It works whatever version the installed copy is, because it runs from a fresh clone and never runs the old copy's code. Run these in order from `<root>`, the folder that holds `github-copilot-usage`:
 
 ```powershell
-cd <parent folder>
-.\github-copilot-usage\setup.bat -InPlace -WhatIf    # read the backup name and every step; nothing changes
-.\github-copilot-usage\setup.bat -InPlace
+cd <root>
+git clone https://github.com/ferraroroberto/github-copilot-usage.git github-copilot-usage.incoming    # a fresh clone beside the install; run nothing else in it
+.\github-copilot-usage.incoming\setup.bat -Replace github-copilot-usage -WhatIf    # read the backup name and every step; nothing changes
+.\github-copilot-usage.incoming\setup.bat -Replace github-copilot-usage
 ```
 
-It keeps the replaced copy as `github-copilot-usage.bak-YYYYMMDD-N` and passes only when the new clone serves its own commit on `/api/version`. The path is unchanged, so a `shell:startup` shortcut needs no edit.
+It stops `github-copilot-usage`, renames it to `github-copilot-usage.bak-YYYYMMDD-N` (uncommitted edits stay there), moves `github-copilot-usage.incoming` to `github-copilot-usage`, migrates and passes only when the new clone serves its own commit on `/api/version`. The path is unchanged, so a `shell:startup` shortcut needs no edit. Both copies must have the same `origin`: `git -C github-copilot-usage remote get-url origin` prints the install's, so clone that URL if it differs from the one above. On an install whose `setup.bat` already has `-InPlace`, `.\github-copilot-usage\setup.bat -InPlace` does the same and makes the clone itself.
 
 **Beside it (another folder, or an old copy that is not a git clone):**
 
